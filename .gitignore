@@ -1,0 +1,29 @@
+# --- IDE 相关 ---
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deploymentTargetSelector.xml
+.externalNativeBuild
+.cxx
+/captures
+
+# --- 构建产物 ---
+**/build/
+/build/
+
+# --- Kotlin/Java 相关 ---
+*.iml
+*.class
+.kotlin
+
+# --- 操作系统相关 ---
+*.DS_Store
+Thumbs.db
+
+# --- 某些生成的资源 ---
+/google-services.json
