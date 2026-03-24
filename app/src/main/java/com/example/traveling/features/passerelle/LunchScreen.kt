@@ -1,6 +1,7 @@
 package com.example.traveling.features.passerelle
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
+import com.example.traveling.R
 @Composable
 fun LaunchScreen(
     onNavigateLogin: () -> Unit,
@@ -32,12 +35,12 @@ fun LaunchScreen(
     // 外层容器，相当于 min-h-screen relative overflow-hidden
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 1. 背景图片 (使用 Coil 异步加载)
-        AsyncImage(
-            model = "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
-            contentDescription = "Fond d'écran Voyage",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
+        // 1. 背景图片
+        Image(
+            painter = painterResource(id = R.drawable.bg_lunch), // 调用 R.drawable.bg_lunch
+            contentDescription = "Fond d'écran Voyage", // 图片描述
+            contentScale = ContentScale.Crop, // 保持铺满屏幕的裁剪方式
+            modifier = Modifier.fillMaxSize() // 铺满整个屏幕
         )
 
         // 2. 渐变遮罩 (bg-gradient-to-b from-black/30 via-black/10 to-black/80)
