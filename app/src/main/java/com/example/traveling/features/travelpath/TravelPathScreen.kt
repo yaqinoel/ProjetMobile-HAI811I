@@ -112,10 +112,14 @@ private fun PreferencesForm(
     ) {
         // ── Header ──
         Surface(
+            modifier = Modifier.fillMaxWidth(),
             color = CardBg.copy(alpha = 0.9f),
-            shadowElevation = 2.dp
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
                 Text(
                     "Planification d'Itinéraire",
                     fontSize = 20.sp, fontWeight = FontWeight.Bold,
@@ -128,6 +132,7 @@ private fun PreferencesForm(
                 )
             }
         }
+        HorizontalDivider(color = Color(0xFFE7E5E4), thickness = 0.5.dp)
 
         Column(
             modifier = Modifier
