@@ -14,15 +14,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth // 引入 Firebase Auth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen() {
+fun LoginScreen(
+    onBack: () -> Unit = {},
+    onLoginSuccess: () -> Unit = {},
+    onNavigateRegister: () -> Unit = {}
+) {
     // 1. 获取 Firebase Auth 的实例（这是与 Firebase 通信的桥梁）
-    val auth = FirebaseAuth.getInstance()
     // 获取当前的上下文环境（用来显示弹窗 Toast）
     val context = LocalContext.current
 
@@ -39,7 +43,7 @@ fun LoginScreen() {
             .fillMaxSize()
             .padding(24.dp)
     ) {
-        IconButton(onClick = { /* TODO: 处理返回逻辑 */ }) {
+        IconButton(onClick = onBack) {
             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Retour")
         }
 
@@ -104,13 +108,13 @@ fun LoginScreen() {
                     errorMessage = null // 清空之前的错误
 
                     // 调用 Firebase 登录接口
-                    auth.signInWithEmailAndPassword(email, password)
+                    FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                         .addOnCompleteListener { task ->
                             isLoading = false // 结束加载状态
                             if (task.isSuccessful) {
                                 // 登录成功！
-                                Toast.makeText(context, "登录成功！欢迎回来", Toast.LENGTH_SHORT).show()
-                                // TODO: 这里写跳转到 App 首页的逻辑
+                                Toast.makeText(context, "Connexion réussie !", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess()
                             } else {
                                 // 登录失败，显示具体的错误原因（比如密码错误、账号不存在）
                                 errorMessage = task.exception?.localizedMessage ?: "登录失败，请重试"
@@ -140,9 +144,15 @@ fun LoginScreen() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Pas encore de compte ? ")
-            TextButton(onClick = { /* TODO: 跳转到注册页面 */ }) {
-                Text("S'inscrire", color = Color(0xFFA30000), fontWeight = FontWeight.Bold) // [cite: 91]
+            TextButton(onClick = onNavigateRegister) {
+                Text("S'inscrire", color = Color(0xFFA30000), fontWeight = FontWeight.Bold)
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    LoginScreen()
 }
