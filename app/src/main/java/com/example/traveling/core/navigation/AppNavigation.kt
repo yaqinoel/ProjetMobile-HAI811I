@@ -19,7 +19,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.traveling.features.profile.ProfileScreen
 import com.example.traveling.features.travelpath.TravelPathScreen
+import com.example.traveling.features.travelshare.ExploreScreen
+import com.example.traveling.features.travelshare.GalleryScreen
+import kotlin.Unit
 
 // ─── Colors ───
 private val RedPrimary = Color(0xFFB91C1C)
@@ -87,22 +91,10 @@ fun MainScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                MainTab.PHOTOS -> PlaceholderScreen(
-                    title = "Galerie de Voyages",
-                    subtitle = "Partagez vos plus belles découvertes",
-                    icon = Icons.Default.CameraAlt
-                )
+                MainTab.PHOTOS -> GalleryScreen(isAnonymous = isAnonymous)
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
-                MainTab.EXPLORER -> PlaceholderScreen(
-                    title = "Explorer",
-                    subtitle = "Découvrez de nouvelles destinations",
-                    icon = Icons.Default.Search
-                )
-                MainTab.PROFIL -> PlaceholderScreen(
-                    title = "Mon Profil",
-                    subtitle = if (isAnonymous) "Connectez-vous pour accéder à votre profil" else "Gérez vos informations",
-                    icon = Icons.Default.Person
-                )
+                MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
+                MainTab.PROFIL -> ProfileScreen( isAnonymous = isAnonymous)
             }
         }
     }

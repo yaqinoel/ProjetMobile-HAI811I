@@ -1,0 +1,314 @@
+package com.example.traveling.features.profile
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+
+// ─── 颜色定义 ───
+private val ProfilePageBg = Color(0xFFFDF8F4)
+private val ProfileCardBg = Color(0xFFFFFBF5)
+private val RedPrimary = Color(0xFFB91C1C)
+private val RedDark = Color(0xFF991B1B)
+private val StoneText = Color(0xFF292524)
+private val StoneMuted = Color(0xFF78716C)
+private val AmberPrimary = Color(0xFFD97706)
+
+// ─── 数据模型 ───
+data class ProfileMenuItem(
+    val label: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val iconColor: Color,
+    val badge: Int? = null,
+    val action: () -> Unit = {}
+)
+
+data class ProfileStat(val label: String, val value: String, val icon: ImageVector)
+
+// ─── 假数据 ───
+private val PHOTOS_GRID = listOf(
+    "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1586862118451-efc84a66e704?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1647067151201-0b37c7555870?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1709133332724-2f56232c77eb?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1672891197847-d3a65c11b33d?w=300&fit=crop",
+    "https://images.unsplash.com/photo-1755710116297-20f8e42d3c28?w=300&fit=crop"
+)
+
+// ─── 核心组件 ───
+@Composable
+fun ProfileScreen(
+    isAnonymous: Boolean = false,
+    onNavigateLogin: () -> Unit = {},
+    onNavigateRegister: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenGroups: () -> Unit = {}
+) {
+    if (isAnonymous) {
+        AnonymousProfileView(onNavigateLogin, onNavigateRegister)
+    } else {
+        AuthenticatedProfileView(onLogout, onOpenNotifications, onOpenGroups)
+    }
+}
+
+// ─── 匿名状态视图 ───
+@Composable
+private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().background(ProfilePageBg).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Globe Icon
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(Color(0xFFFEE2E2), CircleShape)
+                .border(1.dp, Color(0xFFFECACA), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Public, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(40.dp))
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Mode Navigation Anonyme", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = StoneText)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Connectez-vous pour publier des photos, rejoindre des groupes et recevoir des recommandations personnalisées",
+            fontSize = 14.sp, color = StoneMuted, textAlign = TextAlign.Center, lineHeight = 22.sp
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            contentPadding = PaddingValues()
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(RedPrimary, RedDark)), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Connexion", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onRegister,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFF5F5F4)),
+            border = BorderStroke(0.dp, Color.Transparent),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text("Créer un compte", color = StoneText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+// ─── 已登录状态视图 ───
+@Composable
+private fun AuthenticatedProfileView(onLogout: () -> Unit, onOpenNotifications: () -> Unit, onOpenGroups: () -> Unit) {
+    val scrollState = rememberScrollState()
+
+    val menuItems = listOf(
+        ProfileMenuItem("Mes Groupes", "3 groupes actifs", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
+        ProfileMenuItem("Favoris", "12 enregistrés", Icons.Default.Bookmark, Color(0xFFD97706)),
+        ProfileMenuItem("Notifications", "5 nouvelles", Icons.Default.Notifications, Color(0xFF10B981), badge = 5, action = onOpenNotifications),
+        ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
+    )
+
+    val stats = listOf(
+        ProfileStat("Photos", "156", Icons.Default.PhotoCamera),
+        ProfileStat("Favoris", "42", Icons.Default.Favorite),
+        ProfileStat("Lieux", "23", Icons.Default.LocationOn),
+        ProfileStat("Note", "4.9", Icons.Default.Star)
+    )
+
+    Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
+
+        // 1. 顶部红色 Header 区域 & 悬浮统计卡片
+        Box {
+            // 红色背景
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color(0xFF991B1B), Color(0xFF7F1D1D))))
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 32.dp, bottom = 64.dp) // 底部留白给悬浮卡片
+            ) {
+                // 顶部标题和登出
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Profil", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onLogout() }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color.White.copy(0.6f), modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Déconnexion", color = Color.White.copy(0.6f), fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // 用户信息
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 头像
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .shadow(8.dp, CircleShape)
+                            .background(Brush.linearGradient(listOf(Color(0xFFFBBF24), Color(0xFFD97706))), CircleShape)
+                            .border(3.dp, Color(0x80FCD34D), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("L", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    // 资料
+                    Column {
+                        Text("Lin Yuxuan", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Photographe voyage · 23 villes visitées", color = Color.White.copy(0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
+                            Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Voyageur Or", color = Color(0xFFFDE047), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            // 悬浮的统计卡片 (使用 offset 将其向下推出红色背景区)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = ProfileCardBg),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 40.dp) // 核心悬浮效果
+            ) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    stats.forEach { stat ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                            Icon(stat.icon, null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp).padding(bottom = 4.dp))
+                            Text(stat.value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                            Text(stat.label, fontSize = 10.sp, color = StoneMuted)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 用于抵消悬浮卡片占用空间的 Spacer
+        Spacer(Modifier.height(56.dp))
+
+        // 2. 菜单列表
+        Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            menuItems.forEach { item ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { item.action() }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 图标
+                    Box(modifier = Modifier.size(40.dp).background(item.iconColor.copy(0.12f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                        Icon(item.icon, null, tint = item.iconColor, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    // 文字
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = StoneText)
+                        Text(item.subtitle, fontSize = 11.sp, color = StoneMuted)
+                    }
+                    // 徽标和箭头
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (item.badge != null) {
+                            Box(modifier = Modifier.size(20.dp).background(Color(0xFFEF4444), CircleShape), contentAlignment = Alignment.Center) {
+                                Text(item.badge.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFD6D3D1), modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+        }
+
+        // 3. 个人照片墙网格
+        Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Mes Photos", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneText)
+                Text("Voir tout", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = RedPrimary)
+            }
+
+            // 将 9 张图片切分为每 3 张一行
+            PHOTOS_GRID.chunked(3).forEach { rowImages ->
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    rowImages.forEach { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                    }
+                    // 如果最后一行不足 3 张，补充空白的 Box 以保持对齐
+                    repeat(3 - rowImages.size) {
+                        Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ─── 预览 ───
+@Preview(showBackground = true, name = "Connecté")
+@Composable
+fun ProfileScreenPreview() {
+    ProfileScreen(isAnonymous = false)
+}
+
+@Preview(showBackground = true, name = "Anonyme")
+@Composable
+fun ProfileAnonymousPreview() {
+    ProfileScreen(isAnonymous = true)
+}

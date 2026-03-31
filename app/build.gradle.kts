@@ -61,6 +61,14 @@ dependencies {
     // icon extends
     implementation("androidx.compose.material:material-icons-extended")
 
+    // SVG
+    implementation("androidx.compose.ui:ui-graphics")
+
+    // Google Map
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation(libs.androidx.compose.foundation)
+
     testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.junit)
