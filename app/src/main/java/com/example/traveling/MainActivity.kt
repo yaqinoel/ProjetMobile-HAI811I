@@ -14,7 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.traveling.features.passerelle.LaunchScreen
 import com.example.traveling.features.passerelle.LoginScreen
-import com.example.traveling.features.main.MainScreen
+import com.example.traveling.core.navigation.MainScreen
 import com.example.traveling.ui.theme.TravelingTheme
 import com.google.firebase.auth.FirebaseAuth
 
