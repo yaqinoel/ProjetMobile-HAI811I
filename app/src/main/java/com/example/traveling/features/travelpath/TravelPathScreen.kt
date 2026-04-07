@@ -63,7 +63,10 @@ fun TravelPathScreen(
         step == "results" -> ResultsScreen(
             travelViewModel = travelViewModel,
             onBack = { step = "preferences" },
-            onViewDetail = { id -> selectedRouteId = id; step = "detail" }
+            onViewDetail = { id ->
+                travelViewModel.selectRoute(id)
+                selectedRouteId = id; step = "detail"
+            }
         )
         else -> PreferencesForm(
             initialDestination = initialDestination,
@@ -107,6 +110,11 @@ private fun PreferencesForm(
     var coldTolerance by remember { mutableStateOf(true) }
     var heatTolerance by remember { mutableStateOf(true) }
     var humidityTolerance by remember { mutableStateOf(false) }
+
+    LaunchedEffect(destination) {
+        travelViewModel.updateSuggestedAttractions(destination)
+    }
+    val suggestedAttractions by travelViewModel.suggestedAttractions.collectAsState()
 
     val effortLabels = mapOf(
         1 to "Très facile", 2 to "Facile", 3 to "Modéré", 4 to "Élevé", 5 to "Intense"
@@ -272,6 +280,38 @@ private fun PreferencesForm(
                         }
                     }
                 }
+                
+                // Suggested Attractions Row
+                if (suggestedAttractions.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Suggestions pour cette ville :", fontSize = 11.sp, color = StoneLighter)
+                    Spacer(Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(suggestedAttractions) { attr ->
+                            val isAdded = favoritePlaces.contains(attr.name)
+                            Surface(
+                                onClick = {
+                                    if (!isAdded) favoritePlaces = favoritePlaces + attr.name
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isAdded) Color(0xFFFEF2F2) else Color(0xFFF5F5F4),
+                                border = BorderStroke(1.dp, if (isAdded) Color(0xFFFECACA) else Color.Transparent)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(attr.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (isAdded) RedPrimary else StoneText)
+                                    if (!isAdded) {
+                                        Text("+", fontSize = 12.sp, color = StoneMuted)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 if (favoritePlaces.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     FlowRow(
@@ -312,13 +352,13 @@ private fun PreferencesForm(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Limite de Budget", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
-                    Text("¥${budget.toInt()}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
+                    Text("${budget.toInt()} €", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
                 }
                 Spacer(Modifier.height(16.dp))
                 Slider(
                     value = budget,
                     onValueChange = { budget = it },
-                    valueRange = 100f..5000f,
+                    valueRange = 0f..5000f,
                     steps = 49,
                     colors = SliderDefaults.colors(
                         thumbColor = RedPrimary,
@@ -327,8 +367,8 @@ private fun PreferencesForm(
                     )
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("¥100", fontSize = 10.sp, color = StoneLighter)
-                    Text("¥5000", fontSize = 10.sp, color = StoneLighter)
+                    Text("0 €", fontSize = 10.sp, color = StoneLighter)
+                    Text("5000 €", fontSize = 10.sp, color = StoneLighter)
                 }
             }
 
@@ -757,7 +797,7 @@ private fun RouteCard(
                 ) {
                     StatChip(
                         icon = Icons.Default.AttachMoney,
-                        value = "¥${route.budget}",
+                        value = "${route.budget} €",
                         label = "Budget",
                         bgColor = Color(0xFFFEF2F2),
                         iconColor = RedPrimary,

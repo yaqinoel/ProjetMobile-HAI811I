@@ -26,12 +26,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // ── 首次启动时向 Firestore 写入预设数据（只执行一次）──
+        // ── 重新写入更新后的数据（含法国城市） ──
+        // ⚠️ 运行一次后请注释掉这行！
         /*
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        if (!prefs.getBoolean("firestore_seeded", false)) {
-            FirestoreSeeder.seedAll()
-            prefs.edit().putBoolean("firestore_seeded", true).apply()
+        if (!prefs.getBoolean("firestore_seeded_v3", false)) {
+            FirestoreSeeder.seedAll(true)  // clearFirst = true，清空旧数据
+            prefs.edit().putBoolean("firestore_seeded_v3", true).apply()
         }
         */
         setContent {

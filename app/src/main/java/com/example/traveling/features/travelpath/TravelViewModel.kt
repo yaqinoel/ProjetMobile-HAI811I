@@ -41,6 +41,17 @@ class TravelViewModel : ViewModel() {
     private val _routeStops = MutableStateFlow<List<RouteStop>>(emptyList())
     val routeStops: StateFlow<List<RouteStop>> = _routeStops.asStateFlow()
 
+    // ── Attractions suggérées pour le formulaire ──
+    private val _suggestedAttractions = MutableStateFlow<List<Attraction>>(emptyList())
+    val suggestedAttractions: StateFlow<List<Attraction>> = _suggestedAttractions.asStateFlow()
+
+    // ── Destination & Route sélectionnées ──
+    private val _selectedDestination = MutableStateFlow<Destination?>(null)
+    val selectedDestination: StateFlow<Destination?> = _selectedDestination.asStateFlow()
+
+    private val _selectedRoute = MutableStateFlow<TravelRoute?>(null)
+    val selectedRoute: StateFlow<TravelRoute?> = _selectedRoute.asStateFlow()
+
     // ── Loading state ──
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -66,6 +77,8 @@ class TravelViewModel : ViewModel() {
             it.name.equals(destinationName, ignoreCase = true)
         } ?: return
 
+        _selectedDestination.value = dest
+
         viewModelScope.launch {
             _isLoading.value = true
             repository.getAttractionsByDestination(dest.id).collect { list ->
@@ -73,6 +86,26 @@ class TravelViewModel : ViewModel() {
                 _routes.value = generateRoutes(list, dest)
                 _routeStops.value = generateStops(list)
                 _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Met à jour les suggestions d'attractions pendant la saisie du nom de la ville.
+     */
+    fun updateSuggestedAttractions(cityName: String) {
+        val dest = _destinations.value.find {
+            it.name.equals(cityName, ignoreCase = true)
+        }
+        if (dest == null) {
+            _suggestedAttractions.value = emptyList()
+            return
+        }
+
+        viewModelScope.launch {
+            repository.getAttractionsByDestination(dest.id).collect { list ->
+                // Afficher les attractions populaires de la ville choisie, triées par note
+                _suggestedAttractions.value = list.sortedByDescending { it.rating }.take(5)
             }
         }
     }
@@ -132,6 +165,11 @@ class TravelViewModel : ViewModel() {
         )
     }
 
+    /** Sélectionne une route pour afficher ses détails. */
+    fun selectRoute(routeId: String) {
+        _selectedRoute.value = _routes.value.find { it.id == routeId }
+    }
+
     /**
      * Convertit les attractions en RouteStops avec des time slots assignés automatiquement.
      */
@@ -162,6 +200,24 @@ class TravelViewModel : ViewModel() {
             val durationStr = if (attr.duration >= 60) "${attr.duration / 60}h${if (attr.duration % 60 > 0) "%02d".format(attr.duration % 60) else ""}"
                               else "${attr.duration} min"
 
+            var distString = "Départ"
+            var walkStr = ""
+            var transitMinutes = 30 // minimum transit par défaut
+
+            if (index > 0) {
+                val prev = ordered[index - 1]
+                if (prev.lat != 0.0 && attr.lat != 0.0) { // Si les coords sont valides
+                    val distKm = haversine(prev.lat, prev.lng, attr.lat, attr.lng)
+                    distString = if (distKm < 1.0) "${(distKm * 1000).toInt()} m" else "%.1f km".format(distKm)
+                    val walkMins = (distKm * 12).toInt().coerceAtLeast(5) // Vitesse de marche ~5km/h
+                    transitMinutes = walkMins + 15 // Marge de déplacement
+                    walkStr = "~$walkMins min"
+                } else {
+                    distString = "~2km"
+                    walkStr = "~15 min"
+                }
+            }
+
             val stop = RouteStop(
                 id = "s${index + 1}",
                 name = attr.name,
@@ -169,21 +225,37 @@ class TravelViewModel : ViewModel() {
                 timeSlot = timeSlot,
                 arrivalTime = arrivalTime,
                 duration = durationStr,
-                distance = if (index == 0) "Départ" else "~2km",
-                walkTime = if (index == 0) "" else "~10 min",
+                distance = distString,
+                walkTime = walkStr,
                 cost = attr.cost,
                 description = attr.description,
                 imageUrl = attr.imageUrl,
                 rating = attr.rating.toFloat(),
-                openHours = attr.openHours
+                openHours = attr.openHours,
+                lat = attr.lat,
+                lng = attr.lng
             )
 
             // Avancer l'heure pour le prochain stop
-            currentMinute += attr.duration + 30 // 30 min de transit
+            currentMinute += attr.duration + transitMinutes
             currentHour += currentMinute / 60
             currentMinute %= 60
 
             stop
         }
+    }
+
+    /**
+     * Calcule la distance géolocalisée (Haversine) entre deux points en kilomètres.
+     */
+    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val r = 6371.0 // Rayon de la terre en km
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return r * c
     }
 }

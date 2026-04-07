@@ -29,7 +29,9 @@ data class RouteStop(
     val description: String,
     val imageUrl: String,
     val rating: Float,
-    val openHours: String
+    val openHours: String,
+    val lat: Double = 0.0,
+    val lng: Double = 0.0
 )
 
 enum class TimeSlot(val label: String) {
@@ -59,5 +61,5 @@ object TravelPathData {
     )
 
     // Villes par défaut (sera remplacé par Firestore si disponible)
-    val defaultQuickCities = listOf("Pékin", "Xi'an", "Hangzhou", "Chengdu", "Guilin")
+    val defaultQuickCities = listOf("Paris", "Lyon", "Nice", "Pékin", "Hangzhou")
 }

@@ -3,6 +3,8 @@ package com.example.traveling.features.travelpath
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,11 +62,18 @@ fun RouteDetailScreen(
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val stops by travelViewModel.routeStops.collectAsState()
+    val selectedDest by travelViewModel.selectedDestination.collectAsState()
+    val selectedRoute by travelViewModel.selectedRoute.collectAsState()
     var liked by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     var expandedStopId by remember { mutableStateOf<String?>("s1") }
 
-    val totalCost = stops.sumOf { it.cost }
+    val destName = selectedDest?.name ?: "Destination"
+    val routeName = selectedRoute?.name ?: "Route"
+    val routeSubtitle = selectedRoute?.subtitle ?: ""
+    val routeRating = selectedRoute?.rating ?: 4.5f
+    val routeReviews = selectedRoute?.reviews ?: 0
+    val heroImage = selectedDest?.imageUrl ?: ""
     val groups = listOf(
         TimeSlot.MATIN to stops.filter { it.timeSlot == TimeSlot.MATIN },
         TimeSlot.APRES_MIDI to stops.filter { it.timeSlot == TimeSlot.APRES_MIDI },
@@ -84,8 +93,8 @@ fun RouteDetailScreen(
             // ── Hero Image ──
             Box(modifier = Modifier.height(208.dp).fillMaxWidth()) {
                 AsyncImage(
-                    model = "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
-                    contentDescription = "Route",
+                    model = heroImage,
+                    contentDescription = destName,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -140,16 +149,16 @@ fun RouteDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(Icons.Default.Star, null, tint = AmberAccent, modifier = Modifier.size(14.dp))
-                        Text("4.8", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                        Text("(256 avis)", fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))
+                        Text("$routeRating", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Text("($routeReviews avis)", fontSize = 11.sp, color = Color.White.copy(alpha = 0.5f))
                     }
                     Text(
-                        "Route Équilibrée · Pékin en un Jour",
+                        "$routeName · $destName en un Jour",
                         fontSize = 20.sp, fontWeight = FontWeight.Bold,
                         color = Color.White, letterSpacing = 1.sp
                     )
                     Text(
-                        "Meilleur rapport qualité-prix",
+                        routeSubtitle,
                         fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f)
                     )
                 }
@@ -166,8 +175,10 @@ fun RouteDetailScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem(Icons.Default.AttachMoney, "¥$totalCost", "Budget", RedPrimary)
-                    StatItem(Icons.Default.Schedule, "5-6h", "Durée", Color(0xFFB45309))
+                    val totalCost = stops.sumOf { it.cost }
+                    val routeDuration = selectedRoute?.duration ?: "5-6h"
+                    StatItem(Icons.Default.AttachMoney, "$totalCost €", "Budget", RedPrimary)
+                    StatItem(Icons.Default.Schedule, routeDuration, "Durée", Color(0xFFB45309))
                     StatItem(Icons.Outlined.DirectionsWalk, "${stops.size}", "Arrêts", StoneMuted)
                     StatItem(Icons.Default.LocationOn, "~20km", "Distance", Color(0xFF7C3AED))
                 }
@@ -198,6 +209,9 @@ fun RouteDetailScreen(
                     }
                 }
             }
+
+            // ── Interactive Mini-Map ──
+            RouteMiniMap(stops = stops)
 
             // ── Stops Timeline ──
             Column(
@@ -298,7 +312,7 @@ fun RouteDetailScreen(
                                                 Text(stop.duration, fontSize = 10.sp, color = StoneLighter)
                                                 if (stop.cost > 0) {
                                                     Text(
-                                                        "¥${stop.cost}",
+                                                        "${stop.cost} €",
                                                         fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
                                                         color = RedPrimary
                                                     )
@@ -327,20 +341,30 @@ fun RouteDetailScreen(
                                         border = BorderStroke(1.dp, StoneBorder)
                                     ) {
                                         Column {
-                                            AsyncImage(
-                                                model = stop.imageUrl,
-                                                contentDescription = stop.name,
-                                                contentScale = ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(128.dp)
-                                                    .clip(
-                                                        RoundedCornerShape(
-                                                            topStart = 12.dp,
-                                                            topEnd = 12.dp
-                                                        )
+                                            val galleryImages = listOf(
+                                                stop.imageUrl,
+                                                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
+                                                "https://images.unsplash.com/photo-1544985361-b420d7a77043?w=400"
+                                            ).distinct()
+
+                                            LazyRow(
+                                                modifier = Modifier.fillMaxWidth().height(128.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 0.dp)
+                                            ) {
+                                                items(galleryImages) { url ->
+                                                    AsyncImage(
+                                                        model = url,
+                                                        contentDescription = stop.name,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .fillMaxHeight()
+                                                            .width(200.dp)
+                                                            .clip(RoundedCornerShape(8.dp))
                                                     )
-                                            )
+                                                }
+                                            }
+                                            
                                             Column(
                                                 modifier = Modifier.padding(12.dp),
                                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -660,6 +684,84 @@ private fun StatItem(
         Spacer(Modifier.height(2.dp))
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = StoneText)
         Text(label, fontSize = 9.sp, color = StoneLighter)
+    }
+}
+
+// ═════════════════════════════════════════════
+//  MINI MAP (CANVAS)
+// ═════════════════════════════════════════════
+@Composable
+private fun RouteMiniMap(stops: List<RouteStop>) {
+    val validStops = stops.filter { it.lat != 0.0 && it.lng != 0.0 }
+    if (validStops.size < 2) return
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = CardBg,
+        border = BorderStroke(1.dp, StoneBorder)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Aperçu du Trajet", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneText)
+            Spacer(Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFE7E5E4))
+            ) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                    val w = size.width
+                    val h = size.height
+
+                    val minLat = validStops.minOf { it.lat }
+                    val maxLat = validStops.maxOf { it.lat }
+                    val minLng = validStops.minOf { it.lng }
+                    val maxLng = validStops.maxOf { it.lng }
+
+                    val latDiff = (maxLat - minLat).coerceAtLeast(0.0001)
+                    val lngDiff = (maxLng - minLng).coerceAtLeast(0.0001)
+
+                    val points = validStops.map {
+                        // Invert Y mapping because latitude increases going North
+                        androidx.compose.ui.geometry.Offset(
+                            x = ((it.lng - minLng) / lngDiff * w).toFloat(),
+                            y = (h - (it.lat - minLat) / latDiff * h).toFloat()
+                        )
+                    }
+
+                    // Draw path
+                    val path = androidx.compose.ui.graphics.Path()
+                    points.forEachIndexed { index, point ->
+                        if (index == 0) path.moveTo(point.x, point.y)
+                        else path.lineTo(point.x, point.y)
+                    }
+
+                    drawPath(
+                        path = path,
+                        color = RedPrimary,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 3.dp.toPx(),
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                            join = androidx.compose.ui.graphics.StrokeJoin.Round
+                        )
+                    )
+
+                    // Draw points
+                    points.forEachIndexed { index, point ->
+                        val isFirst = index == 0
+                        val isLast = index == points.size - 1
+                        val innerColor = if (isFirst) Color(0xFF10B981) else if (isLast) Color(0xFFEF4444) else Color.White
+
+                        drawCircle(color = RedPrimary, radius = 5.dp.toPx(), center = point)
+                        drawCircle(color = innerColor, radius = 3.dp.toPx(), center = point)
+                    }
+                }
+            }
+        }
     }
 }
 
