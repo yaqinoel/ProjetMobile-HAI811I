@@ -69,13 +69,22 @@ val INITIAL_PHOTOS = listOf(
 
 // ─── 核心 UI ───
 @Composable
-fun GalleryScreen(isAnonymous: Boolean = false) {
+fun GalleryScreen(
+    isAnonymous: Boolean = false,
+    onOpenNotifications: () -> Unit = {}
+    ) {
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
     var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
 
     Column(modifier = Modifier.fillMaxSize().background(PageBg)) {
         // 1. 顶部导航栏
-        HeaderBar(viewMode = viewMode, onViewModeChanged = { viewMode = it }, isAnonymous = isAnonymous, onShuffle = { photos = photos.shuffled() })
+        HeaderBar(
+            viewMode = viewMode,
+            onOpenNotifications = onOpenNotifications,
+            onViewModeChanged = { viewMode = it },
+            isAnonymous = isAnonymous,
+            onShuffle = { photos = photos.shuffled() }
+        )
 
         // 2. Stories 动态区域 (如果是地图模式则隐藏)
         if (viewMode != "map") {
@@ -96,7 +105,13 @@ fun GalleryScreen(isAnonymous: Boolean = false) {
 
 // ─── 顶部导航栏 ───
 @Composable
-private fun HeaderBar(viewMode: String, onViewModeChanged: (String) -> Unit, isAnonymous: Boolean, onShuffle: () -> Unit) {
+private fun HeaderBar(
+    viewMode: String,
+    onOpenNotifications: () -> Unit,
+    onViewModeChanged: (String) -> Unit,
+    isAnonymous: Boolean,
+    onShuffle: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().background(CardBg).padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -116,7 +131,13 @@ private fun HeaderBar(viewMode: String, onViewModeChanged: (String) -> Unit, isA
 
             // 通知铃铛 (登录状态可见)
             if (!isAnonymous) {
-                Box(modifier = Modifier.size(36.dp).background(RedLight, RoundedCornerShape(8.dp)).border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)).clickable { }, contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(RedLight, RoundedCornerShape(8.dp))
+                        .border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                        .clickable { onOpenNotifications()},
+                    contentAlignment = Alignment.Center) {
                     Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = RedPrimary, modifier = Modifier.size(18.dp))
                     Box(modifier = Modifier.size(8.dp).background(Color.Red, CircleShape).align(Alignment.TopEnd).offset((-6).dp, 6.dp)) // 红点
                 }

@@ -52,7 +52,8 @@ fun MainScreen(
     isAnonymous: Boolean = false,
     onLogout: () -> Unit = {},
     onNavigateLogin: () -> Unit = {},
-    onNavigateRegister: () -> Unit = {}
+    onNavigateRegister: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -94,7 +95,10 @@ fun MainScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (selectedTab) {
-                MainTab.PHOTOS -> GalleryScreen(isAnonymous = isAnonymous)
+                MainTab.PHOTOS -> GalleryScreen(
+                    isAnonymous = isAnonymous,
+                    onOpenNotifications = onNavigateToNotifications
+                )
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
                 MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
                 MainTab.PROFIL -> ProfileScreen(
