@@ -18,6 +18,7 @@ import com.example.traveling.core.navigation.MainScreen
 import com.example.traveling.ui.theme.TravelingTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.data.repository.FirestoreSeeder
+import com.example.traveling.features.passerelle.RegisterScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +71,26 @@ fun AppNavigation() {
                         popUpTo("home") { inclusive = true }
                     }
                 },
-                onNavigateRegister = { /* TODO: register screen */ }
+                onNavigateRegister = {
+                    navController.navigate("register") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable("register") {
+            RegisterScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateLogin = {
+                    navController.navigate("login") {
+                        popUpTo("register") { inclusive = true }
+                    }
+                },
+                onRegisterSuccess = {
+                    navController.navigate("main") {
+                        popUpTo("home") { inclusive = true }
+                    }
+                }
             )
         }
         composable("main") {
