@@ -94,7 +94,10 @@ fun MainScreen(
                 MainTab.PHOTOS -> GalleryScreen(isAnonymous = isAnonymous)
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
                 MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
-                MainTab.PROFIL -> ProfileScreen( isAnonymous = isAnonymous)
+                MainTab.PROFIL -> ProfileScreen(
+                    isAnonymous = isAnonymous,
+                    onLogout = onLogout
+                )
             }
         }
     }
