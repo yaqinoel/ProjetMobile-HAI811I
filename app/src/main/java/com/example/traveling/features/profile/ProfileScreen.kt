@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.google.firebase.auth.FirebaseAuth
 
 // ─── 颜色定义 ───
 private val ProfilePageBg = Color(0xFFFDF8F4)
@@ -73,10 +74,12 @@ fun ProfileScreen(
     onOpenNotifications: () -> Unit = {},
     onOpenGroups: () -> Unit = {}
 ) {
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val userName = currentUser?.displayName ?: "Voyageur"
     if (isAnonymous) {
         AnonymousProfileView(onNavigateLogin, onNavigateRegister)
     } else {
-        AuthenticatedProfileView(onLogout, onOpenNotifications, onOpenGroups)
+        AuthenticatedProfileView(userName, onLogout, onOpenNotifications, onOpenGroups)
     }
 }
 
@@ -140,7 +143,12 @@ private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
 
 // ─── 已登录状态视图 ───
 @Composable
-private fun AuthenticatedProfileView(onLogout: () -> Unit, onOpenNotifications: () -> Unit, onOpenGroups: () -> Unit) {
+private fun AuthenticatedProfileView(
+    userName: String,
+    onLogout: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    onOpenGroups: () -> Unit
+) {
     val scrollState = rememberScrollState()
 
     val menuItems = listOf(
@@ -197,7 +205,7 @@ private fun AuthenticatedProfileView(onLogout: () -> Unit, onOpenNotifications: 
                     Spacer(Modifier.width(16.dp))
                     // 资料
                     Column {
-                        Text("Lin Yuxuan", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(userName, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Text("Photographe voyage · 23 villes visitées", color = Color.White.copy(0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                             Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
