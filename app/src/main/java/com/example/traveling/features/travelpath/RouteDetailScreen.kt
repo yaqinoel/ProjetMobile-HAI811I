@@ -18,12 +18,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelPathData
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 // ─── Colors ───
 private val RedPrimary = Color(0xFFB91C1C)
@@ -54,9 +56,10 @@ private val timeSlotStyles = mapOf(
 @Composable
 fun RouteDetailScreen(
     routeId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    travelViewModel: TravelViewModel = viewModel()
 ) {
-    val stops = TravelPathData.routeStops
+    val stops by travelViewModel.routeStops.collectAsState()
     var liked by remember { mutableStateOf(false) }
     var saved by remember { mutableStateOf(false) }
     var expandedStopId by remember { mutableStateOf<String?>("s1") }
@@ -658,4 +661,14 @@ private fun StatItem(
         Text(value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = StoneText)
         Text(label, fontSize = 9.sp, color = StoneLighter)
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RouteDetailScreenPreview() {
+
+    RouteDetailScreen(
+        routeId = "1",
+        onBack = { }
+    )
 }

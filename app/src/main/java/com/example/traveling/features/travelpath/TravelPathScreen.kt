@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.traveling.data.model.TravelPathData
 import com.example.traveling.data.model.TravelRoute
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 // ─── Chinese-style Colors ───
 private val RedPrimary = Color(0xFFB91C1C)
@@ -44,7 +46,8 @@ private val StoneBorder = Color(0x14795548)
 @Composable
 fun TravelPathScreen(
     isAnonymous: Boolean = false,
-    initialDestination: String? = null
+    initialDestination: String? = null,
+    travelViewModel: TravelViewModel = viewModel()
 ) {
     var step by remember { mutableStateOf("preferences") } // preferences, loading, results
     var selectedRouteId by remember { mutableStateOf<String?>(null) }
@@ -58,14 +61,15 @@ fun TravelPathScreen(
         }
         step == "loading" -> LoadingScreen()
         step == "results" -> ResultsScreen(
+            travelViewModel = travelViewModel,
             onBack = { step = "preferences" },
             onViewDetail = { id -> selectedRouteId = id; step = "detail" }
         )
         else -> PreferencesForm(
             initialDestination = initialDestination,
+            travelViewModel = travelViewModel,
             onGenerate = {
                 step = "loading"
-                // Simulate AI generation delay
             },
             onLoadingComplete = { step = "results" }
         )
@@ -87,9 +91,12 @@ fun TravelPathScreen(
 @Composable
 private fun PreferencesForm(
     initialDestination: String?,
+    travelViewModel: TravelViewModel,
     onGenerate: () -> Unit,
     onLoadingComplete: () -> Unit
 ) {
+    val quickCities by travelViewModel.quickCities.collectAsState()
+    val citiesList = quickCities.ifEmpty { TravelPathData.defaultQuickCities }
     var destination by remember { mutableStateOf(initialDestination ?: "") }
     var selectedActivities by remember { mutableStateOf(setOf<String>()) }
     var budget by remember { mutableFloatStateOf(600f) }
@@ -162,7 +169,7 @@ private fun PreferencesForm(
                 )
                 Spacer(Modifier.height(12.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(TravelPathData.quickCities) { city ->
+                    items(citiesList) { city ->
                         val selected = destination == city
                         Surface(
                             onClick = { destination = city },
@@ -438,7 +445,10 @@ private fun PreferencesForm(
 
             // ── Generate Button ──
             Button(
-                onClick = onGenerate,
+                onClick = {
+                    travelViewModel.selectDestination(destination)
+                    onGenerate()
+                },
                 enabled = selectedActivities.isNotEmpty() && destination.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -554,10 +564,11 @@ private fun LoadingScreen() {
 // ═════════════════════════════════════════════
 @Composable
 private fun ResultsScreen(
+    travelViewModel: TravelViewModel,
     onBack: () -> Unit,
     onViewDetail: (String) -> Unit
 ) {
-    val routes = TravelPathData.routes
+    val routes by travelViewModel.routes.collectAsState()
 
     Column(
         modifier = Modifier
@@ -936,4 +947,13 @@ private fun WeatherToggle(
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TravelPathScreenPreview() {
+    TravelPathScreen(
+        isAnonymous = false,
+        initialDestination = null
+    )
 }

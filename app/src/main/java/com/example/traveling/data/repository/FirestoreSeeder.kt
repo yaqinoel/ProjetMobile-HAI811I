@@ -53,10 +53,10 @@ object FirestoreSeeder {
                 "https://images.unsplash.com/photo-1647067151201-0b37c7555870?w=800", 30.2741, 120.1551),
             Destination("chengdu", "Chengdu", "Chine",
                 "Capitale du Sichuan, patrie des pandas géants et de la cuisine épicée, ville classée UNESCO.",
-                "https://images.unsplash.com/photo-1528164344885-1d40d64b3460?w=800", 30.5728, 104.0668),
+                "https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=800", 30.5728, 104.0668),
             Destination("guilin", "Guilin", "Chine",
                 "Paysages karstiques iconiques de la rivière Li, montagnes en pain de sucre et rizières en terrasses.",
-                "https://images.unsplash.com/photo-1537531383496-f4749ef56982?w=800", 25.2744, 110.2990),
+                "https://images.unsplash.com/photo-1513415564515-763d91423bdd?w=800", 25.2744, 110.2990),
         )
 
         val batch = db.batch()

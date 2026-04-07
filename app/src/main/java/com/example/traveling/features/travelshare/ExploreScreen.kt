@@ -36,6 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 // ─── 数据模型与常量 ───
 
@@ -87,12 +88,28 @@ val DESTINATIONS = listOf(
     DestItem("Shanghai", "Municipality", "https://images.unsplash.com/photo-1647067151201-0b37c7555870?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=300")
 )
 
+// Convertir Destination Firestore en DestItem local
+fun com.example.traveling.data.model.Destination.toDestItem() = DestItem(
+    name = this.name,
+    region = this.country,
+    img = this.imageUrl
+)
+
 
 // ─── 核心界面 ───
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ExploreScreen(isAnonymous: Boolean = false) {
+fun ExploreScreen(
+    isAnonymous: Boolean = false,
+    exploreViewModel: ExploreViewModel = viewModel()
+) {
+    val firestoreDestinations by exploreViewModel.destinations.collectAsState()
+    val displayDestinations = if (firestoreDestinations.isNotEmpty()) {
+        firestoreDestinations.map { it.toDestItem() }
+    } else {
+        DESTINATIONS
+    }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("all") }
@@ -345,7 +362,7 @@ fun ExploreScreen(isAnonymous: Boolean = false) {
                 Column {
                     Text("Destinations populaires", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = ExploreStoneText, modifier = Modifier.padding(bottom = 12.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        items(DESTINATIONS) { dest ->
+                        items(displayDestinations) { dest ->
                             Card(
                                 modifier = Modifier.width(140.dp),
                                 colors = CardDefaults.cardColors(containerColor = ExploreCardBg),
