@@ -20,6 +20,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.data.repository.FirestoreSeeder
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
+import com.example.traveling.features.travelshare.notifications.NotificationsScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +63,17 @@ fun AppNavigation() {
                     navController.navigate("main_anonymous") {
                         popUpTo("home") { inclusive = true }
                     }
+                }
+            )
+        }
+        composable("notifications") {
+            NotificationsScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+                onOpenSettings = {
+                    // TODO: 未来如果做了通知设置页，在这里写跳转
+                    // navController.navigate("notification_settings")
                 }
             )
         }
@@ -110,6 +122,9 @@ fun AppNavigation() {
                     navController.navigate("home") {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateToNotifications = {
+                    navController.navigate("notifications")
                 }
             )
         }
