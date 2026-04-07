@@ -18,6 +18,7 @@ import com.example.traveling.core.navigation.MainScreen
 import com.example.traveling.ui.theme.TravelingTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.data.repository.FirestoreSeeder
+import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
 
 class MainActivity : ComponentActivity() {
@@ -73,6 +74,21 @@ fun AppNavigation() {
                 },
                 onNavigateRegister = {
                     navController.navigate("register") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onNavigateForgotPwd = {
+                    navController.navigate("forgot_password") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable("forgot_password") {
+            ForgotPasswordScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateLogin = {
+                    navController.navigate("login") {
                         popUpTo("login") { inclusive = true }
                     }
                 }

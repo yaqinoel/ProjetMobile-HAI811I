@@ -46,7 +46,8 @@ private val Stone200 = Color(0xFFE7E5E4)
 fun LoginScreen(
     onBack: () -> Unit = {},
     onLoginSuccess: () -> Unit = {},
-    onNavigateRegister: () -> Unit = {}
+    onNavigateRegister: () -> Unit = {},
+    onNavigateForgotPwd: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -168,7 +169,7 @@ fun LoginScreen(
                         color = Red700,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.clickable { /* TODO */ }
+                        modifier = Modifier.clickable { onNavigateForgotPwd() }
                     )
                 }
 
