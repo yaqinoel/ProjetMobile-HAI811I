@@ -24,6 +24,7 @@ import com.example.traveling.features.travelpath.TravelPathScreen
 import com.example.traveling.features.travelshare.ExploreScreen
 import com.example.traveling.features.travelshare.GalleryScreen
 import kotlin.Unit
+import androidx.compose.runtime.saveable.rememberSaveable
 
 // ─── Colors ───
 private val RedPrimary = Color(0xFFB91C1C)
@@ -49,9 +50,11 @@ enum class MainTab(
 @Composable
 fun MainScreen(
     isAnonymous: Boolean = false,
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onNavigateLogin: () -> Unit = {},
+    onNavigateRegister: () -> Unit = {}
 ) {
-    var selectedTab by remember { mutableStateOf(MainTab.PHOTOS) }
+    var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
     Scaffold(
         containerColor = PageBg,
@@ -96,7 +99,9 @@ fun MainScreen(
                 MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
                 MainTab.PROFIL -> ProfileScreen(
                     isAnonymous = isAnonymous,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    onNavigateLogin = onNavigateLogin,
+                    onNavigateRegister = onNavigateRegister
                 )
             }
         }

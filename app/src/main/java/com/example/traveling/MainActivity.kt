@@ -73,14 +73,10 @@ fun AppNavigation() {
                     }
                 },
                 onNavigateRegister = {
-                    navController.navigate("register") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                    navController.navigate("register")
                 },
                 onNavigateForgotPwd = {
-                    navController.navigate("forgot_password") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                    navController.navigate("forgot_password")
                 }
             )
         }
@@ -88,9 +84,7 @@ fun AppNavigation() {
             ForgotPasswordScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateLogin = {
-                    navController.navigate("login") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                    navController.popBackStack()
                 }
             )
         }
@@ -98,9 +92,7 @@ fun AppNavigation() {
             RegisterScreen(
                 onBack = { navController.popBackStack() },
                 onNavigateLogin = {
-                    navController.navigate("login") {
-                        popUpTo("register") { inclusive = true }
-                    }
+                    navController.popBackStack()
                 },
                 onRegisterSuccess = {
                     navController.navigate("main") {
@@ -127,6 +119,12 @@ fun AppNavigation() {
                     navController.navigate("home") {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onNavigateLogin = {
+                    navController.navigate("login")
+                },
+                onNavigateRegister = {
+                    navController.navigate("register")
                 }
             )
         }
