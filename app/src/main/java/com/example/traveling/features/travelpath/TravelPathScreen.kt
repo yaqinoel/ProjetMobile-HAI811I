@@ -30,6 +30,7 @@ import com.example.traveling.data.model.TravelPathData
 import com.example.traveling.data.model.TravelRoute
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.saveable.rememberSaveable
 
 // ─── Chinese-style Colors ───
 private val RedPrimary = Color(0xFFB91C1C)
@@ -49,32 +50,36 @@ fun TravelPathScreen(
     initialDestination: String? = null,
     travelViewModel: TravelViewModel = viewModel()
 ) {
-    var step by remember { mutableStateOf("preferences") } // preferences, loading, results
-    var selectedRouteId by remember { mutableStateOf<String?>(null) }
+    val step by travelViewModel.currentStep.collectAsState()
+    val selectedRouteId by travelViewModel.currentRouteId.collectAsState()
 
     when {
         step == "detail" && selectedRouteId != null -> {
             RouteDetailScreen(
                 routeId = selectedRouteId!!,
-                onBack = { selectedRouteId = null; step = "results" }
+                onBack = {
+                    travelViewModel.setCurrentRouteId(null)
+                    travelViewModel.setStep("results")
+                }
             )
         }
         step == "loading" -> LoadingScreen()
         step == "results" -> ResultsScreen(
             travelViewModel = travelViewModel,
-            onBack = { step = "preferences" },
+            onBack = { travelViewModel.setStep("preferences") },
             onViewDetail = { id ->
                 travelViewModel.selectRoute(id)
-                selectedRouteId = id; step = "detail"
+                travelViewModel.setCurrentRouteId(id)
+                travelViewModel.setStep("detail")
             }
         )
         else -> PreferencesForm(
             initialDestination = initialDestination,
             travelViewModel = travelViewModel,
             onGenerate = {
-                step = "loading"
+                travelViewModel.setStep("loading")
             },
-            onLoadingComplete = { step = "results" }
+            onLoadingComplete = { travelViewModel.setStep("results") }
         )
     }
 
@@ -82,7 +87,7 @@ fun TravelPathScreen(
     if (step == "loading") {
         LaunchedEffect(Unit) {
             kotlinx.coroutines.delay(1800)
-            step = "results"
+            travelViewModel.setStep("results")
         }
     }
 }
@@ -100,19 +105,32 @@ private fun PreferencesForm(
 ) {
     val quickCities by travelViewModel.quickCities.collectAsState()
     val citiesList = quickCities.ifEmpty { TravelPathData.defaultQuickCities }
-    var destination by remember { mutableStateOf(initialDestination ?: "") }
-    var selectedActivities by remember { mutableStateOf(setOf<String>()) }
-    var budget by remember { mutableFloatStateOf(600f) }
-    var duration by remember { mutableFloatStateOf(5f) }
-    var effort by remember { mutableFloatStateOf(3f) }
+
+    // ── Form state backed by ViewModel (persists across navigation) ──
+    var destination by remember { mutableStateOf(travelViewModel.formDestination.value.ifEmpty { initialDestination ?: "" }) }
+    var selectedActivities by remember { mutableStateOf(travelViewModel.formActivities.value) }
+    var budget by remember { mutableFloatStateOf(travelViewModel.formBudget.value) }
+    var duration by remember { mutableFloatStateOf(travelViewModel.formDuration.value) }
+    var effort by remember { mutableFloatStateOf(travelViewModel.formEffort.value) }
+    var favoritePlaces by remember { mutableStateOf(travelViewModel.formFavoritePlaces.value) }
     var newPlace by remember { mutableStateOf("") }
-    var favoritePlaces by remember { mutableStateOf(listOf<String>()) }
     var coldTolerance by remember { mutableStateOf(true) }
     var heatTolerance by remember { mutableStateOf(true) }
     var humidityTolerance by remember { mutableStateOf(false) }
 
+    // Sync form state back to ViewModel whenever values change
+    LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
+    LaunchedEffect(selectedActivities) { travelViewModel.formActivities.value = selectedActivities }
+    LaunchedEffect(budget) { travelViewModel.formBudget.value = budget }
+    LaunchedEffect(duration) { travelViewModel.formDuration.value = duration }
+    LaunchedEffect(effort) { travelViewModel.formEffort.value = effort }
+    LaunchedEffect(favoritePlaces) { travelViewModel.formFavoritePlaces.value = favoritePlaces }
+
+    val destinationNotFound by travelViewModel.destinationNotFound.collectAsState()
+
     LaunchedEffect(destination) {
         travelViewModel.updateSuggestedAttractions(destination)
+        travelViewModel.checkDestination(destination)
     }
     val suggestedAttractions by travelViewModel.suggestedAttractions.collectAsState()
 
@@ -165,13 +183,19 @@ private fun PreferencesForm(
                     onValueChange = { destination = it },
                     placeholder = { Text("Où voulez-vous aller ?", color = StoneLighter) },
                     leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = RedPrimary) },
+                    isError = destinationNotFound && destination.isNotBlank(),
+                    supportingText = if (destinationNotFound && destination.isNotBlank()) {
+                        { Text("⚠️ Pas de données disponibles pour cette ville", color = Color(0xFFDC2626), fontSize = 11.sp) }
+                    } else null,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RedPrimary,
                         unfocusedBorderColor = Color.Transparent,
                         unfocusedContainerColor = Color(0xFFFAF5ED),
-                        focusedContainerColor = Color.White
+                        focusedContainerColor = Color.White,
+                        errorBorderColor = Color(0xFFDC2626),
+                        errorContainerColor = Color(0xFFFEF2F2)
                     ),
                     singleLine = true
                 )
@@ -254,7 +278,7 @@ private fun PreferencesForm(
                         value = newPlace,
                         onValueChange = { newPlace = it },
                         placeholder = { Text("Ajouter un lieu...", color = StoneLighter, fontSize = 14.sp) },
-                        modifier = Modifier.weight(1f).height(48.dp),
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = RedPrimary,
@@ -270,7 +294,7 @@ private fun PreferencesForm(
                                 newPlace = ""
                             }
                         },
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(56.dp),
                         shape = RoundedCornerShape(12.dp),
                         color = Color(0xFFFEF2F2),
                         border = BorderStroke(1.dp, Color(0xFFFECACA))
@@ -358,8 +382,7 @@ private fun PreferencesForm(
                 Slider(
                     value = budget,
                     onValueChange = { budget = it },
-                    valueRange = 0f..5000f,
-                    steps = 49,
+                    valueRange = 0f..2500f,
                     colors = SliderDefaults.colors(
                         thumbColor = RedPrimary,
                         activeTrackColor = RedPrimary,
@@ -368,7 +391,7 @@ private fun PreferencesForm(
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("0 €", fontSize = 10.sp, color = StoneLighter)
-                    Text("5000 €", fontSize = 10.sp, color = StoneLighter)
+                    Text("2500 €", fontSize = 10.sp, color = StoneLighter)
                 }
             }
 
@@ -486,10 +509,17 @@ private fun PreferencesForm(
             // ── Generate Button ──
             Button(
                 onClick = {
-                    travelViewModel.selectDestination(destination)
+                    travelViewModel.selectDestination(
+                        destinationName = destination,
+                        budget = budget.toInt(),
+                        activities = selectedActivities,
+                        durationHours = duration.toInt(),
+                        effort = effort.toInt(),
+                        favoritePlaces = favoritePlaces
+                    )
                     onGenerate()
                 },
-                enabled = selectedActivities.isNotEmpty() && destination.isNotBlank(),
+                enabled = selectedActivities.isNotEmpty() && destination.isNotBlank() && !destinationNotFound,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -504,7 +534,7 @@ private fun PreferencesForm(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            if (selectedActivities.isNotEmpty() && destination.isNotBlank())
+                            if (selectedActivities.isNotEmpty() && destination.isNotBlank() && !destinationNotFound)
                                 Brush.horizontalGradient(listOf(RedPrimary, RedDark))
                             else Brush.horizontalGradient(listOf(Color(0xFFD6D3D1), Color(0xFFD6D3D1)))
                         ),
