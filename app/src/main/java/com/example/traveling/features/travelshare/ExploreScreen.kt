@@ -37,16 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.traveling.ui.theme.*
 
 // ─── 数据模型与常量 ───
-
-val ExplorePageBg = Color(0xFFFDF8F4)
-val ExploreCardBg = Color(0xFFFFFBF5)
-val ExploreRedPrimary = Color(0xFFB91C1C)
-val ExploreRedLight = Color(0xFFFEF2F2)
-val ExploreStoneText = Color(0xFF292524)
-val ExploreStoneMuted = Color(0xFF78716C)
-val ExploreStoneLight = Color(0xFFF5F5F4)
 
 data class FilterItem(val id: String, val label: String)
 data class CategoryItem(val id: String, val label: String, val image: String, val count: String)

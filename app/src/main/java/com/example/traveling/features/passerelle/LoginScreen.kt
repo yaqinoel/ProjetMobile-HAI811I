@@ -30,16 +30,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.example.traveling.ui.theme.*
 
-// ─── 颜色定义 ───
-private val Red50 = Color(0xFFFEF2F2)
-private val Amber50_30 = Color(0x4DFFFBEB) // 带有透明度的浅黄色
-private val Red700 = Color(0xFFB91C1C)
-private val Red800 = Color(0xFF991B1B)
-private val Stone800 = Color(0xFF292524)
-private val Stone500 = Color(0xFF78716C)
-private val Stone400 = Color(0xFFA8A29E)
-private val Stone200 = Color(0xFFE7E5E4)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

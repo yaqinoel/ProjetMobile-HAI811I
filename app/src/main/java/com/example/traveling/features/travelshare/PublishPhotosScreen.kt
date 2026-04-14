@@ -30,16 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-
-// --- Couleurs thématiques (Correspondant à Figma & TravelPath) ---
-private val BgColor = Color(0xFFFDF8F4)
-private val Stone800 = Color(0xFF292524)
-private val Stone600 = Color(0xFF57534E)
-private val Stone500 = Color(0xFF78716C)
-private val Stone400 = Color(0xFFA8A29E)
-private val Stone300 = Color(0xFFD6D3D1)
-private val Stone100 = Color(0xFFF5F5F4)
-private val Stone50 = Color(0xFFFAFAF9)
+import com.example.traveling.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +65,7 @@ fun PublishPhotosScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgColor)
+            .background(PageBg)
             .systemBarsPadding()
     ) {
         // --- 1. HEADER ---
@@ -98,12 +89,12 @@ fun PublishPhotosScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
             // --- 2. PHOTOS (OBLIGATOIRE) ---
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
@@ -131,7 +122,7 @@ fun PublishPhotosScreen(
             Column(
                 modifier = Modifier
                     .background(CardBg, RoundedCornerShape(12.dp))
-                    .border(1.dp, Color(0x0D78350F), RoundedCornerShape(12.dp))
+                    .border(1.dp, StoneBorder, RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
                 // Titre (OBLIGATOIRE)
@@ -184,7 +175,7 @@ fun PublishPhotosScreen(
             }
 
             // --- 4. GÉOLOCALISATION (OBLIGATOIRE) & TRAVELPATH ---
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Localisation & Itinéraire", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
                 // Lieu GPS avec Google Maps Picker
@@ -192,7 +183,7 @@ fun PublishPhotosScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(CardBg, RoundedCornerShape(12.dp))
-                        .border(1.dp, if(locationName.isBlank()) Color(0xFFFCA5A5) else Color(0x0D78350F), RoundedCornerShape(12.dp))
+                        .border(1.dp, if(locationName.isBlank()) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp)
                         .clickable { onOpenMapPicker() },
                     verticalAlignment = Alignment.CenterVertically,
@@ -212,7 +203,7 @@ fun PublishPhotosScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(if (isLinkedToPath) Color(0xFFFEF2F2) else CardBg, RoundedCornerShape(12.dp))
-                        .border(1.dp, if (isLinkedToPath) Color(0xFFFCA5A5) else Color(0x0D78350F), RoundedCornerShape(12.dp))
+                        .border(1.dp, if (isLinkedToPath) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -235,13 +226,14 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // --- 5. INFOS PRATIQUES (OPTIONNEL, STYLE TRAVELPATH) ---
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // --- 5. INFOS PRATIQUES (OPTIONNEL, STYLE TRAVELPATH 1:1) ---
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Paramètres d'itinéraire (Optionnel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
                 // Type d'activité
                 SectionCard {
-                    Text("Type d'activité", fontSize = 12.sp, color = Stone500, modifier = Modifier.padding(bottom = 12.dp))
+                    Text("Type d'activité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Spacer(Modifier.height(12.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val types = listOf(
                             Triple("Culture", Icons.Default.AccountBalance, "Culture"),
@@ -256,42 +248,48 @@ fun PublishPhotosScreen(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(2.dp, if (selected) Color(0xFFF87171) else Color.Transparent),
-                                color = if (selected) Color(0xFFFEF2F2) else Stone100
+                                color = if (selected) Color(0xFFFEF2F2) else Color(0xFFF5F5F4)
                             ) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(icon, null, tint = if (selected) RedPrimary else Stone400, modifier = Modifier.size(20.dp))
+                                    Icon(icon, null, tint = if (selected) RedPrimary else StoneMuted, modifier = Modifier.size(20.dp))
                                     Spacer(Modifier.height(4.dp))
-                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) RedPrimary else Stone500)
+                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) RedPrimary else StoneMuted)
                                 }
                             }
                         }
                     }
                 }
 
-                // Budget
-                OutlinedTextField(
-                    value = expense,
-                    onValueChange = { expense = it },
-                    placeholder = { Text("Budget dépensé (Ex: 45)", color = Stone400) },
-                    leadingIcon = { Icon(Icons.Default.Euro, null, tint = Stone400) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = RedPrimary, unfocusedBorderColor = Color.Transparent,
-                        unfocusedContainerColor = CardBg, focusedContainerColor = Color.White
-                    ),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                // Budget (Style TravelPath TextField)
+                SectionCard {
+                    Text("Budget dépensé", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = expense,
+                        onValueChange = { expense = it },
+                        placeholder = { Text("Ex: 45", color = StoneLighter, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Euro, null, tint = RedPrimary) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RedPrimary,
+                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedContainerColor = Color(0xFFF5F5F4),
+                            focusedContainerColor = Color.White
+                        ),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
 
                 // Durée Slider
                 SectionCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Durée estimée", fontSize = 12.sp, color = Stone500)
-                        if (duration > 0f) Text("${duration.toInt()} heures", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
-                        else Text("Non spécifié", fontSize = 12.sp, color = Stone400)
+                        Text("Durée estimée", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                        if (duration > 0f) Text("${duration.toInt()} heures", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
+                        else Text("Non spécifié", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                     Slider(
                         value = duration,
                         onValueChange = { duration = it },
@@ -299,21 +297,25 @@ fun PublishPhotosScreen(
                         steps = 11,
                         colors = SliderDefaults.colors(thumbColor = RedPrimary, activeTrackColor = RedPrimary, inactiveTrackColor = Color(0xFFE7E5E4))
                     )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("0 heure", fontSize = 10.sp, color = StoneLighter)
+                        Text("12 heures", fontSize = 10.sp, color = StoneLighter)
+                    }
                 }
 
                 // Effort Slider
                 SectionCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Effort Physique", fontSize = 12.sp, color = Stone500)
+                        Text("Effort Physique", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                         if (effort > 0f) {
                             Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFEF2F2), border = BorderStroke(1.dp, Color(0xFFFECACA))) {
                                 Text(effortLabels[effort.toInt()] ?: "Modéré", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = RedPrimary)
                             }
                         } else {
-                            Text("Non spécifié", fontSize = 12.sp, color = Stone400)
+                            Text("Non spécifié", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
                     Slider(
                         value = effort,
                         onValueChange = { effort = it },
@@ -321,11 +323,23 @@ fun PublishPhotosScreen(
                         steps = 4,
                         colors = SliderDefaults.colors(thumbColor = RedPrimary, activeTrackColor = RedPrimary, inactiveTrackColor = Color(0xFFE7E5E4))
                     )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        (1..5).forEach { level ->
+                            Box(
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(if (effort.toInt() >= level) Color(0xFFF87171) else Color(0xFFF5F5F4))
+                            )
+                        }
+                    }
                 }
 
                 // Weather Tolerance
                 SectionCard {
-                    Text("Tolérance Météo", fontSize = 12.sp, color = Stone500, modifier = Modifier.padding(bottom = 12.dp))
+                    Text("Tolérance Météo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Spacer(Modifier.height(12.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         WeatherToggle("Froid", Icons.Default.AcUnit, coldTolerance, Color(0xFF3B82F6), Color(0xFFEFF6FF), { coldTolerance = !coldTolerance }, Modifier.weight(1f))
                         WeatherToggle("Chaleur", Icons.Default.WbSunny, heatTolerance, Color(0xFFF97316), Color(0xFFFFF7ED), { heatTolerance = !heatTolerance }, Modifier.weight(1f))
@@ -345,8 +359,8 @@ private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = CardBg,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, Color(0x0D78350F))
+        shadowElevation = 1.dp, // Match TravelPath
+        border = BorderStroke(1.dp, StoneBorder) // Match TravelPath
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
@@ -362,18 +376,18 @@ private fun WeatherToggle(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(2.dp, if (selected) selectedColor else Color.Transparent),
-        color = if (selected) selectedBg else Stone100
+        color = if (selected) selectedBg else Color(0xFFF5F5F4) // Match TravelPath
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, modifier = Modifier.size(20.dp), tint = if (selected) selectedColor else Stone400)
+            Icon(icon, null, modifier = Modifier.size(20.dp), tint = if (selected) selectedColor else StoneLighter)
             Spacer(Modifier.height(4.dp))
-            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) selectedColor else Stone500)
+            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) selectedColor else StoneMuted)
         }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun PublishNodeScreenPreview() {
+fun PublishPhotosScreenPreview() {
     PublishPhotosScreen()
 }

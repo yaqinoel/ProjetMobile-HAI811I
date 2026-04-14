@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import com.example.traveling.ui.theme.*
 
 // --- Modèles de données ---
 data class GroupItem(
@@ -44,13 +45,7 @@ private val DISCOVER_GROUPS = listOf(
     GroupItem("d3", "Voyage en Famille", 35, 210, Color(0xFF06B6D4), false, "")
 )
 
-// --- Couleurs thématiques ---
-private val BgColor = Color(0xFFFDF8F4)
-private val HeaderBg = Color(0xF2FFFBF5)
-private val Stone800 = Color(0xFF292524)
-private val Stone500 = Color(0xFF78716C)
-private val Stone400 = Color(0xFFA8A29E)
-private val Stone300 = Color(0xFFD6D3D1)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -28,17 +28,9 @@ import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelPathData
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.traveling.ui.theme.*
 
-// ─── Colors ───
-private val RedPrimary = Color(0xFFB91C1C)
-private val CardBg = Color(0xFFFFFBF5)
-private val PageBg = Color(0xFFFDF8F4)
-private val AmberAccent = Color(0xFFFBBF24)
-private val AmberLight = Color(0xFFFEF3C7)
-private val StoneText = Color(0xFF44403C)
-private val StoneMuted = Color(0xFF78716C)
-private val StoneLighter = Color(0xFFA8A29E)
-private val StoneBorder = Color(0x14795548)
+
 
 // ─── Time slot styling ───
 private data class TimeSlotStyle(

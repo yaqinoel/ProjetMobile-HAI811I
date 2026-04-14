@@ -25,15 +25,8 @@ import com.example.traveling.features.travelshare.ExploreScreen
 import com.example.traveling.features.travelshare.GalleryScreen
 import kotlin.Unit
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.traveling.ui.theme.*
 
-// ─── Colors ───
-private val RedPrimary = Color(0xFFB91C1C)
-private val RedDark = Color(0xFF991B1B)
-private val PageBg = Color(0xFFFDF8F4)
-private val CardBg = Color(0xFFFFFBF5)
-private val StoneText = Color(0xFF44403C)
-private val StoneMuted = Color(0xFF78716C)
-private val StoneLighter = Color(0xFFA8A29E)
 
 // ─── Tab definition ───
 enum class MainTab(

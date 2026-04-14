@@ -35,16 +35,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-
-// ─── 颜色定义 (与 Login 保持一致) ───
-private val Red50 = Color(0xFFFEF2F2)
-private val Amber50_30 = Color(0x4DFFFBEB)
-private val Red700 = Color(0xFFB91C1C)
-private val Red800 = Color(0xFF991B1B)
-private val Stone800 = Color(0xFF292524)
-private val Stone500 = Color(0xFF78716C)
-private val Stone400 = Color(0xFFA8A29E)
-private val Stone200 = Color(0xFFE7E5E4)
+import com.example.traveling.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

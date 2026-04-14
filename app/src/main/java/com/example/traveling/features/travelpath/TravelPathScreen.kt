@@ -31,18 +31,7 @@ import com.example.traveling.data.model.TravelRoute
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.saveable.rememberSaveable
-
-// ─── Chinese-style Colors ───
-private val RedPrimary = Color(0xFFB91C1C)
-private val RedDark = Color(0xFF991B1B)
-private val CardBg = Color(0xFFFFFBF5)
-private val PageBg = Color(0xFFFDF8F4)
-private val AmberAccent = Color(0xFFFBBF24)
-private val AmberLight = Color(0xFFFEF3C7)
-private val StoneText = Color(0xFF44403C)
-private val StoneMuted = Color(0xFF78716C)
-private val StoneLighter = Color(0xFFA8A29E)
-private val StoneBorder = Color(0x14795548)
+import com.example.traveling.ui.theme.*
 
 @Composable
 fun TravelPathScreen(

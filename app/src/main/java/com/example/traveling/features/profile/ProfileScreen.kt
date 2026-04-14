@@ -29,15 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.example.traveling.ui.theme.*
 
-// ─── 颜色定义 ───
-private val ProfilePageBg = Color(0xFFFDF8F4)
-private val ProfileCardBg = Color(0xFFFFFBF5)
-private val RedPrimary = Color(0xFFB91C1C)
-private val RedDark = Color(0xFF991B1B)
-private val StoneText = Color(0xFF292524)
-private val StoneMuted = Color(0xFF78716C)
-private val AmberPrimary = Color(0xFFD97706)
 
 // ─── 数据模型 ───
 data class ProfileMenuItem(

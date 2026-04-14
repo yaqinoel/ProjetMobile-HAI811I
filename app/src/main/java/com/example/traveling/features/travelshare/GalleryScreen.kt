@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.traveling.ui.theme.*
 
 // ─── 数据模型 ───
 data class Story(val id: String, val name: String, val avatar: String, val color: Color, val hasNew: Boolean)
@@ -40,14 +41,6 @@ data class PhotoPost(
     val likes: Int, val isLiked: Boolean, val isSaved: Boolean,
     val description: String, val comments: Int, val tags: List<String>
 )
-
-// ─── 颜色定义 (匹配 Figma 设计) ───
-val PageBg = Color(0xFFFDF8F4)
-val CardBg = Color(0xFFFFFBF5)
-val RedPrimary = Color(0xFFB91C1C)
-val RedLight = Color(0xFFFEF2F2)
-val StoneText = Color(0xFF292524)
-val StoneMuted = Color(0xFF78716C)
 
 // ─── 模拟数据 ───
 val STORIES = listOf(

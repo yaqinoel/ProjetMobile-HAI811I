@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.traveling.ui.theme.*
 
 // --- Modèles de données ---
 data class NotificationItem(
@@ -76,15 +77,7 @@ private val FILTER_TABS = listOf(
     FilterTab("tags", "Tags")
 )
 
-// --- Couleurs thématiques ---
-private val BgColor = Color(0xFFFDF8F4)
-private val HeaderBg = Color(0xF2FFFBF5) // Ajout de transparence pour l'effet blur
-private val RedPrimary = Color(0xFFB91C1C)
-private val Stone800 = Color(0xFF292524)
-private val Stone600 = Color(0xFF57534E)
-private val Stone500 = Color(0xFF78716C)
-private val Stone400 = Color(0xFFA8A29E)
-private val Stone100 = Color(0xFFF5F5F4)
+
 
 @Composable
 fun NotificationsScreen(
