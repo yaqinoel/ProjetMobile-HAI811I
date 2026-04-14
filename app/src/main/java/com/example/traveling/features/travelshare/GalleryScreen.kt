@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,7 +71,7 @@ val INITIAL_PHOTOS = listOf(
 fun GalleryScreen(
     isAnonymous: Boolean = false,
     onOpenNotifications: () -> Unit = {}
-    ) {
+) {
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
     var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
 
@@ -176,7 +175,12 @@ private fun StoriesRow(isAnonymous: Boolean) {
         if (!isAnonymous) {
             item {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier.size(60.dp).background(RedLight, CircleShape).border(2.dp, RedPrimary.copy(alpha = 0.2f), CircleShape), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier
+                        .size(60.dp)
+                        .background(RedLight, CircleShape)
+                        .border(2.dp, RedPrimary.copy(alpha = 0.2f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text("+", fontSize = 24.sp, color = RedPrimary.copy(alpha = 0.6f))
                     }
                     Spacer(Modifier.height(4.dp))

@@ -1,6 +1,7 @@
 package com.example.traveling
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +22,7 @@ import com.example.traveling.data.repository.FirestoreSeeder
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
 import com.example.traveling.features.travelshare.GroupsScreen
+import com.example.traveling.features.travelshare.PublishPhotosScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
 
 class MainActivity : ComponentActivity() {
@@ -85,6 +87,24 @@ fun AppNavigation() {
                 }
             )
         }
+        composable("publish_photos") {
+            PublishPhotosScreen(
+                onBack = {
+                    // Cancels publishing, goes back to where the user came from
+                    navController.popBackStack()
+                },
+                onPublish = {
+                    // TODO: save the data to Firestore
+                    navController.navigate("main") {
+                        popUpTo("main") { inclusive = true }
+                    }
+                },
+                onOpenMapPicker = {
+                    // TODO: open map picker
+                    // Toast.makeText(context, "Ouverture de Google Maps...", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
         composable("login") {
             LoginScreen(
                 onBack = { navController.popBackStack() },
@@ -136,6 +156,9 @@ fun AppNavigation() {
                 },
                 onNavigateToGroups = {
                     navController.navigate("groups")
+                },
+                onNavigateToPublish = {
+                    navController.navigate("publish_photos")
                 }
             )
         }

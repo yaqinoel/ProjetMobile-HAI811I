@@ -54,7 +54,8 @@ fun MainScreen(
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
-    onNavigateToGroups: () -> Unit = {}
+    onNavigateToGroups: () -> Unit = {},
+    onNavigateToPublish: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -69,7 +70,7 @@ fun MainScreen(
         floatingActionButton = {
             if (selectedTab == MainTab.PHOTOS && !isAnonymous) {
                 FloatingActionButton(
-                    onClick = { /* TODO: Upload photo */ },
+                    onClick = onNavigateToPublish,
                     containerColor = Color.Transparent,
                     elevation = FloatingActionButtonDefaults.elevation(6.dp),
                     modifier = Modifier.size(56.dp)
@@ -98,7 +99,7 @@ fun MainScreen(
             when (selectedTab) {
                 MainTab.PHOTOS -> GalleryScreen(
                     isAnonymous = isAnonymous,
-                    onOpenNotifications = onNavigateToNotifications
+                    onOpenNotifications = onNavigateToNotifications,
                 )
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
                 MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
