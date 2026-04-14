@@ -20,6 +20,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.data.repository.FirestoreSeeder
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
+import com.example.traveling.features.travelshare.GroupsScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
 
 class MainActivity : ComponentActivity() {
@@ -77,6 +78,13 @@ fun AppNavigation() {
                 }
             )
         }
+        composable("groups") {
+            GroupsScreen(
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
         composable("login") {
             LoginScreen(
                 onBack = { navController.popBackStack() },
@@ -125,6 +133,9 @@ fun AppNavigation() {
                 },
                 onNavigateToNotifications = {
                     navController.navigate("notifications")
+                },
+                onNavigateToGroups = {
+                    navController.navigate("groups")
                 }
             )
         }

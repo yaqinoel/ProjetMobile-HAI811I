@@ -53,7 +53,8 @@ fun MainScreen(
     onLogout: () -> Unit = {},
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
-    onNavigateToNotifications: () -> Unit = {}
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToGroups: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -105,7 +106,9 @@ fun MainScreen(
                     isAnonymous = isAnonymous,
                     onLogout = onLogout,
                     onNavigateLogin = onNavigateLogin,
-                    onNavigateRegister = onNavigateRegister
+                    onNavigateRegister = onNavigateRegister,
+                    onOpenNotifications = onNavigateToNotifications,
+                    onOpenGroups = onNavigateToGroups
                 )
             }
         }
