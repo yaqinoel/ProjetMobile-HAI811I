@@ -679,9 +679,7 @@ private fun StatItem(
     }
 }
 
-// ═════════════════════════════════════════════
 //  MINI MAP (CANVAS)
-// ═════════════════════════════════════════════
 @Composable
 private fun RouteMiniMap(stops: List<RouteStop>) {
     val validStops = stops.filter { it.lat != 0.0 && it.lng != 0.0 }

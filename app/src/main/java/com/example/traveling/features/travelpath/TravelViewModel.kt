@@ -13,10 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * ViewModel partagé entre TravelPathScreen et RouteDetailScreen.
- * Charge les destinations et attractions depuis Firestore.
- */
 class TravelViewModel : ViewModel() {
 
     private val repository = TravelRepository()
@@ -120,10 +116,6 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Charge les attractions d'une destination et génère des routes
-     * en tenant compte des filtres utilisateur.
-     */
     fun selectDestination(
         destinationName: String,
         budget: Int = 5000,
@@ -162,9 +154,6 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Met à jour les suggestions d'attractions pendant la saisie du nom de la ville.
-     */
     fun updateSuggestedAttractions(cityName: String) {
         val dest = _destinations.value.find {
             it.name.equals(cityName, ignoreCase = true)
@@ -180,15 +169,7 @@ class TravelViewModel : ViewModel() {
             }
         }
     }
-
-    // ═══════════════════════════════════════════════════
     //  FILTERING LOGIC
-    // ═══════════════════════════════════════════════════
-
-    /**
-     * Filtre les attractions selon les critères utilisateur.
-     * Si le résultat est trop petit (< 3), on relâche progressivement les contraintes.
-     */
     private fun filterAttractions(
         all: List<Attraction>,
         budget: Int,
@@ -232,11 +213,6 @@ class TravelViewModel : ViewModel() {
         return result.sortedByDescending { it.rating }
     }
 
-    /**
-     * Génère 3 routes avec des sous-ensembles d'attractions :
-     * - Chaque route contient AU MOINS une attraction correspondant aux préférences
-     * - Les 3 routes n'ont PAS d'attractions en commun
-     */
     private fun generateRoutes(
         filtered: List<Attraction>,
         allAttractions: List<Attraction>,
@@ -294,12 +270,6 @@ class TravelViewModel : ViewModel() {
         return routes
     }
 
-    /**
-     * Sélectionne un maximum d'attractions en garantissant :
-     * - Au moins une attraction correspondant aux préférences utilisateur
-     * - Aucune attraction déjà utilisée par une autre route (excludeIds)
-     * - Budget total et durée totale respectés
-     */
     private fun selectWithinConstraints(
         sorted: List<Attraction>,
         maxBudget: Int,
@@ -377,15 +347,8 @@ class TravelViewModel : ViewModel() {
         _routeStops.value = generateStops(routeAttractions)
     }
 
-    // ═══════════════════════════════════════════════════
     //  STOP GENERATION (SCHEDULING)
-    // ═══════════════════════════════════════════════════
 
-    /**
-     * Convertit les attractions en RouteStops.
-     * L'horaire d'arrivée inclut UNIQUEMENT le temps de marche,
-     * pas de marge fictive supplémentaire.
-     */
     private fun generateStops(attractions: List<Attraction>): List<RouteStop> {
         if (attractions.isEmpty()) return emptyList()
 
