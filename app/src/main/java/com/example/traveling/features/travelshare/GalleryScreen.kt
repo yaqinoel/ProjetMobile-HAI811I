@@ -63,7 +63,8 @@ val INITIAL_PHOTOS = listOf(
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
-    onOpenNotifications: () -> Unit = {}
+    onOpenNotifications: () -> Unit = {},
+    onPhotoClick: (String) -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
     var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
@@ -87,7 +88,7 @@ fun GalleryScreen(
         // 内容展示区 (带淡入淡出动画)
         Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
             when (mode) {
-                "list" -> PhotoListView(photos = photos, onLike = { /* TODO */ }, onSave = { /* TODO */ })
+                "list" -> PhotoListView(photos = photos, onLike = { /* TODO */ }, onSave = { /* TODO */ }, onPhotoClick = onPhotoClick)
                 "grid" -> PhotoGridView(photos = photos)
                 "map" -> MapView(photos = photos, onSelectPhoto = { /* TODO */ })
             }
@@ -201,13 +202,13 @@ private fun StoriesRow(isAnonymous: Boolean) {
 
 // ─── List 列表视图 (详细卡片) ───
 @Composable
-private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onSave: (String) -> Unit) {
+private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onSave: (String) -> Unit, onPhotoClick: (String) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(photos) { photo ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().clickable { onPhotoClick(photo.id)}
             ) {
                 Column {
                     // 卡片头部 (作者、位置)
