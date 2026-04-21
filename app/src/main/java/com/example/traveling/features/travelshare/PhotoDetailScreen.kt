@@ -10,6 +10,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,16 +22,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+
+// 导入数据模型
+import com.example.traveling.data.model.PhotoComment
 import com.example.traveling.data.model.PhotoDetail
 import com.example.traveling.ui.theme.*
 
-// 主页面入口 (负责状态管理)
+// 主页面入口 (状态与路由管理)
 
 @Composable
 fun PhotoDetailScreen(
@@ -38,54 +45,40 @@ fun PhotoDetailScreen(
     onBack: () -> Unit = {},
     viewModel: PhotoDetailViewModel = viewModel()
 ) {
-    // 收集 ViewModel 的状态
     val uiState by viewModel.uiState.collectAsState()
 
-    // 当 photoId 改变时（或首次进入页面时），通知 ViewModel 加载数据
+    // 当 photoId 传入时，触发 ViewModel 加载真实数据
     LaunchedEffect(photoId) {
         viewModel.loadPhoto(photoId)
     }
 
-    // 根据不同的状态渲染对应的 UI
     when (val state = uiState) {
         is PhotoDetailUiState.Loading -> {
-            Box(
-                modifier = Modifier.fillMaxSize().background(PageBg),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().background(PageBg), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = RedPrimary)
             }
         }
         is PhotoDetailUiState.Error -> {
-            Box(
-                modifier = Modifier.fillMaxSize().background(PageBg),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().background(PageBg), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = Stone400, modifier = Modifier.size(48.dp))
                     Spacer(Modifier.height(8.dp))
                     Text(text = state.message, color = Stone600, fontSize = 16.sp)
                     Spacer(Modifier.height(16.dp))
-                    Button(
-                        onClick = onBack,
-                        colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
-                    ) {
+                    Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)) {
                         Text("Retour")
                     }
                 }
             }
         }
         is PhotoDetailUiState.Success -> {
-            // 数据加载成功，渲染真实 UI
-            PhotoDetailContent(
-                photo = state.photo,
-                onBack = onBack
-            )
+            // 数据成功加载，把 PhotoDetail 喂给纯 UI 组件
+            PhotoDetailContent(photo = state.photo, onBack = onBack)
         }
     }
 }
 
-// ─── 2. 纯展示组件 (只负责画出 PhotoDetail 数据) ───
+// ─── 2. 纯展示组件 (完美还原 Figma 设计) ───
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -94,10 +87,117 @@ private fun PhotoDetailContent(
     onBack: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { photo.imageUrls.size })
+    var newComment by remember { mutableStateOf("") }
 
     Scaffold(
         containerColor = PageBg,
-        bottomBar = { BottomActionBar(photo = photo) }
+        topBar = {
+            // ─── 顶部导航栏 (Figma 中的 Header) ───
+            Surface(
+                color = PageBg.copy(alpha = 0.95f), // 稍微带点透明度的毛玻璃效果
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // 返回按钮 (浅红色底)
+                        Surface(
+                            onClick = onBack,
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFEF2F2),
+                            border = BorderStroke(1.dp, Color(0xFFFEE2E2)),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Stone600, modifier = Modifier.size(18.dp))
+                            }
+                        }
+
+                        // 顶部作者头像与名字
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(modifier = Modifier.size(32.dp).background(photo.authorColor, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(photo.authorAvatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Column {
+                                Text(photo.author, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                                Text(photo.date, fontSize = 10.sp, color = Stone400)
+                            }
+                        }
+                    }
+
+                    // 更多按钮
+                    Surface(
+                        onClick = { /* TODO: Show Menu */ },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Stone100,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Stone600, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            // ─── 底部悬浮评论框 (Figma 中的 Bottom Input) ───
+            Surface(
+                color = PageBg,
+                shadowElevation = 16.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 输入框
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .background(Stone100, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicTextField(
+                            value = newComment,
+                            onValueChange = { newComment = it },
+                            modifier = Modifier.weight(1f),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Stone800),
+                            decorationBox = { innerTextField ->
+                                if (newComment.isEmpty()) {
+                                    Text("Ecrivez votre commentaire...", color = Stone400, fontSize = 13.sp)
+                                }
+                                innerTextField()
+                            }
+                        )
+                        Icon(Icons.Outlined.Mic, contentDescription = "Voice", tint = Stone400, modifier = Modifier.size(16.dp))
+                    }
+
+                    // 发送按钮 (红色方形)
+                    Surface(
+                        onClick = { /* TODO: Post comment */ },
+                        shape = RoundedCornerShape(8.dp),
+                        color = RedDark,
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Add, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                }
+            }
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -105,169 +205,180 @@ private fun PhotoDetailContent(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-
-            // --- 顶部图片轮播区域 ---
-            Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 5f)) {
+            // ─── 1. 主图与多图轮播区 (比例 4:3) ───
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                     AsyncImage(
                         model = photo.imageUrls[page],
-                        contentDescription = "Image ${page + 1}",
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier
-                        .padding(top = 48.dp, start = 16.dp)
-                        .size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Retour", tint = Color.White)
-                }
-
+                // 多图指示器
                 if (photo.imageUrls.size > 1) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 48.dp, end = 16.dp)
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 12.dp)
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "${pagerState.currentPage + 1} / ${photo.imageUrls.size}",
-                            color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Medium
-                        )
+                        Text("${pagerState.currentPage + 1} / ${photo.imageUrls.size}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            // --- 详情内容区域 ---
+            // ─── 2. 互动操作区 (点赞/评论数) ───
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (photo.isLiked) Color.Red else Stone600, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("${photo.likes}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.ChatBubbleOutline, null, tint = Stone600, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(6.dp))
+                        // 👈 这里动态读取了真实的评论列表长度
+                        Text("${photo.commentsCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                    }
+                    Icon(Icons.Outlined.Share, null, tint = Stone600, modifier = Modifier.size(20.dp))
+                }
+                Icon(if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder, null, tint = if (photo.isSaved) AmberAccent else Stone600, modifier = Modifier.size(22.dp))
+            }
+
+            HorizontalDivider(color = StoneBorder)
+
+            // ─── 3. 描述正文与标签 ───
             Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Stone800)) {
+                            append(photo.author)
+                        }
+                        append(" ")
+                        append(photo.description)
+                    },
+                    fontSize = 14.sp,
+                    color = Stone800,
+                    lineHeight = 22.sp
+                )
 
-                // 作者信息
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(44.dp).background(photo.authorColor, CircleShape), contentAlignment = Alignment.Center) {
-                        Text(photo.authorAvatar, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(photo.author, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
-                        Text(photo.date, fontSize = 12.sp, color = StoneMuted)
-                    }
-                    Surface(
-                        onClick = { /* TODO */ },
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFFFEF2F2),
-                        border = BorderStroke(1.dp, RedPrimary.copy(alpha = 0.2f))
-                    ) {
-                        Text("Suivre", fontSize = 12.sp, color = RedPrimary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
-                    }
-                }
+                Spacer(Modifier.height(12.dp))
 
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = StoneBorder)
-                Spacer(Modifier.height(16.dp))
-
-                // 位置信息
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Stone100)
-                        .clickable { /* TODO */ }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("${photo.location}, ${photo.country}", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Stone800)
-                    Spacer(Modifier.width(4.dp))
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Stone400, modifier = Modifier.size(16.dp))
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // 描述正文
-                Text(text = photo.description, fontSize = 15.sp, color = Stone800, lineHeight = 24.sp)
-
-                Spacer(Modifier.height(16.dp))
-
-                // 标签
                 @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     photo.tags.forEach { tag ->
-                        Text(
-                            text = "#$tag", fontSize = 13.sp, color = RedPrimary, fontWeight = FontWeight.Medium,
-                            modifier = Modifier.background(Color(0xFFFEF2F2), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFEF2F2),
+                            border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+                        ) {
+                            Text("#$tag", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = RedDark, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // ─── 4. 详细行程卡片 (Info Card) ───
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFFFFBEB), // 浅黄色底
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A).copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // 👈 这里使用了新增的 lat 和 lng
+                        InfoRow(Icons.Outlined.Place, Color(0xFFFEE2E2), RedDark, photo.location, "${photo.country}\n${photo.lat}, ${photo.lng}")
+                        InfoRow(Icons.Outlined.CalendarToday, Color(0xFFFEF3C7), Color(0xFFB45309), "Date", photo.date)
+                        // 👈 这里使用了新增的 howToGetThere
+                        InfoRow(Icons.Outlined.NearMe, Color(0xFFF3E8FF), Color(0xFF7E22CE), "Comment s'y rendre", photo.howToGetThere)
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // ─── 5. 导航操作双按钮 ───
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { /* TODO: Open Google Maps */ },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RedDark)
+                    ) {
+                        Icon(Icons.Outlined.NearMe, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Navigation", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = { /* TODO: Send to TravelPath */ },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)) // Amber
+                    ) {
+                        Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Itinéraire", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 Spacer(Modifier.height(32.dp))
+
+                // ─── 6. 真实的评论列表 ───
+                Text("Commentaires (${photo.commentsList.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Spacer(Modifier.height(16.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // 👈 动态遍历 viewModel 传过来的评论列表
+                    photo.commentsList.forEach { comment ->
+                        Row(verticalAlignment = Alignment.Top) {
+                            Box(modifier = Modifier.size(32.dp).background(comment.color, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(comment.avatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(comment.author, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                                    Text(comment.date, fontSize = 10.sp, color = Stone400)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(comment.text, fontSize = 13.sp, color = Stone600, lineHeight = 18.sp)
+                                Spacer(Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+                                    Icon(Icons.Outlined.ThumbUp, null, tint = Stone400, modifier = Modifier.size(12.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("${comment.likes}", fontSize = 11.sp, color = Stone400)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp)) // 防止列表被底部的输入框遮挡
             }
         }
     }
 }
 
-// ─── 3. 子组件：底部固定互动栏 ───
-
+// ─── 辅助组件：信息行 (用于黄色交通卡片内部) ───
 @Composable
-private fun BottomActionBar(photo: PhotoDetail) {
-    Surface(color = CardBg, shadowElevation = 8.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                modifier = Modifier.weight(1f).height(40.dp).background(Stone100, RoundedCornerShape(20.dp)).clickable { /* TODO */ }.padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Outlined.Edit, contentDescription = null, tint = Stone400, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Ajouter un commentaire...", fontSize = 13.sp, color = Stone400)
-            }
-
-            Spacer(Modifier.width(16.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
-                    Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = "Like", tint = if (photo.isLiked) Color.Red else Stone800, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("${photo.likes}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
-                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comment", tint = Stone800, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("${photo.comments}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
-                }
-                Icon(
-                    if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
-                    contentDescription = "Save",
-                    tint = if (photo.isSaved) AmberAccent else Stone800,
-                    modifier = Modifier.size(24.dp).clickable { }
-                )
-            }
+private fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, iconBg: Color, iconTint: Color, title: String, subtitle: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Box(modifier = Modifier.size(40.dp).background(iconBg, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, fontSize = 12.sp, color = Stone400, lineHeight = 18.sp)
         }
     }
-}
-
-// ─── 4. 预览 (测试专用) ───
-// 这里的 Preview 不直接调用主 Screen（因为没法轻易 mock ViewModel）
-@Preview(showBackground = true)
-@Composable
-fun PhotoDetailContentPreview() {
-    val mockData = PhotoDetail(
-        id = "1",
-        imageUrls = listOf("https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800"),
-        location = "Grande Muraille", country = "Pékin, Chine", date = "15 mars 2026",
-        author = "Li Xiaofang", authorAvatar = "L", authorColor = RedPrimary,
-        likes = 1234, isLiked = true, isSaved = false,
-        description = "Test description.", comments = 42, tags = listOf("Test")
-    )
-    PhotoDetailContent(photo = mockData, onBack = {})
 }

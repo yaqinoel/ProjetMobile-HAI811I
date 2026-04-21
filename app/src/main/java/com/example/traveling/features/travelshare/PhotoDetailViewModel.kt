@@ -1,7 +1,9 @@
 package com.example.traveling.features.travelshare
+
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.traveling.data.model.PhotoComment
 import com.example.traveling.data.model.PhotoDetail
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,20 +47,38 @@ class PhotoDetailViewModel : ViewModel() {
         }
     }
 
-    // ─── 模拟数据库查询 ───
+    // ─── 模拟数据库查询 (已更新 Figma 完整数据) ───
     private fun fetchPhotoFromDatabase(id: String): PhotoDetail? {
-        // 这里只是为了演示，真实项目中应该从 Room 或 Firebase 获取
+        // 构建模拟的评论列表
+        val mockComments = listOf(
+            PhotoComment("c1", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), "Magnifique ! La lumière est parfaite, comme une peinture.", "Il y a 2 heures", 15),
+            PhotoComment("c2", "Wang Wanqing", "W", Color(0xFFD97706), "J'y suis allé le mois dernier, c'est encore plus impressionnant en vrai !", "Il y a 5 heures", 32),
+            PhotoComment("c3", "Chen Minghui", "C", Color(0xFF0D9488), "Quel objectif avez-vous utilisé ?", "Il y a 1 jour", 4)
+        )
+
+        // 返回完整的 PhotoDetail 对象
         return PhotoDetail(
             id = id,
             imageUrls = listOf(
-                "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=800",
-                "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800"
+                "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",
+                "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800"
             ),
-            location = "Grande Muraille", country = "Pékin, Chine", date = "15 mars 2026",
-            author = "Li Xiaofang", authorAvatar = "L", authorColor = Color(0xFFB91C1C),
-            likes = 1234, isLiked = true, isSaved = false,
-            description = "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. C'est une expérience inoubliable.",
-            comments = 42, tags = listOf("Voyage", "Chine")
+            location = "Grande Muraille",
+            country = "Pékin, Chine",
+            lat = 40.4319,            // 👈 新增
+            lng = 116.5704,           // 👈 新增
+            date = "15 mars 2026",
+            author = "Li Xiaofang",
+            authorAvatar = "L",
+            authorColor = Color(0xFFB91C1C),
+            likes = 1234,
+            isLiked = true,
+            isSaved = false,
+            description = "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse et spectaculaire. À l'aube, la lumière dorée inonde les remparts, un spectacle à couper le souffle.",
+            commentsCount = 3,        // 👈 更新 (原来是 comments = 42)
+            tags = listOf("Grande Muraille", "Lever du soleil", "Monument", "Pékin"),
+            howToGetThere = "Métro ligne 2 jusqu'à Jishuitan, puis bus 877 direct vers la Grande Muraille de Badaling. Ou train intercité S2 depuis la gare de Pékin Nord.", // 👈 新增
+            commentsList = mockComments // 👈 新增
         )
     }
 }
