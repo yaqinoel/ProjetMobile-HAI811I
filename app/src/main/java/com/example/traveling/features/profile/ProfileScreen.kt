@@ -160,7 +160,7 @@ private fun AuthenticatedProfileView(
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
 
-        // 1. 顶部红色 Header 区域 & 悬浮统计卡片
+        // 顶部红色 Header 区域 & 悬浮统计卡片
         Box {
             // 红色背景
             Column(
@@ -235,7 +235,7 @@ private fun AuthenticatedProfileView(
         // 用于抵消悬浮卡片占用空间的 Spacer
         Spacer(Modifier.height(56.dp))
 
-        // 2. 菜单列表
+        // 菜单列表
         Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             menuItems.forEach { item ->
                 Row(
@@ -270,7 +270,7 @@ private fun AuthenticatedProfileView(
             }
         }
 
-        // 3. 个人照片墙网格
+        // 个人照片墙网格
         Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Mes Photos", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneText)

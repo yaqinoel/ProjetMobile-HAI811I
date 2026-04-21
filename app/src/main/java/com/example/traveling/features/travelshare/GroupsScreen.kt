@@ -57,7 +57,7 @@ fun GroupsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxSize().background(BgColor)) {
-        // --- 1. HEADER (Sticky) ---
+        // HEADER
         Surface(
             color = HeaderBg,
             border = BorderStroke(1.dp, Color(0x1478350F)), // amber-900/8
@@ -95,7 +95,7 @@ fun GroupsScreen(
             }
         }
 
-        // --- 2. CONTENU PRINCIPAL ---
+        // CONTENU PRINCIPAL
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -125,7 +125,7 @@ fun GroupsScreen(
         }
     }
 
-    // --- 3. BOTTOM SHEET : Créer un groupe ---
+    // BOTTOM SHEET : Créer un groupe
     if (showCreateSheet) {
         ModalBottomSheet(
             onDismissRequest = { showCreateSheet = false },
@@ -144,7 +144,7 @@ fun GroupsScreen(
     }
 }
 
-// --- Sous-composant : Carte de mes groupes ---
+// Sous-composant : Carte de mes groupes
 @Composable
 private fun MyGroupCard(group: GroupItem) {
     Row(
@@ -178,7 +178,7 @@ private fun MyGroupCard(group: GroupItem) {
     }
 }
 
-// --- Sous-composant : Carte découverte ---
+// Sous-composant : Carte découverte
 @Composable
 private fun DiscoverGroupCard(group: GroupItem) {
     Row(
@@ -207,7 +207,7 @@ private fun DiscoverGroupCard(group: GroupItem) {
     }
 }
 
-// --- Sous-composant : Contenu de la Bottom Sheet ---
+// Sous-composant : Contenu de la Bottom Sheet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateGroupContent(onClose: () -> Unit) {

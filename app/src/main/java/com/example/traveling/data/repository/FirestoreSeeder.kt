@@ -4,15 +4,6 @@ import android.util.Log
 import com.example.traveling.data.model.Attraction
 import com.example.traveling.data.model.Destination
 import com.google.firebase.firestore.FirebaseFirestore
-
-/**
- * 用于一次性向 Firestore 批量写入预设数据的工具类。
- * 在 App 中调用一次 seedAll() 即可，成功后可以删除调用。
- *
- * 使用方法:
- *   FirestoreSeeder.seedAll()     // 写入所有数据 (destinations + attractions)
- *   FirestoreSeeder.seedAll(true) // 清空后重新写入
- */
 object FirestoreSeeder {
 
     private val db = FirebaseFirestore.getInstance()
@@ -36,9 +27,7 @@ object FirestoreSeeder {
         }
     }
 
-    // ═══════════════════════════════════════════════════
     //  DESTINATIONS — 中国 5 城 + 法国 5 城
-    // ═══════════════════════════════════════════════════
 
     private fun seedDestinations() {
         val destinations = listOf(
@@ -83,13 +72,11 @@ object FirestoreSeeder {
             batch.set(ref, dest)
         }
         batch.commit()
-            .addOnSuccessListener { Log.d(TAG, "✅ ${destinations.size} destinations écrites") }
-            .addOnFailureListener { Log.e(TAG, "❌ Erreur destinations", it) }
+            .addOnSuccessListener { Log.d(TAG, " ${destinations.size} destinations écrites") }
+            .addOnFailureListener { Log.e(TAG, " Erreur destinations", it) }
     }
 
-    // ═══════════════════════════════════════════════════
     //  ATTRACTIONS — 景点数据
-    // ═══════════════════════════════════════════════════
 
     private fun seedAttractions() {
         val attractions = buildList {
@@ -116,14 +103,12 @@ object FirestoreSeeder {
                 batch.set(ref, attr)
             }
             batch.commit()
-                .addOnSuccessListener { Log.d(TAG, "✅ Batch ${idx + 1}: ${chunk.size} attractions écrites") }
-                .addOnFailureListener { Log.e(TAG, "❌ Erreur attractions batch ${idx + 1}", it) }
+                .addOnSuccessListener { Log.d(TAG, "Batch ${idx + 1}: ${chunk.size} attractions écrites") }
+                .addOnFailureListener { Log.e(TAG, "Erreur attractions batch ${idx + 1}", it) }
         }
     }
 
-    // ═══════════════════════════════════════════════════
     //  北京景点
-    // ═══════════════════════════════════════════════════
     private fun pekinAttractions() = listOf(
         Attraction("pk_cite_interdite", "pekin", "Cité Interdite", "Culture",
             60, 150, 4.9,
@@ -189,9 +174,7 @@ object FirestoreSeeder {
             listOf("apres-midi"), listOf("premium", "vip", "hélicoptère", "vol"))
     )
 
-    // ═══════════════════════════════════════════════════
     //  西安景点
-    // ═══════════════════════════════════════════════════
     private fun xianAttractions() = listOf(
         Attraction("xa_terrecuite", "xian", "Armée de Terre Cuite", "Culture",
             120, 180, 4.9,
@@ -236,9 +219,7 @@ object FirestoreSeeder {
             listOf("matin"), listOf("montagne", "randonnée", "sacré")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  杭州景点
-    // ═══════════════════════════════════════════════════
     private fun hangzhouAttractions() = listOf(
         Attraction("hz_lac_ouest", "hangzhou", "Lac de l'Ouest", "Nature",
             0, 120, 4.9,
@@ -283,9 +264,7 @@ object FirestoreSeeder {
             listOf("soir"), listOf("spectacle", "Zhang Yimou", "nocturne")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  成都景点
-    // ═══════════════════════════════════════════════════
     private fun chengduAttractions() = listOf(
         Attraction("cd_pandas", "chengdu", "Base des Pandas Géants", "Nature",
             55, 150, 4.9,
@@ -337,9 +316,7 @@ object FirestoreSeeder {
             listOf("soir"), listOf("premium", "vip", "michelin", "gastronomie"))
     )
 
-    // ═══════════════════════════════════════════════════
     //  桂林景点
-    // ═══════════════════════════════════════════════════
     private fun guilinAttractions() = listOf(
         Attraction("gl_riviere_li", "guilin", "Croisière Rivière Li", "Nature",
             210, 240, 4.9,
@@ -384,9 +361,7 @@ object FirestoreSeeder {
             listOf("soir"), listOf("spectacle", "Zhang Yimou", "plein-air")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  PARIS 景点
-    // ═══════════════════════════════════════════════════
     private fun parisAttractions() = listOf(
         Attraction("pa_tour_eiffel", "paris", "Tour Eiffel", "Monument",
             26, 120, 4.8,
@@ -459,9 +434,7 @@ object FirestoreSeeder {
             listOf("soir"), listOf("premium", "vip", "cabaret", "spectacle"))
     )
 
-    // ═══════════════════════════════════════════════════
     //  LYON 景点
-    // ═══════════════════════════════════════════════════
     private fun lyonAttractions() = listOf(
         Attraction("ly_vieux_lyon", "lyon", "Vieux Lyon", "Culture",
             0, 120, 4.8,
@@ -506,9 +479,7 @@ object FirestoreSeeder {
             listOf("apres-midi"), listOf("shopping", "place", "centre-ville")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  NICE 景点
-    // ═══════════════════════════════════════════════════
     private fun niceAttractions() = listOf(
         Attraction("ni_promenade", "nice", "Promenade des Anglais", "Loisirs",
             0, 60, 4.8,
@@ -560,9 +531,7 @@ object FirestoreSeeder {
             listOf("matin", "apres-midi"), listOf("premium", "vip", "yacht", "hélicoptère", "Monaco"))
     )
 
-    // ═══════════════════════════════════════════════════
     //  MARSEILLE 景点
-    // ═══════════════════════════════════════════════════
     private fun marseilleAttractions() = listOf(
         Attraction("ma_notre_dame", "marseille", "Notre-Dame de la Garde", "Monument",
             0, 60, 4.8,
@@ -607,9 +576,7 @@ object FirestoreSeeder {
             listOf("matin"), listOf("île", "Dumas", "bateau")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  BORDEAUX 景点
-    // ═══════════════════════════════════════════════════
     private fun bordeauxAttractions() = listOf(
         Attraction("bo_cite_vin", "bordeaux", "Cité du Vin", "Culture",
             22, 120, 4.7,
@@ -654,10 +621,7 @@ object FirestoreSeeder {
             listOf("matin", "apres-midi"), listOf("jardin", "parc", "détente")),
     )
 
-    // ═══════════════════════════════════════════════════
     //  HELPERS
-    // ═══════════════════════════════════════════════════
-
     private fun clearCollection(name: String, onComplete: () -> Unit) {
         db.collection(name).get()
             .addOnSuccessListener { snapshot ->
@@ -668,8 +632,8 @@ object FirestoreSeeder {
                         Log.d(TAG, "🗑️ Collection '$name' vidée")
                         onComplete()
                     }
-                    .addOnFailureListener { Log.e(TAG, "❌ Erreur clear $name", it) }
+                    .addOnFailureListener { Log.e(TAG, "Erreur clear $name", it) }
             }
-            .addOnFailureListener { Log.e(TAG, "❌ Erreur lecture $name", it) }
+            .addOnFailureListener { Log.e(TAG, "Erreur lecture $name", it) }
     }
 }

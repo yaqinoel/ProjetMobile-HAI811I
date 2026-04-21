@@ -119,7 +119,7 @@ fun NotificationsScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize().background(BgColor)) {
-        // --- 1. HEADER (Sticky) ---
+        // HEADER
         Surface(
             color = HeaderBg,
             border = BorderStroke(1.dp, Color(0x1478350F)), // amber-900/8
@@ -203,7 +203,7 @@ fun NotificationsScreen(
                     }
                 }
 
-                // --- Onglets de filtrage ---
+                // Onglets de filtrage
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -240,7 +240,7 @@ fun NotificationsScreen(
             }
         }
 
-        // --- 2. LISTE DES NOTIFICATIONS ---
+        // LISTE DES NOTIFICATIONS
         if (filteredList.isEmpty()) {
             // État vide
             Column(

@@ -33,18 +33,18 @@ fun LaunchScreen(
     onNavigateLogin: () -> Unit,
     onNavigateAnonymous: () -> Unit
 ) {
-    // 外层容器，相当于 min-h-screen relative overflow-hidden
+    // 外层容器
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // 1. 背景图片
+        // 背景图片
         Image(
-            painter = painterResource(id = R.drawable.bg_lunch), // 调用 R.drawable.bg_lunch
+            painter = painterResource(id = R.drawable.bg_lunch),
             contentDescription = "Fond d'écran Voyage", // 图片描述
             contentScale = ContentScale.Crop, // 保持铺满屏幕的裁剪方式
             modifier = Modifier.fillMaxSize() // 铺满整个屏幕
         )
 
-        // 2. 渐变遮罩 (bg-gradient-to-b from-black/30 via-black/10 to-black/80)
+        // 渐变遮罩
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -59,7 +59,7 @@ fun LaunchScreen(
                 )
         )
 
-        // 3. 核心内容区域
+        // 核心内容区域
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -83,7 +83,7 @@ fun LaunchScreen(
                     Text("游", color = Color(0xFFFDE047), fontSize = 18.sp)
                 }
                 Spacer(modifier = Modifier.width(10.dp))
-                // Logo 文字 [cite: 74, 75, 76]
+                // Logo 文字
                 Text(
                     text = "Voyageur du Monde",
                     color = Color.White,
@@ -113,7 +113,7 @@ fun LaunchScreen(
                     ))
                 }
 
-                // 大标题 (使用 AnnotatedString 实现一部分白色、一部分金色) [cite: 85, 86]
+                // 大标题 (使用 AnnotatedString 实现一部分白色、一部分金色)
                 Text(
                     text = buildAnnotatedString {
                         append("Parcourez le monde,\n")
@@ -127,7 +127,7 @@ fun LaunchScreen(
                     lineHeight = 40.sp
                 )
 
-                // 副标题 [cite: 86]
+                // 副标题
                 Text(
                     text = "Capturez vos voyages, planifiez vos aventures et découvrez les beautés de la Chine et du monde.",
                     color = Color.White.copy(alpha = 0.7f),
@@ -137,7 +137,7 @@ fun LaunchScreen(
 
                 // 按钮组
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // 登录/开始旅行按钮 (红色渐变) [cite: 89]
+                    // 登录/开始旅行按钮 (红色渐变)
                     Button(
                         onClick = onNavigateLogin,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -159,7 +159,7 @@ fun LaunchScreen(
                         }
                     }
 
-                    // 匿名导航按钮 (毛玻璃/带边框效果) [cite: 90]
+                    // 匿名导航按钮 (毛玻璃/带边框效果)
                     OutlinedButton(
                         onClick = onNavigateAnonymous,
                         modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -181,7 +181,7 @@ fun LaunchScreen(
                     val colors = listOf(Color(0xFFB91C1C), Color(0xFFD97706), Color(0xFF7C3AED), Color(0xFF0D9488))
                     val names = listOf("赵", "钱", "孙", "李")
 
-                    // 重叠的头像 [cite: 94]
+                    // 重叠的头像
                     Box(modifier = Modifier.height(28.dp).width(88.dp)) {
                         names.forEachIndexed { index, name ->
                             Box(
@@ -199,7 +199,7 @@ fun LaunchScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // 活跃人数文本 [cite: 94]
+                    // 活跃人数文本
                     Text(
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(color = Color(0xE6FDE047), fontWeight = FontWeight.Bold)) {

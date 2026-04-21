@@ -69,7 +69,7 @@ fun GalleryScreen(
     var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
 
     Column(modifier = Modifier.fillMaxSize().background(PageBg)) {
-        // 1. 顶部导航栏
+        // 顶部导航栏
         HeaderBar(
             viewMode = viewMode,
             onOpenNotifications = onOpenNotifications,
@@ -78,13 +78,13 @@ fun GalleryScreen(
             onShuffle = { photos = photos.shuffled() }
         )
 
-        // 2. Stories 动态区域 (如果是地图模式则隐藏)
+        // Stories 动态区域 (如果是地图模式则隐藏)
         if (viewMode != "map") {
             StoriesRow(isAnonymous = isAnonymous)
             Divider(color = Color.Black.copy(alpha = 0.05f))
         }
 
-        // 3. 内容展示区 (带淡入淡出动画)
+        // 内容展示区 (带淡入淡出动画)
         Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
             when (mode) {
                 "list" -> PhotoListView(photos = photos, onLike = { /* TODO */ }, onSave = { /* TODO */ })
@@ -210,7 +210,7 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column {
-                    // 1. 卡片头部 (作者、位置)
+                    // 卡片头部 (作者、位置)
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(36.dp).background(photo.authorColor, CircleShape), contentAlignment = Alignment.Center) {
                             Text(photo.authorAvatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -228,13 +228,13 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
                         }
                     }
 
-                    // 2. 主图片
+                    // 主图片
                     AsyncImage(
                         model = photo.imageUrl, contentDescription = photo.description, contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
                     )
 
-                    // 3. 互动按钮、文字与标签
+                    // 互动按钮、文字与标签
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {

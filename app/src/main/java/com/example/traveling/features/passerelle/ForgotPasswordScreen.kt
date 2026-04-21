@@ -50,7 +50,7 @@ fun ForgotPasswordScreen(
             .background(Brush.verticalGradient(listOf(Red50, Amber50_30)))
             .verticalScroll(scrollState)
     ) {
-        // 1. 顶部返回按钮区域
+        // 顶部返回按钮区域
         Box(modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Surface(
                 onClick = onBack,
@@ -69,7 +69,7 @@ fun ForgotPasswordScreen(
             }
         }
 
-        // 2. 核心内容区域
+        // 核心内容区域
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
 
             // --- Logo 区域 ---

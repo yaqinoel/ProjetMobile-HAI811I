@@ -28,7 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.traveling.ui.theme.*
 
 
-// ─── Tab definition ───
+// Tab
 enum class MainTab(
     val label: String,
     val selectedIcon: ImageVector,
@@ -109,9 +109,7 @@ fun MainScreen(
     }
 }
 
-// ═════════════════════════════════════════════
-//  BOTTOM NAV BAR — Chinese styled
-// ═════════════════════════════════════════════
+//  BOTTOM NAV BAR
 @Composable
 private fun BottomNavBar(
     selectedTab: MainTab,
@@ -172,9 +170,7 @@ private fun BottomNavBar(
     }
 }
 
-// ═════════════════════════════════════════════
 //  PLACEHOLDER for unimplemented tabs
-// ═════════════════════════════════════════════
 @Composable
 private fun PlaceholderScreen(
     title: String,

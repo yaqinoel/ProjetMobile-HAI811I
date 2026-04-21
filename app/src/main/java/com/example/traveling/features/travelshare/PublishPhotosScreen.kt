@@ -37,15 +37,15 @@ import com.example.traveling.ui.theme.*
 fun PublishPhotosScreen(
     onBack: () -> Unit = {},
     onPublish: () -> Unit = {},
-    onOpenMapPicker: () -> Unit = {} // Inject Map API caller here
+    onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
-    // --- États Obligatoires (Required) ---
+    // États Obligatoires (Required)
     var title by remember { mutableStateOf("") }
     val mockPhotos = listOf("https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=400&fit=crop")
     // Defaulting to current GPS location.
     var locationName by remember { mutableStateOf("Montpellier, France (Position Actuelle)") }
 
-    // --- États Optionnels (Optional) ---
+    // États Optionnels (Optional)
     var description by remember { mutableStateOf("") }
     var isLinkedToPath by remember { mutableStateOf(true) }
 
@@ -68,7 +68,7 @@ fun PublishPhotosScreen(
             .background(PageBg)
             .systemBarsPadding()
     ) {
-        // --- 1. HEADER ---
+        // HEADER
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -92,7 +92,7 @@ fun PublishPhotosScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // --- 2. PHOTOS (OBLIGATOIRE) ---
+            // PHOTOS (OBLIGATOIRE)
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -118,7 +118,7 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // --- 3. INFORMATIONS DE BASE ---
+            // INFORMATIONS DE BASE
             Column(
                 modifier = Modifier
                     .background(CardBg, RoundedCornerShape(12.dp))
@@ -174,7 +174,7 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // --- 4. GÉOLOCALISATION (OBLIGATOIRE) & TRAVELPATH ---
+            // GÉOLOCALISATION (OBLIGATOIRE) & TRAVELPATH
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Localisation & Itinéraire", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
@@ -226,7 +226,7 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // --- 5. INFOS PRATIQUES (OPTIONNEL, STYLE TRAVELPATH 1:1) ---
+            // INFOS PRATIQUES
             Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Paramètres d'itinéraire (Optionnel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 

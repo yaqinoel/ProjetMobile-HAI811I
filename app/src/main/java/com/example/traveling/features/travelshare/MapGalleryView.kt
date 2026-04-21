@@ -104,7 +104,6 @@ fun MapView(
                         true
                     }
                 ) {
-                    // 这是你 Figma 中设计的精美图钉 UI
                     Box(
                         modifier = Modifier
                             .size(if (isSelected) 36.dp else 28.dp) // 选中时稍微变大
@@ -136,7 +135,7 @@ fun MapView(
             }
         }
 
-        // --- 2. 悬浮控制器 (自定义的缩放与定位按钮) ---
+        // 悬浮控制器 (自定义的缩放与定位按钮)
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -174,7 +173,7 @@ fun MapView(
             }
         }
 
-        // --- 3. 底部滑动详情页 (Bottom Sheet) ---
+        // 底部滑动详情页 (Bottom Sheet)
         AnimatedVisibility(
             visible = selectedPhoto != null,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),

@@ -31,14 +31,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         // ── 重新写入更新后的数据（含法国城市） ──
-        // ⚠️ 运行一次后请注释掉这行！
-        /*
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
-        if (!prefs.getBoolean("firestore_seeded_v3", false)) {
-            FirestoreSeeder.seedAll(true)  // clearFirst = true，清空旧数据
-            prefs.edit().putBoolean("firestore_seeded_v3", true).apply()
-        }
-        */
         setContent {
             TravelingTheme {
                 Surface(
@@ -75,7 +67,7 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
                 onOpenSettings = {
-                    // TODO: 未来如果做了通知设置页，在这里写跳转
+                    // TODO: 通知设置页，在这里写跳转
                     // navController.navigate("notification_settings")
                 }
             )

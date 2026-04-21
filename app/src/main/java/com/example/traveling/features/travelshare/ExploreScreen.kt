@@ -117,7 +117,7 @@ fun ExploreScreen(
 
     Column(modifier = Modifier.fillMaxSize().background(ExplorePageBg)) {
 
-        // 1. 顶部 Header (含搜索与筛选)
+        // 顶部 Header (含搜索与筛选)
         Surface(
             color = ExploreCardBg.copy(alpha = 0.95f),
             shadowElevation = if (showFilters) 4.dp else 0.dp,
@@ -256,7 +256,7 @@ fun ExploreScreen(
             }
         }
 
-        // 2. 滚动内容区
+        // 滚动内容区
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)

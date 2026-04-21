@@ -75,7 +75,7 @@ fun LoginScreen(
             }
         }
 
-        // 2. 核心内容区域
+        // 核心内容区域
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
 
             // --- Logo 区域 ---
