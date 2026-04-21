@@ -25,6 +25,7 @@
 ]
 #pagebreak()
 
+Lien de Github: https://github.com/yaqinoel/ProjetMobile-HAI811I
 // ─────────────────────────────────────
 = Choix techniques
 
