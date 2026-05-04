@@ -19,31 +19,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 
 // 导入数据模型
-import com.example.traveling.data.model.PhotoComment
-import com.example.traveling.data.model.PhotoDetail
+import com.example.traveling.data.model.PhotoPostDetail
 import com.example.traveling.ui.theme.*
 
 // 主页面入口 (状态与路由管理)
 
 @Composable
-fun PhotoDetailScreen(
+fun PhotoPostDetailScreen(
     photoId: String,
     onBack: () -> Unit = {},
-    viewModel: PhotoDetailViewModel = viewModel()
+    viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -53,12 +50,12 @@ fun PhotoDetailScreen(
     }
 
     when (val state = uiState) {
-        is PhotoDetailUiState.Loading -> {
+        is PhotoPostDetailUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize().background(PageBg), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = RedPrimary)
             }
         }
-        is PhotoDetailUiState.Error -> {
+        is PhotoPostDetailUiState.Error -> {
             Box(modifier = Modifier.fillMaxSize().background(PageBg), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Outlined.ErrorOutline, contentDescription = null, tint = Stone400, modifier = Modifier.size(48.dp))
@@ -71,19 +68,19 @@ fun PhotoDetailScreen(
                 }
             }
         }
-        is PhotoDetailUiState.Success -> {
+        is PhotoPostDetailUiState.Success -> {
             // 数据成功加载，把 PhotoDetail 喂给纯 UI 组件
-            PhotoDetailContent(photo = state.photo, onBack = onBack)
+            PhotoPostDetailContent(photo = state.photo, onBack = onBack)
         }
     }
 }
 
-// ─── 2. 纯展示组件 (完美还原 Figma 设计) ───
+// 纯展示组件
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PhotoDetailContent(
-    photo: PhotoDetail,
+private fun PhotoPostDetailContent(
+    photo: PhotoPostDetail,
     onBack: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { photo.imageUrls.size })

@@ -14,7 +14,7 @@ import com.example.traveling.features.passerelle.LoginScreen
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
 import com.example.traveling.features.travelshare.GroupsScreen
-import com.example.traveling.features.travelshare.PhotoDetailScreen
+import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
 
@@ -99,7 +99,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("photoId") { type = NavType.StringType })
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
-            PhotoDetailScreen(
+            PhotoPostDetailScreen(
                 photoId = photoId,
                 onBack = { navController.popBackStack() }
             )
