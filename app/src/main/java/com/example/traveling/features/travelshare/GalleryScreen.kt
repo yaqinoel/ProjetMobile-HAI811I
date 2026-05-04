@@ -1,9 +1,15 @@
 package com.example.traveling.features.travelshare
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -11,8 +17,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -23,7 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,7 +49,28 @@ data class PhotoPost(
     val id: String, val imageUrl: String, val location: String, val country: String,
     val date: String, val author: String, val authorAvatar: String, val authorColor: Color,
     val likes: Int, val isLiked: Boolean, val isSaved: Boolean,
-    val description: String, val comments: Int, val tags: List<String>
+    val description: String, val comments: Int, val tags: List<String>,
+    val placeType: String, val period: String
+)
+
+private data class PhotoFilterOption(val id: String, val label: String)
+
+private val PHOTO_PLACE_TYPES = listOf(
+    PhotoFilterOption("all", "Tous"),
+    PhotoFilterOption("nature", "Nature"),
+    PhotoFilterOption("museum", "Musée"),
+    PhotoFilterOption("street", "Rue"),
+    PhotoFilterOption("shop", "Magasin"),
+    PhotoFilterOption("monument", "Monument"),
+    PhotoFilterOption("architecture", "Architecture")
+)
+
+private val PHOTO_PERIODS = listOf(
+    PhotoFilterOption("all", "Toutes"),
+    PhotoFilterOption("week", "Cette semaine"),
+    PhotoFilterOption("month", "Ce mois"),
+    PhotoFilterOption("3months", "3 derniers mois"),
+    PhotoFilterOption("year", "Cette année")
 )
 
 // ─── 模拟数据 ───
@@ -53,10 +84,10 @@ val STORIES = listOf(
 )
 
 val INITIAL_PHOTOS = listOf(
-    PhotoPost("1", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, false, false, "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. Au lever du soleil, la lumière dorée illumine les remparts.", 42, listOf("Grande Muraille", "Lever du soleil", "Monument")),
-    PhotoPost("2", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Les murs rouges et les tuiles dorées de la Cité Interdite portent 600 ans d'histoire.", 89, listOf("Cité Interdite", "Architecture", "Impérial")),
-    PhotoPost("3", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Paysages de Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, false, false, "Les paysages de Guilin sont les plus beaux du monde.", 35, listOf("Guilin", "Paysage")),
-    PhotoPost("4", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, false, false, "Zhangjiajie ressemble à un paradis. Lieu de tournage d'Avatar !", 28, listOf("Zhangjiajie", "Nuages"))
+    PhotoPost("1", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, false, false, "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. Au lever du soleil, la lumière dorée illumine les remparts.", 42, listOf("Grande Muraille", "Lever du soleil", "Monument"), "monument", "3months"),
+    PhotoPost("2", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Les murs rouges et les tuiles dorées de la Cité Interdite portent 600 ans d'histoire.", 89, listOf("Cité Interdite", "Architecture", "Impérial"), "architecture", "3months"),
+    PhotoPost("3", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Paysages de Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, false, false, "Les paysages de Guilin sont les plus beaux du monde.", 35, listOf("Guilin", "Paysage", "Nature"), "nature", "3months"),
+    PhotoPost("4", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, false, false, "Zhangjiajie ressemble à un paradis. Lieu de tournage d'Avatar !", 28, listOf("Zhangjiajie", "Nuages", "Nature"), "nature", "3months")
 )
 
 // ─── 核心 UI ───
@@ -68,29 +99,61 @@ fun GalleryScreen(
 ) {
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
     var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showFilters by remember { mutableStateOf(false) }
+    var selectedType by remember { mutableStateOf("all") }
+    var selectedPeriod by remember { mutableStateOf("all") }
+
+    val filteredPhotos = remember(photos, searchQuery, selectedType, selectedPeriod) {
+        photos.filter { photo ->
+            val query = searchQuery.trim()
+            val matchesQuery = query.isBlank() ||
+                photo.location.contains(query, ignoreCase = true) ||
+                photo.country.contains(query, ignoreCase = true) ||
+                photo.author.contains(query, ignoreCase = true) ||
+                photo.description.contains(query, ignoreCase = true) ||
+                photo.tags.any { it.contains(query, ignoreCase = true) }
+            val matchesType = selectedType == "all" || photo.placeType == selectedType
+            val matchesPeriod = selectedPeriod == "all" || photo.period == selectedPeriod
+
+            matchesQuery && matchesType && matchesPeriod
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(PageBg)) {
         // 顶部导航栏
         HeaderBar(
             viewMode = viewMode,
+            searchQuery = searchQuery,
+            showFilters = showFilters,
+            selectedType = selectedType,
+            selectedPeriod = selectedPeriod,
             onOpenNotifications = onOpenNotifications,
             onViewModeChanged = { viewMode = it },
+            onSearchQueryChanged = { searchQuery = it },
+            onToggleFilters = { showFilters = !showFilters },
+            onTypeSelected = { selectedType = it },
+            onPeriodSelected = { selectedPeriod = it },
             isAnonymous = isAnonymous,
             onShuffle = { photos = photos.shuffled() }
         )
 
         // Stories 动态区域 (如果是地图模式则隐藏)
-        if (viewMode != "map") {
+        if (viewMode != "map" && searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all") {
             StoriesRow(isAnonymous = isAnonymous)
             Divider(color = Color.Black.copy(alpha = 0.05f))
         }
 
         // 内容展示区 (带淡入淡出动画)
         Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
-            when (mode) {
-                "list" -> PhotoListView(photos = photos, onLike = { /* TODO */ }, onSave = { /* TODO */ }, onPhotoClick = onPhotoClick)
-                "grid" -> PhotoGridView(photos = photos)
-                "map" -> MapView(photos = photos, onSelectPhoto = { /* TODO */ })
+            if (filteredPhotos.isEmpty()) {
+                EmptyPhotoResults()
+            } else {
+                when (mode) {
+                    "list" -> PhotoListView(photos = filteredPhotos, onLike = { /* TODO */ }, onSave = { /* TODO */ }, onPhotoClick = onPhotoClick)
+                    "grid" -> PhotoGridView(photos = filteredPhotos, onPhotoClick = onPhotoClick)
+                    "map" -> MapView(photos = filteredPhotos, onSelectPhoto = onPhotoClick)
+                }
             }
         }
     }
@@ -100,40 +163,142 @@ fun GalleryScreen(
 @Composable
 private fun HeaderBar(
     viewMode: String,
+    searchQuery: String,
+    showFilters: Boolean,
+    selectedType: String,
+    selectedPeriod: String,
     onOpenNotifications: () -> Unit,
     onViewModeChanged: (String) -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onToggleFilters: () -> Unit,
+    onTypeSelected: (String) -> Unit,
+    onPeriodSelected: (String) -> Unit,
     isAnonymous: Boolean,
     onShuffle: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth().background(CardBg).padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = CardBg,
+        shadowElevation = if (showFilters) 4.dp else 0.dp
     ) {
-        Column {
-            Text("Galerie", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = StoneText)
-            Text(if (viewMode == "map") "Vue carte" else "Découvrez les merveilles", fontSize = 11.sp, color = StoneMuted)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // 随机按钮
-            IconButton(onClick = onShuffle, modifier = Modifier.size(36.dp).background(RedLight, RoundedCornerShape(8.dp)).border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))) {
-                Icon(Icons.Default.Shuffle, contentDescription = "Aléatoire", tint = RedPrimary, modifier = Modifier.size(18.dp))
-            }
-            // 视图切换器
-            ViewToggle(viewMode = viewMode, onSetViewMode = onViewModeChanged)
-
-            // 通知铃铛 (登录状态可见)
-            if (!isAnonymous) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(RedLight, RoundedCornerShape(8.dp))
-                        .border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                        .clickable { onOpenNotifications()},
-                    contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = RedPrimary, modifier = Modifier.size(18.dp))
-                    Box(modifier = Modifier.size(8.dp).background(Color.Red, CircleShape).align(Alignment.TopEnd).offset((-6).dp, 6.dp)) // 红点
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Galerie", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                    Text(if (viewMode == "map") "Vue carte" else "Photos de voyage", fontSize = 11.sp, color = StoneMuted)
                 }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    IconButton(onClick = onShuffle, modifier = Modifier.size(36.dp).background(RedLight, RoundedCornerShape(8.dp)).border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))) {
+                        Icon(Icons.Default.Shuffle, contentDescription = "Aléatoire", tint = RedPrimary, modifier = Modifier.size(18.dp))
+                    }
+                    ViewToggle(viewMode = viewMode, onSetViewMode = onViewModeChanged)
+
+                    if (!isAnonymous) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(RedLight, RoundedCornerShape(8.dp))
+                                .border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                .clickable { onOpenNotifications()},
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Notifications, contentDescription = "Notifications", tint = RedPrimary, modifier = Modifier.size(18.dp))
+                            Box(modifier = Modifier.size(8.dp).background(Color.Red, CircleShape).align(Alignment.TopEnd).offset((-6).dp, 6.dp))
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .background(Stone100, RoundedCornerShape(8.dp))
+                    .border(1.dp, if (searchQuery.isNotBlank()) RedPrimary.copy(alpha = 0.25f) else Color.Transparent, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = StoneMuted, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChanged,
+                    textStyle = TextStyle(color = StoneText, fontSize = 14.sp),
+                    cursorBrush = SolidColor(RedPrimary),
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        if (searchQuery.isBlank()) {
+                            Text("Rechercher lieu, auteur, tag...", color = StoneMuted, fontSize = 14.sp)
+                        }
+                        innerTextField()
+                    }
+                )
+                if (searchQuery.isNotBlank()) {
+                    IconButton(onClick = { onSearchQueryChanged("") }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+                IconButton(
+                    onClick = onToggleFilters,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(if (showFilters) RedPrimary else RedLight, RoundedCornerShape(8.dp))
+                ) {
+                    Icon(Icons.Default.Tune, contentDescription = "Filtres", tint = if (showFilters) Color.White else RedPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            AnimatedVisibility(
+                visible = showFilters,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    FilterRow(
+                        title = "Type de lieu",
+                        options = PHOTO_PLACE_TYPES,
+                        selected = selectedType,
+                        onSelected = onTypeSelected
+                    )
+                    FilterRow(
+                        title = "Période",
+                        options = PHOTO_PERIODS,
+                        selected = selectedPeriod,
+                        onSelected = onPeriodSelected
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterRow(
+    title: String,
+    options: List<PhotoFilterOption>,
+    selected: String,
+    onSelected: (String) -> Unit
+) {
+    Column {
+        Text(title, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted, modifier = Modifier.padding(bottom = 6.dp))
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            options.forEach { option ->
+                val isSelected = selected == option.id
+                Text(
+                    text = option.label,
+                    fontSize = 12.sp,
+                    color = if (isSelected) Color.White else StoneMuted,
+                    modifier = Modifier
+                        .background(if (isSelected) RedPrimary else Stone100, RoundedCornerShape(6.dp))
+                        .clickable { onSelected(option.id) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }
@@ -275,7 +440,7 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
 
 // ─── Grid 网格视图 ───
 @Composable
-private fun PhotoGridView(photos: List<PhotoPost>) {
+private fun PhotoGridView(photos: List<PhotoPost>, onPhotoClick: (String) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(12.dp),
@@ -283,7 +448,7 @@ private fun PhotoGridView(photos: List<PhotoPost>) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(photos) { photo ->
-            Box(modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp))) {
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).clickable { onPhotoClick(photo.id) }) {
                 AsyncImage(model = photo.imageUrl, contentDescription = photo.location, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 // 底部渐变黑色背景
                 Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.8f)))))
@@ -304,6 +469,23 @@ private fun PhotoGridView(photos: List<PhotoPost>) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyPhotoResults() {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(modifier = Modifier.size(64.dp).background(Stone100, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.SearchOff, contentDescription = null, tint = StoneMuted, modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        Text("Aucune photo trouvée", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = StoneText)
+        Spacer(Modifier.height(4.dp))
+        Text("Essayez un autre lieu, auteur, tag ou filtre.", fontSize = 13.sp, color = StoneMuted)
     }
 }
 

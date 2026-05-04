@@ -22,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.example.traveling.ui.theme.*
 import com.example.traveling.features.profile.ProfileScreen
 import com.example.traveling.features.travelpath.TravelPathScreen
-import com.example.traveling.features.travelshare.ExploreScreen
 import com.example.traveling.features.travelshare.GalleryScreen
 
 // Tab 定义
@@ -33,7 +32,6 @@ enum class MainTab(
 ) {
     PHOTOS("Galerie", Icons.Filled.CameraAlt, Icons.Outlined.CameraAlt),
     PARCOURS("Parcours", Icons.Filled.Route, Icons.Outlined.Route),
-    EXPLORER("Explorer", Icons.Filled.Search, Icons.Outlined.Search),
     PROFIL("Profil", Icons.Filled.Person, Icons.Outlined.Person)
 }
 
@@ -76,7 +74,6 @@ fun MainScreen(
                     onPhotoClick = onNavigateToPhotoDetail // 👈 2. 把它传给 GalleryScreen
                 )
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
-                MainTab.EXPLORER -> ExploreScreen(isAnonymous = isAnonymous)
                 MainTab.PROFIL -> ProfileScreen(
                     isAnonymous = isAnonymous,
                     onLogout = onLogout,
