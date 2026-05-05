@@ -1,5 +1,8 @@
 package com.example.traveling.features.travelshare
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -25,29 +29,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
+import kotlinx.coroutines.launch
+
+private const val MAX_SELECTED_PHOTOS = 14
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PublishPhotosScreen(
     onBack: () -> Unit = {},
-    onPublish: () -> Unit = {},
+    onPublish: (PhotoPost) -> Unit = {},
     onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
     // États Obligatoires (Required)
     var title by remember { mutableStateOf("") }
-    val mockPhotos = listOf("https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=400&fit=crop")
+    var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
     // Defaulting to current GPS location.
     var locationName by remember { mutableStateOf("Montpellier, France (Position Actuelle)") }
+    var locationPrecision by remember { mutableStateOf("exact") }
+    var visibility by remember { mutableStateOf("public") }
+    var selectedGroup by remember { mutableStateOf("Voyageurs de Chine") }
 
     // États Optionnels (Optional)
     var description by remember { mutableStateOf("") }
-    var isLinkedToPath by remember { mutableStateOf(true) }
+    var tagInput by remember { mutableStateOf("") }
+    var selectedTags by remember { mutableStateOf(emptyList<String>()) }
+    var voiceNoteAdded by remember { mutableStateOf(false) }
+    var aiAnnotationEnabled by remember { mutableStateOf(false) }
+    var isLinkedToPath by remember { mutableStateOf(false) }
+    var showMapPicker by remember { mutableStateOf(false) }
+    var publishPreview by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTED_PHOTOS)
+    ) { uris ->
+        val remainingSlots = MAX_SELECTED_PHOTOS - selectedPhotos.size
+        val pickedPhotos = uris.take(remainingSlots).map { it.toString() }
+        selectedPhotos = (selectedPhotos + pickedPhotos).take(MAX_SELECTED_PHOTOS)
+        val message = when {
+            uris.isEmpty() -> "Aucune photo sélectionnée."
+            uris.size > remainingSlots -> "Limite de $MAX_SELECTED_PHOTOS photos atteinte."
+            else -> "${pickedPhotos.size} photo${if (pickedPhotos.size > 1) "s" else ""} ajoutée${if (pickedPhotos.size > 1) "s" else ""}."
+        }
+        coroutineScope.launch { snackbarHostState.showSnackbar(message) }
+    }
 
     // TravelPath Parameters
     var selectedCategory by remember { mutableStateOf<String?>(null) }
@@ -61,13 +94,27 @@ fun PublishPhotosScreen(
     var humidityTolerance by remember { mutableStateOf(false) }
 
     val effortLabels = mapOf(1 to "Très facile", 2 to "Facile", 3 to "Modéré", 4 to "Élevé", 5 to "Intense")
+    val addTag = {
+        val newTags = tagInput
+            .split(",", "，")
+            .map { it.trim().trimStart('#') }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+            .filter { candidate ->
+                selectedTags.none { it.equals(candidate, ignoreCase = true) }
+            }
+        if (newTags.isNotEmpty()) {
+            selectedTags = selectedTags + newTags
+        }
+        tagInput = ""
+    }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PageBg)
-            .systemBarsPadding()
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+        ) {
         // HEADER
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -75,10 +122,12 @@ fun PublishPhotosScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) { Icon(Icons.Default.Close, "Annuler", tint = Stone800) }
-            Text("Créer une étape", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Stone800)
+            Text("Publier une photo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Stone800)
             TextButton(
-                onClick = onPublish,
-                enabled = title.isNotBlank() && mockPhotos.isNotEmpty() && locationName.isNotBlank()
+                onClick = {
+                    publishPreview = true
+                },
+                enabled = title.isNotBlank() && selectedPhotos.isNotEmpty() && locationName.isNotBlank()
             ) {
                 Text("Publier", color = if (title.isNotBlank()) RedPrimary else Stone400, fontWeight = FontWeight.Bold)
             }
@@ -92,28 +141,64 @@ fun PublishPhotosScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // PHOTOS (OBLIGATOIRE)
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(100.dp)
-                        .background(Color(0xFFFEF2F2), RoundedCornerShape(12.dp))
-                        .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(12.dp))
-                        .clickable { /* Ouvrir galerie */ },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AddPhotoAlternate, "Ajouter", tint = RedPrimary)
-                        Spacer(Modifier.height(4.dp))
-                        Text("Photos", fontSize = 10.sp, color = RedPrimary, fontWeight = FontWeight.Medium)
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Photos *", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                    Text("${selectedPhotos.size}/$MAX_SELECTED_PHOTOS", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selectedPhotos.size == MAX_SELECTED_PHOTOS) RedPrimary else Stone400)
                 }
-                mockPhotos.forEach { url ->
-                    Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(12.dp))) {
-                        AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (selectedPhotos.size < MAX_SELECTED_PHOTOS) {
+                        Box(
+                            modifier = Modifier
+                                .size(100.dp)
+                                .background(Color(0xFFFEF2F2), RoundedCornerShape(12.dp))
+                                .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    photoPickerLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.AddPhotoAlternate, "Ajouter", tint = RedPrimary)
+                                Spacer(Modifier.height(4.dp))
+                                Text("Ajouter", fontSize = 10.sp, color = RedPrimary, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+
+                    selectedPhotos.forEachIndexed { index, url ->
+                        Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(12.dp))) {
+                            AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(6.dp)
+                                    .size(24.dp)
+                                    .background(Color.Black.copy(alpha = 0.55f), CircleShape)
+                                    .clickable {
+                                        selectedPhotos = selectedPhotos.filterIndexed { photoIndex, _ -> photoIndex != index }
+                                        coroutineScope.launch { snackbarHostState.showSnackbar("Photo retirée.") }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "Retirer", tint = Color.White, modifier = Modifier.size(14.dp))
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(6.dp)
+                                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("${index + 1}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -134,7 +219,7 @@ fun PublishPhotosScreen(
                     decorationBox = { innerTextField ->
                         if (title.isEmpty()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Titre de l'étape", color = Stone400, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("Titre de la photo", color = Stone400, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 Text(" *", color = RedPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -156,27 +241,72 @@ fun PublishPhotosScreen(
                     }
                 )
 
+                TagsEditor(
+                    input = tagInput,
+                    tags = selectedTags,
+                    onInputChange = { tagInput = it },
+                    onAddTag = addTag,
+                    onRemoveTag = { tag -> selectedTags = selectedTags - tag },
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+
                 Spacer(Modifier.height(16.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { voiceNoteAdded = !voiceNoteAdded }) {
                         Box(modifier = Modifier.size(28.dp).background(Color(0xFFFEF2F2), CircleShape), contentAlignment = Alignment.Center) {
                             Icon(Icons.Outlined.Mic, "Audio", tint = RedPrimary, modifier = Modifier.size(16.dp))
                         }
                         Spacer(Modifier.width(8.dp))
-                        Text("Note vocale", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(if (voiceNoteAdded) "Audio ajouté" else "Note vocale", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { aiAnnotationEnabled = !aiAnnotationEnabled }) {
                         Icon(Icons.Default.AutoAwesome, "IA", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Générer via IA", color = Color(0xFFD97706), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(if (aiAnnotationEnabled) "IA activée" else "Générer via IA", color = Color(0xFFD97706), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // PARTAGE PUBLIC / GROUPE
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Text("Partage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    ShareTargetButton(
+                        selected = visibility == "public",
+                        icon = Icons.Default.Public,
+                        title = "Public",
+                        subtitle = "Visible par tous",
+                        modifier = Modifier.weight(1f),
+                        onClick = { visibility = "public" }
+                    )
+                    ShareTargetButton(
+                        selected = visibility == "group",
+                        icon = Icons.Default.Group,
+                        title = "Groupe",
+                        subtitle = selectedGroup,
+                        modifier = Modifier.weight(1f),
+                        onClick = { visibility = "group" }
+                    )
+                }
+                if (visibility == "group") {
+                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("Voyageurs de Chine", "Route de la Soie 2026", "Photo Paysages").forEach { group ->
+                            AssistChip(
+                                onClick = { selectedGroup = group },
+                                label = { Text(group) },
+                                leadingIcon = {
+                                    if (selectedGroup == group) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             // GÉOLOCALISATION (OBLIGATOIRE) & TRAVELPATH
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Text("Localisation & Itinéraire", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text("Localisation", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
                 // Lieu GPS avec Google Maps Picker
                 Row(
@@ -185,7 +315,10 @@ fun PublishPhotosScreen(
                         .background(CardBg, RoundedCornerShape(12.dp))
                         .border(1.dp, if(locationName.isBlank()) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp)
-                        .clickable { onOpenMapPicker() },
+                        .clickable {
+                            showMapPicker = true
+                            onOpenMapPicker()
+                        },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -197,6 +330,11 @@ fun PublishPhotosScreen(
                         }
                     }
                     Icon(Icons.Default.Map, "Ouvrir la carte", tint = Stone400)
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    PrecisionChip("Exacte", "exact", locationPrecision, { locationPrecision = it }, Modifier.weight(1f))
+                    PrecisionChip("Approximative", "approx", locationPrecision, { locationPrecision = it }, Modifier.weight(1f))
                 }
 
                 Row(
@@ -215,7 +353,7 @@ fun PublishPhotosScreen(
                         Spacer(Modifier.width(12.dp))
                         Column {
                             Text("Ajouter au TravelPath", fontSize = 14.sp, color = Stone800, fontWeight = FontWeight.SemiBold)
-                            if (isLinkedToPath) Text("Jour 2 · Voyage en Chine 2026", fontSize = 11.sp, color = RedPrimary)
+                            Text(if (isLinkedToPath) "Créer aussi une étape exploitable par TravelPath" else "Optionnel : enrichir la future génération de parcours", fontSize = 11.sp, color = if (isLinkedToPath) RedPrimary else Stone400)
                         }
                     }
                     Switch(
@@ -227,7 +365,7 @@ fun PublishPhotosScreen(
             }
 
             // INFOS PRATIQUES
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
+            if (isLinkedToPath) Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Paramètres d'itinéraire (Optionnel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
                 // Type d'activité
@@ -350,10 +488,228 @@ fun PublishPhotosScreen(
 
             Spacer(Modifier.height(40.dp))
         }
+        }
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+    }
+
+    if (showMapPicker) {
+        ModalBottomSheet(
+            onDismissRequest = { showMapPicker = false },
+            containerColor = CardBg
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
+                Text("Choisir un lieu", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Spacer(Modifier.height(12.dp))
+                listOf(
+                    "Montpellier, France (Position Actuelle)",
+                    "Grande Muraille, Pékin",
+                    "Cité Interdite, Pékin",
+                    "Paysages de Guilin"
+                ).forEach { place ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            locationName = place
+                            showMapPicker = false
+                        }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.LocationOn, null, tint = RedPrimary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(place, fontSize = 14.sp, color = Stone800)
+                    }
+                }
+            }
+        }
+    }
+
+    if (publishPreview) {
+        ModalBottomSheet(
+            onDismissRequest = { publishPreview = false },
+            containerColor = CardBg
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
+                Text("Résumé de publication", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Spacer(Modifier.height(8.dp))
+                Text("Vérifiez les informations avant publication.", fontSize = 13.sp, color = Stone500)
+                Spacer(Modifier.height(16.dp))
+                InfoLine("Titre", title)
+                InfoLine("Visibilité", if (visibility == "public") "Public" else "Groupe : $selectedGroup")
+                InfoLine("Lieu", "$locationName (${if (locationPrecision == "exact") "exact" else "approximatif"})")
+                InfoLine("Photos", "${selectedPhotos.size}")
+                InfoLine("Tags", selectedTags.ifEmpty { listOf("Voyage") }.joinToString(", ") { "#$it" })
+                InfoLine("TravelPath", if (isLinkedToPath) "Étape TravelPath" else "Non lié")
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        publishPreview = false
+                        onPublish(
+                            PhotoPost(
+                                id = "local-${System.currentTimeMillis()}",
+                                imageUrl = selectedPhotos.first(),
+                                location = locationName.substringBefore(","),
+                                country = locationName.substringAfter(",", "France").trim(),
+                                date = "À l'instant",
+                                author = "Vous",
+                                authorAvatar = "V",
+                                authorColor = RedPrimary,
+                                likes = 0,
+                                isLiked = false,
+                                isSaved = false,
+                                description = description.ifBlank { title },
+                                comments = 0,
+                                tags = selectedTags.ifEmpty { listOf("Voyage") },
+                                placeType = selectedCategory?.lowercase() ?: "street",
+                                period = "week"
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                ) {
+                    Text("Publier")
+                }
+            }
+        }
     }
 }
 
 // --- Helper Composables (from TravelPathScreen) ---
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagsEditor(
+    input: String,
+    tags: List<String>,
+    onInputChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onRemoveTag: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            placeholder = { Text("Ajouter un tag : nature, musée, rue...", color = StoneLighter, fontSize = 13.sp) },
+            leadingIcon = { Icon(Icons.Default.Tag, null, tint = RedPrimary) },
+            trailingIcon = {
+                IconButton(
+                    onClick = onAddTag,
+                    enabled = input.trim().trimStart('#').isNotBlank()
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Ajouter le tag",
+                        tint = if (input.trim().trimStart('#').isNotBlank()) RedPrimary else Stone300
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = RedPrimary,
+                unfocusedBorderColor = StoneBorder,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color(0xFFF5F5F4)
+            ),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onAddTag() })
+        )
+
+        if (tags.isNotEmpty()) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                tags.forEach { tag ->
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = Color(0xFFFEF2F2),
+                        border = BorderStroke(1.dp, Color(0xFFFECACA))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(start = 10.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("#$tag", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = RedPrimary)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Supprimer le tag",
+                                tint = RedPrimary,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .clickable { onRemoveTag(tag) }
+                                    .padding(2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShareTargetButton(
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(2.dp, if (selected) RedPrimary.copy(alpha = 0.7f) else StoneBorder),
+        color = if (selected) Color(0xFFFEF2F2) else CardBg
+    ) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = if (selected) RedPrimary else Stone500, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(title, fontSize = 13.sp, color = Stone800, fontWeight = FontWeight.Bold)
+                Text(subtitle, fontSize = 10.sp, color = Stone400, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrecisionChip(
+    label: String,
+    value: String,
+    selectedValue: String,
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selected = selectedValue == value
+    Surface(
+        onClick = { onSelected(value) },
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) Color(0xFFFEF2F2) else Stone100,
+        border = BorderStroke(1.dp, if (selected) RedPrimary.copy(alpha = 0.4f) else Color.Transparent)
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(if (selected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked, null, tint = if (selected) RedPrimary else Stone400, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = if (selected) RedPrimary else Stone500)
+        }
+    }
+}
+
+@Composable
+private fun InfoLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 12.sp, color = Stone400)
+        Text(value, fontSize = 12.sp, color = Stone800, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 @Composable
 private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(

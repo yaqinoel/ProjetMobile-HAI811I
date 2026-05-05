@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
+import kotlinx.coroutines.launch
 
 // ─── 数据模型 ───
 data class Story(val id: String, val name: String, val avatar: String, val color: Color, val hasNew: Boolean)
@@ -73,6 +74,12 @@ private val PHOTO_PERIODS = listOf(
     PhotoFilterOption("year", "Cette année")
 )
 
+private val PHOTO_RADIUS = listOf(
+    PhotoFilterOption("all", "Tout lieu"),
+    PhotoFilterOption("nearby", "Autour d'un lieu"),
+    PhotoFilterOption("similar", "Photos similaires")
+)
+
 // ─── 模拟数据 ───
 val STORIES = listOf(
     Story("1", "Xiaofang", "X", Color(0xFFB91C1C), true),
@@ -94,17 +101,22 @@ val INITIAL_PHOTOS = listOf(
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
+    publishedPhotos: List<PhotoPost> = emptyList(),
     onOpenNotifications: () -> Unit = {},
     onPhotoClick: (String) -> Unit = {}
 ) {
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
-    var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
+    var photos by remember(publishedPhotos) { mutableStateOf(publishedPhotos + INITIAL_PHOTOS) }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("all") }
     var selectedPeriod by remember { mutableStateOf("all") }
+    var selectedDiscovery by remember { mutableStateOf("all") }
+    var isVoiceSearchActive by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
-    val filteredPhotos = remember(photos, searchQuery, selectedType, selectedPeriod) {
+    val filteredPhotos = remember(photos, searchQuery, selectedType, selectedPeriod, selectedDiscovery) {
         photos.filter { photo ->
             val query = searchQuery.trim()
             val matchesQuery = query.isBlank() ||
@@ -115,47 +127,79 @@ fun GalleryScreen(
                 photo.tags.any { it.contains(query, ignoreCase = true) }
             val matchesType = selectedType == "all" || photo.placeType == selectedType
             val matchesPeriod = selectedPeriod == "all" || photo.period == selectedPeriod
+            val matchesDiscovery = selectedDiscovery == "all" ||
+                selectedDiscovery == "nearby" ||
+                (selectedDiscovery == "similar" && (photo.tags.any { it.equals("Nature", ignoreCase = true) } || photo.placeType == selectedType))
 
-            matchesQuery && matchesType && matchesPeriod
+            matchesQuery && matchesType && matchesPeriod && matchesDiscovery
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(PageBg)) {
-        // 顶部导航栏
-        HeaderBar(
-            viewMode = viewMode,
-            searchQuery = searchQuery,
-            showFilters = showFilters,
-            selectedType = selectedType,
-            selectedPeriod = selectedPeriod,
-            onOpenNotifications = onOpenNotifications,
-            onViewModeChanged = { viewMode = it },
-            onSearchQueryChanged = { searchQuery = it },
-            onToggleFilters = { showFilters = !showFilters },
-            onTypeSelected = { selectedType = it },
-            onPeriodSelected = { selectedPeriod = it },
-            isAnonymous = isAnonymous,
-            onShuffle = { photos = photos.shuffled() }
-        )
+    Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            HeaderBar(
+                viewMode = viewMode,
+                searchQuery = searchQuery,
+                showFilters = showFilters,
+                selectedType = selectedType,
+                selectedPeriod = selectedPeriod,
+                selectedDiscovery = selectedDiscovery,
+                resultCount = filteredPhotos.size,
+                isVoiceSearchActive = isVoiceSearchActive,
+                onOpenNotifications = onOpenNotifications,
+                onViewModeChanged = { viewMode = it },
+                onSearchQueryChanged = { searchQuery = it },
+                onToggleFilters = { showFilters = !showFilters },
+                onTypeSelected = { selectedType = it },
+                onPeriodSelected = { selectedPeriod = it },
+                onDiscoverySelected = { selectedDiscovery = it },
+                onToggleVoiceSearch = {
+                    val nextVoiceState = !isVoiceSearchActive
+                    isVoiceSearchActive = nextVoiceState
+                    if (nextVoiceState) {
+                        searchQuery = "Grande Muraille"
+                    }
+                },
+                isAnonymous = isAnonymous,
+                onShuffle = { photos = photos.shuffled() }
+            )
 
-        // Stories 动态区域 (如果是地图模式则隐藏)
-        if (viewMode != "map" && searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all") {
-            StoriesRow(isAnonymous = isAnonymous)
-            Divider(color = Color.Black.copy(alpha = 0.05f))
-        }
-
-        // 内容展示区 (带淡入淡出动画)
-        Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
-            if (filteredPhotos.isEmpty()) {
-                EmptyPhotoResults()
-            } else {
-                when (mode) {
-                    "list" -> PhotoListView(photos = filteredPhotos, onLike = { /* TODO */ }, onSave = { /* TODO */ }, onPhotoClick = onPhotoClick)
-                    "grid" -> PhotoGridView(photos = filteredPhotos, onPhotoClick = onPhotoClick)
-                    "map" -> MapView(photos = filteredPhotos, onSelectPhoto = onPhotoClick)
+            Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
+                if (filteredPhotos.isEmpty()) {
+                    EmptyPhotoResults()
+                } else {
+                    when (mode) {
+                        "list" -> PhotoListView(
+                            photos = filteredPhotos,
+                            onLike = { photoId ->
+                                photos = photos.map { photo ->
+                                    if (photo.id == photoId) {
+                                        val nextLiked = !photo.isLiked
+                                        photo.copy(
+                                            isLiked = nextLiked,
+                                            likes = if (nextLiked) photo.likes + 1 else (photo.likes - 1).coerceAtLeast(0)
+                                        )
+                                    } else photo
+                                }
+                            },
+                            onSave = { photoId ->
+                                photos = photos.map { photo ->
+                                    if (photo.id == photoId) photo.copy(isSaved = !photo.isSaved) else photo
+                                }
+                            },
+                            onReport = { coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") } },
+                            onNavigate = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps.") } },
+                            showStories = searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all" && selectedDiscovery == "all",
+                            isAnonymous = isAnonymous,
+                            onPhotoClick = onPhotoClick
+                        )
+                        "grid" -> PhotoGridView(photos = filteredPhotos, onPhotoClick = onPhotoClick)
+                        "map" -> MapView(photos = filteredPhotos, onSelectPhoto = onPhotoClick)
+                    }
                 }
             }
         }
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }
 
@@ -167,12 +211,17 @@ private fun HeaderBar(
     showFilters: Boolean,
     selectedType: String,
     selectedPeriod: String,
+    selectedDiscovery: String,
+    resultCount: Int,
+    isVoiceSearchActive: Boolean,
     onOpenNotifications: () -> Unit,
     onViewModeChanged: (String) -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onToggleFilters: () -> Unit,
     onTypeSelected: (String) -> Unit,
     onPeriodSelected: (String) -> Unit,
+    onDiscoverySelected: (String) -> Unit,
+    onToggleVoiceSearch: () -> Unit,
     isAnonymous: Boolean,
     onShuffle: () -> Unit
 ) {
@@ -234,11 +283,19 @@ private fun HeaderBar(
                     singleLine = true,
                     decorationBox = { innerTextField ->
                         if (searchQuery.isBlank()) {
-                            Text("Rechercher lieu, auteur, tag...", color = StoneMuted, fontSize = 14.sp)
+                            Text("Description, lieu, thème, auteur...", color = StoneMuted, fontSize = 14.sp)
                         }
                         innerTextField()
                     }
                 )
+                IconButton(onClick = onToggleVoiceSearch, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Outlined.Mic,
+                        contentDescription = "Recherche vocale",
+                        tint = if (isVoiceSearchActive) RedPrimary else StoneMuted,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
                 if (searchQuery.isNotBlank()) {
                     IconButton(onClick = { onSearchQueryChanged("") }, modifier = Modifier.size(28.dp)) {
                         Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted, modifier = Modifier.size(16.dp))
@@ -272,6 +329,23 @@ private fun HeaderBar(
                         selected = selectedPeriod,
                         onSelected = onPeriodSelected
                     )
+                    FilterRow(
+                        title = "Mode de découverte",
+                        options = PHOTO_RADIUS,
+                        selected = selectedDiscovery,
+                        onSelected = onDiscoverySelected
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("$resultCount photo${if (resultCount > 1) "s" else ""}", fontSize = 11.sp, color = StoneMuted, fontWeight = FontWeight.Medium)
+                if (selectedType != "all" || selectedPeriod != "all" || selectedDiscovery != "all") {
+                    Text("Filtres actifs", fontSize = 11.sp, color = RedPrimary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -326,40 +400,50 @@ private fun ViewToggle(viewMode: String, onSetViewMode: (String) -> Unit) {
 // ─── 顶部 Stories 横向列表 ───
 @Composable
 private fun StoriesRow(isAnonymous: Boolean) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth().background(CardBg),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth().background(CardBg, RoundedCornerShape(12.dp)).padding(vertical = 10.dp)
     ) {
-        if (!isAnonymous) {
-            item {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(modifier = Modifier
-                        .size(60.dp)
-                        .background(RedLight, CircleShape)
-                        .border(2.dp, RedPrimary.copy(alpha = 0.2f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("+", fontSize = 24.sp, color = RedPrimary.copy(alpha = 0.6f))
+        Text(
+            "Voyageurs suivis",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = StoneMuted,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+        )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            if (!isAnonymous) {
+                item {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(54.dp)) {
+                        Box(modifier = Modifier
+                            .size(48.dp)
+                            .background(RedLight, CircleShape)
+                            .border(2.dp, RedPrimary.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, null, tint = RedPrimary, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("Ajouter", fontSize = 9.sp, color = StoneMuted, fontWeight = FontWeight.Medium, maxLines = 1)
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text("Ajouter", fontSize = 10.sp, color = StoneMuted, fontWeight = FontWeight.Medium)
                 }
             }
-        }
-        items(STORIES) { story ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // 头像边框 (渐变代表有新动态)
-                val borderBrush = if (story.hasNew) Brush.linearGradient(listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFFDC2626))) else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray))
-                Box(modifier = Modifier.size(60.dp).background(borderBrush, CircleShape).padding(2.5.dp)) {
-                    Box(modifier = Modifier.fillMaxSize().background(CardBg, CircleShape).padding(2.dp)) {
-                        Box(modifier = Modifier.fillMaxSize().background(story.color, CircleShape), contentAlignment = Alignment.Center) {
-                            Text(story.avatar, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            items(STORIES) { story ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(54.dp)) {
+                    val borderBrush = if (story.hasNew) Brush.linearGradient(listOf(Color(0xFFEF4444), Color(0xFFF59E0B), Color(0xFFDC2626))) else Brush.linearGradient(listOf(Color.LightGray, Color.LightGray))
+                    Box(modifier = Modifier.size(48.dp).background(borderBrush, CircleShape).padding(2.dp)) {
+                        Box(modifier = Modifier.fillMaxSize().background(CardBg, CircleShape).padding(2.dp)) {
+                            Box(modifier = Modifier.fillMaxSize().background(story.color, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(story.avatar, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+                    Spacer(Modifier.height(4.dp))
+                    Text(story.name, fontSize = 9.sp, color = StoneText, fontWeight = if (story.hasNew) FontWeight.Bold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(story.name, fontSize = 10.sp, color = StoneText, fontWeight = if (story.hasNew) FontWeight.Bold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -367,8 +451,22 @@ private fun StoriesRow(isAnonymous: Boolean) {
 
 // ─── List 列表视图 (详细卡片) ───
 @Composable
-private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onSave: (String) -> Unit, onPhotoClick: (String) -> Unit) {
+private fun PhotoListView(
+    photos: List<PhotoPost>,
+    onLike: (String) -> Unit,
+    onSave: (String) -> Unit,
+    onReport: (String) -> Unit,
+    onNavigate: (String) -> Unit,
+    showStories: Boolean,
+    isAnonymous: Boolean,
+    onPhotoClick: (String) -> Unit
+) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showStories) {
+            item {
+                StoriesRow(isAnonymous = isAnonymous)
+            }
+        }
         items(photos) { photo ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -389,7 +487,7 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
                                 Text("${photo.location}, ${photo.country}", fontSize = 11.sp, color = StoneMuted, maxLines = 1)
                             }
                         }
-                        IconButton(onClick = { }, modifier = Modifier.size(32.dp).background(RedLight, RoundedCornerShape(8.dp))) {
+                        IconButton(onClick = { onNavigate(photo.id) }, modifier = Modifier.size(32.dp).background(RedLight, RoundedCornerShape(8.dp))) {
                             Icon(Icons.Outlined.Navigation, contentDescription = "Naviguer", tint = RedPrimary, modifier = Modifier.size(14.dp))
                         }
                     }
@@ -405,7 +503,12 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = "Like", tint = if (photo.isLiked) Color.Red else StoneText, modifier = Modifier.size(22.dp))
+                                    Icon(
+                                        if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = if (photo.isLiked) Color.Red else StoneText,
+                                        modifier = Modifier.size(22.dp).clickable { onLike(photo.id) }
+                                    )
                                     Spacer(Modifier.width(4.dp))
                                     Text("${photo.likes}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
@@ -415,8 +518,14 @@ private fun PhotoListView(photos: List<PhotoPost>, onLike: (String) -> Unit, onS
                                     Text("${photo.comments}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                                 Icon(Icons.Outlined.Share, contentDescription = "Share", tint = StoneText, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Outlined.Flag, contentDescription = "Signaler", tint = StoneText, modifier = Modifier.size(20.dp).clickable { onReport(photo.id) })
                             }
-                            Icon(if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder, contentDescription = "Save", tint = if (photo.isSaved) Color(0xFFD97706) else StoneText, modifier = Modifier.size(22.dp))
+                            Icon(
+                                if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "Save",
+                                tint = if (photo.isSaved) Color(0xFFD97706) else StoneText,
+                                modifier = Modifier.size(22.dp).clickable { onSave(photo.id) }
+                            )
                         }
 
                         Spacer(Modifier.height(8.dp))

@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -48,21 +49,22 @@ data class NotificationItem(
     val read: Boolean,
     val avatar: String,
     val avatarColor: Color,
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val photoId: String? = null
 )
 
 data class FilterTab(val key: String, val label: String)
 
 // --- Constantes & Données Simulées ---
 private val MOCK_NOTIFICATIONS = listOf(
-    NotificationItem("n1", "user_publish", "Li Xiaofang", "a publié une nouvelle photo à la Grande Muraille", "Il y a 5 min", false, "L", Color(0xFFB91C1C), "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=100&fit=crop"),
-    NotificationItem("n2", "group_publish", "Groupe : Voyageurs de Pékin", "Wang Wanqing a partagé 3 photos dans le groupe", "Il y a 20 min", false, "V", Color(0xFFD97706), "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=100&fit=crop"),
-    NotificationItem("n3", "location", "Lieu suivi : Guilin", "2 nouvelles photos publiées à Paysages de Guilin", "Il y a 1 heure", false, "G", Color(0xFF7C3AED), "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=100&fit=crop"),
+    NotificationItem("n1", "user_publish", "Li Xiaofang", "a publié une nouvelle photo à la Grande Muraille", "Il y a 5 min", false, "L", Color(0xFFB91C1C), "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=100&fit=crop", "1"),
+    NotificationItem("n2", "group_publish", "Groupe : Voyageurs de Pékin", "Wang Wanqing a partagé 3 photos dans le groupe", "Il y a 20 min", false, "V", Color(0xFFD97706), "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=100&fit=crop", "2"),
+    NotificationItem("n3", "location", "Lieu suivi : Guilin", "2 nouvelles photos publiées à Paysages de Guilin", "Il y a 1 heure", false, "G", Color(0xFF7C3AED), "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=100&fit=crop", "3"),
     NotificationItem("n4", "tag", "Tag suivi : #Lever du soleil", "5 nouvelles photos correspondent à votre tag suivi", "Il y a 2 heures", false, "#", Color(0xFF0D9488)),
     NotificationItem("n5", "like", "Zhang Zhiyuan", "a aimé votre photo « Cité Interdite au crépuscule »", "Il y a 3 heures", true, "Z", Color(0xFF7C3AED)),
     NotificationItem("n6", "comment", "Chen Minghui", "a commenté : « Magnifique composition ! Quel objectif ? »", "Il y a 4 heures", true, "C", Color(0xFF0D9488)),
     NotificationItem("n7", "follow", "Lin Yuxuan", "a commencé à vous suivre", "Il y a 5 heures", true, "L", Color(0xFF2563EB)),
-    NotificationItem("n8", "location", "Lieu suivi : Shanghai", "Zhao Zixuan a publié une photo au Bund de Shanghai", "Il y a 6 heures", true, "S", Color(0xFFDC2626), "https://images.unsplash.com/photo-1647067151201-0b37c7555870?w=100&fit=crop"),
+    NotificationItem("n8", "location", "Lieu suivi : Shanghai", "Zhao Zixuan a publié une photo au Bund de Shanghai", "Il y a 6 heures", true, "S", Color(0xFFDC2626), "https://images.unsplash.com/photo-1647067151201-0b37c7555870?w=100&fit=crop", "4"),
     NotificationItem("n9", "group_publish", "Groupe : Amateurs de paysages", "3 nouvelles publications cette semaine", "Il y a 1 jour", true, "A", Color(0xFF16A34A)),
     NotificationItem("n10", "tag", "Tag suivi : #Architecture", "12 nouvelles photos correspondent à votre tag", "Il y a 1 jour", true, "#", Color(0xFFEA580C)),
     NotificationItem("n11", "user_publish", "Zhao Zixuan", "a publié une nouvelle collection « Nuits de Shanghai »", "Il y a 2 jours", true, "Z", Color(0xFFDC2626))
@@ -82,12 +84,14 @@ private val FILTER_TABS = listOf(
 @Composable
 fun NotificationsScreen(
     onBack: () -> Unit = {},
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    onOpenPhotoDetail: (String) -> Unit = {}
 ) {
     // États
     var notifications by remember { mutableStateOf(MOCK_NOTIFICATIONS) }
     var currentFilter by remember { mutableStateOf("all") }
     var showActionsMenu by remember { mutableStateOf(false) }
+    var showSettingsPanel by remember { mutableStateOf(false) }
 
     // Dérivés
     val unreadCount = notifications.count { !it.read }
@@ -167,10 +171,13 @@ fun NotificationsScreen(
                     // Boutons actions droite
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(
-                            modifier = Modifier.size(36.dp).background(Stone100, RoundedCornerShape(8.dp)).clickable { onOpenSettings() },
+                            modifier = Modifier.size(36.dp).background(if (showSettingsPanel) RedPrimary else Stone100, RoundedCornerShape(8.dp)).clickable {
+                                showSettingsPanel = !showSettingsPanel
+                                onOpenSettings()
+                            },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Settings, "Paramètres", tint = Stone500, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Settings, "Paramètres", tint = if (showSettingsPanel) Color.White else Stone500, modifier = Modifier.size(16.dp))
                         }
 
                         Box {
@@ -237,6 +244,14 @@ fun NotificationsScreen(
                         }
                     }
                 }
+
+                AnimatedVisibility(
+                    visible = showSettingsPanel,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    NotificationSettingsPanel()
+                }
             }
         }
 
@@ -263,11 +278,79 @@ fun NotificationsScreen(
                 items(filteredList, key = { it.id }) { notif ->
                     NotificationCard(
                         notif = notif,
-                        onClick = { markRead(notif.id) },
+                        onClick = {
+                            markRead(notif.id)
+                            notif.photoId?.let(onOpenPhotoDetail)
+                        },
                         onDelete = { deleteNotif(notif.id) }
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationSettingsPanel() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("Alertes suivies", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
+        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FollowChip(Icons.Default.Person, "Li Xiaofang")
+            FollowChip(Icons.Default.Group, "Voyageurs de Pékin")
+            FollowChip(Icons.Default.LocationOn, "Guilin")
+            FollowChip(Icons.Default.Tag, "#Architecture")
+            FollowChip(Icons.Default.Park, "Nature")
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            NotificationToggleCard("Utilisateurs", "Nouvelles photos", Icons.Default.Person, true, Modifier.weight(1f))
+            NotificationToggleCard("Lieux & tags", "Matching photos", Icons.Default.NotificationsActive, true, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun FollowChip(icon: ImageVector, label: String) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFFFEF2F2),
+        border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = RedPrimary, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, color = RedPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun NotificationToggleCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var checked by remember { mutableStateOf(enabled) }
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = CardBg,
+        border = BorderStroke(1.dp, StoneBorder)
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(32.dp).background(Color(0xFFFEF2F2), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = RedPrimary, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text(subtitle, fontSize = 10.sp, color = Stone400)
+            }
+            Switch(checked = checked, onCheckedChange = { checked = it }, modifier = Modifier.scale(0.75f))
         }
     }
 }
@@ -278,6 +361,7 @@ fun NotificationCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var followedBack by remember { mutableStateOf(false) }
     // Mapping des icônes et couleurs de badge
     val badgeIcon: ImageVector
     val badgeColor: Color
@@ -358,11 +442,11 @@ fun NotificationCard(
                     Box(
                         modifier = Modifier
                             .padding(top = 8.dp)
-                            .background(RedPrimary, RoundedCornerShape(8.dp))
-                            .clickable { /* Logique d'abonnement */ }
+                            .background(if (followedBack) Stone100 else RedPrimary, RoundedCornerShape(8.dp))
+                            .clickable { followedBack = !followedBack }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
-                        Text("Suivre en retour", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(if (followedBack) "Suivi" else "Suivre en retour", color = if (followedBack) Stone500 else Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

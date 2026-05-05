@@ -31,15 +31,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 
 // 导入数据模型
+import com.example.traveling.data.model.PhotoPostComment
 import com.example.traveling.data.model.PhotoPostDetail
 import com.example.traveling.ui.theme.*
+import kotlinx.coroutines.launch
 
 // 主页面入口 (状态与路由管理)
 
 @Composable
 fun PhotoPostDetailScreen(
     photoId: String,
+    isAnonymous: Boolean = false,
     onBack: () -> Unit = {},
+    onNavigateLogin: () -> Unit = {},
+    onNavigateRegister: () -> Unit = {},
     viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,24 +75,42 @@ fun PhotoPostDetailScreen(
         }
         is PhotoPostDetailUiState.Success -> {
             // 数据成功加载，把 PhotoDetail 喂给纯 UI 组件
-            PhotoPostDetailContent(photo = state.photo, onBack = onBack)
+            PhotoPostDetailContent(
+                photo = state.photo,
+                isAnonymous = isAnonymous,
+                onBack = onBack,
+                onNavigateLogin = onNavigateLogin,
+                onNavigateRegister = onNavigateRegister
+            )
         }
     }
 }
 
 // 纯展示组件
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PhotoPostDetailContent(
     photo: PhotoPostDetail,
-    onBack: () -> Unit
+    isAnonymous: Boolean,
+    onBack: () -> Unit,
+    onNavigateLogin: () -> Unit,
+    onNavigateRegister: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { photo.imageUrls.size })
     var newComment by remember { mutableStateOf("") }
+    var showActionsMenu by remember { mutableStateOf(false) }
+    var showReportSheet by remember { mutableStateOf(false) }
+    var isLiked by remember(photo.id) { mutableStateOf(photo.isLiked) }
+    var likes by remember(photo.id) { mutableStateOf(photo.likes) }
+    var isSaved by remember(photo.id) { mutableStateOf(photo.isSaved) }
+    var comments by remember(photo.id) { mutableStateOf(photo.commentsList) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         containerColor = PageBg,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             // ─── 顶部导航栏 (Figma 中的 Header) ───
             Surface(
@@ -128,15 +151,45 @@ private fun PhotoPostDetailContent(
                         }
                     }
 
-                    // 更多按钮
-                    Surface(
-                        onClick = { /* TODO: Show Menu */ },
-                        shape = RoundedCornerShape(8.dp),
-                        color = Stone100,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Stone600, modifier = Modifier.size(18.dp))
+                    Box {
+                        Surface(
+                            onClick = { showActionsMenu = !showActionsMenu },
+                            shape = RoundedCornerShape(8.dp),
+                            color = Stone100,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Stone600, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showActionsMenu,
+                            onDismissRequest = { showActionsMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Signaler la photo") },
+                                leadingIcon = { Icon(Icons.Outlined.Flag, null, tint = Color(0xFFDC2626)) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    showReportSheet = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Suivre l'auteur") },
+                                leadingIcon = { Icon(Icons.Outlined.PersonAdd, null, tint = RedPrimary) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Auteur suivi.") }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Voir photos similaires") },
+                                leadingIcon = { Icon(Icons.Outlined.Collections, null, tint = Stone600) },
+                                onClick = {
+                                    showActionsMenu = false
+                                    coroutineScope.launch { snackbarHostState.showSnackbar("Photos similaires activées.") }
+                                }
+                            )
                         }
                     }
                 }
@@ -149,47 +202,84 @@ private fun PhotoPostDetailContent(
                 shadowElevation = 16.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // 输入框
+                if (isAnonymous) {
                     Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                            .background(Stone100, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        BasicTextField(
-                            value = newComment,
-                            onValueChange = { newComment = it },
-                            modifier = Modifier.weight(1f),
-                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Stone800),
-                            decorationBox = { innerTextField ->
-                                if (newComment.isEmpty()) {
-                                    Text("Ecrivez votre commentaire...", color = Stone400, fontSize = 13.sp)
-                                }
-                                innerTextField()
-                            }
-                        )
-                        Icon(Icons.Outlined.Mic, contentDescription = "Voice", tint = Stone400, modifier = Modifier.size(16.dp))
+                        Text("Connectez-vous pour commenter", color = Stone500, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                        OutlinedButton(onClick = onNavigateRegister, shape = RoundedCornerShape(8.dp)) {
+                            Text("Créer")
+                        }
+                        Button(onClick = onNavigateLogin, shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)) {
+                            Text("Login")
+                        }
                     }
-
-                    // 发送按钮 (红色方形)
-                    Surface(
-                        onClick = { /* TODO: Post comment */ },
-                        shape = RoundedCornerShape(8.dp),
-                        color = RedDark,
-                        modifier = Modifier.size(40.dp)
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Add, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
+                        // 输入框
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp)
+                                    .background(Stone100, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BasicTextField(
+                                    value = newComment,
+                                    onValueChange = { newComment = it },
+                                    modifier = Modifier.weight(1f),
+                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp, color = Stone800),
+                                    decorationBox = { innerTextField ->
+                                        if (newComment.isEmpty()) {
+                                            Text("Ecrivez votre commentaire...", color = Stone400, fontSize = 13.sp)
+                                        }
+                                        innerTextField()
+                                    }
+                                )
+                                Icon(Icons.Outlined.Mic, contentDescription = "Voice", tint = Stone400, modifier = Modifier.size(16.dp))
+                            }
+                        }
+
+                        // 发送按钮 (红色方形)
+                        Surface(
+                            onClick = {
+                                if (newComment.isNotBlank()) {
+                                    comments = comments + PhotoPostComment(
+                                        id = "local-${comments.size + 1}",
+                                        author = "Vous",
+                                        avatar = "V",
+                                        color = RedPrimary,
+                                        text = newComment.trim(),
+                                        date = "À l'instant",
+                                        likes = 0
+                                    )
+                                    newComment = ""
+                                }
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = RedDark,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Add, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 }
@@ -234,20 +324,32 @@ private fun PhotoPostDetailContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (photo.isLiked) Color.Red else Stone600, modifier = Modifier.size(22.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            isLiked = !isLiked
+                            likes = if (isLiked) likes + 1 else (likes - 1).coerceAtLeast(0)
+                        }
+                    ) {
+                        Icon(if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (isLiked) Color.Red else Stone600, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("${photo.likes}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("$likes", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.ChatBubbleOutline, null, tint = Stone600, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(6.dp))
                         // 👈 这里动态读取了真实的评论列表长度
-                        Text("${photo.commentsCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("${comments.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
                     Icon(Icons.Outlined.Share, null, tint = Stone600, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.Flag, null, tint = Stone600, modifier = Modifier.size(20.dp).clickable { showReportSheet = true })
                 }
-                Icon(if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder, null, tint = if (photo.isSaved) AmberAccent else Stone600, modifier = Modifier.size(22.dp))
+                Icon(
+                    if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    null,
+                    tint = if (isSaved) AmberAccent else Stone600,
+                    modifier = Modifier.size(22.dp).clickable { isSaved = !isSaved }
+                )
             }
 
             HorizontalDivider(color = StoneBorder)
@@ -305,36 +407,62 @@ private fun PhotoPostDetailContent(
                 // ─── 5. 导航操作双按钮 ───
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { /* TODO: Open Google Maps */ },
+                        onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps vers ${photo.location}.") } },
                         modifier = Modifier.weight(1f).height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = RedDark)
                     ) {
                         Icon(Icons.Outlined.NearMe, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Navigation", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Google Maps", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                     Button(
-                        onClick = { /* TODO: Send to TravelPath */ },
+                        onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} ajouté à TravelPath.") } },
                         modifier = Modifier.weight(1f).height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)) // Amber
                     ) {
                         Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Itinéraire", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("TravelPath", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = CardBg,
+                    border = BorderStroke(1.dp, StoneBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Connexion avec TravelPath", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("Ce lieu peut être ajouté comme étape obligatoire lors de la génération d'un parcours.", fontSize = 12.sp, color = Stone500, lineHeight = 18.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AssistChip(
+                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} sera utilisé dans le prochain parcours.") } },
+                                label = { Text("Utiliser ce lieu") },
+                                leadingIcon = { Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp)) }
+                            )
+                            AssistChip(
+                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Filtre photos similaires activé.") } },
+                                label = { Text("Photos similaires") },
+                                leadingIcon = { Icon(Icons.Outlined.Collections, null, modifier = Modifier.size(16.dp)) }
+                            )
+                        }
                     }
                 }
 
                 Spacer(Modifier.height(32.dp))
 
                 // ─── 6. 真实的评论列表 ───
-                Text("Commentaires (${photo.commentsList.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text("Commentaires (${comments.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                 Spacer(Modifier.height(16.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // 👈 动态遍历 viewModel 传过来的评论列表
-                    photo.commentsList.forEach { comment ->
+                    comments.forEach { comment ->
                         Row(verticalAlignment = Alignment.Top) {
                             Box(modifier = Modifier.size(32.dp).background(comment.color, CircleShape), contentAlignment = Alignment.Center) {
                                 Text(comment.avatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -359,6 +487,33 @@ private fun PhotoPostDetailContent(
                 }
 
                 Spacer(Modifier.height(24.dp)) // 防止列表被底部的输入框遮挡
+            }
+        }
+    }
+
+    if (showReportSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showReportSheet = false },
+            containerColor = CardBg
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
+                Text("Signaler cette photo", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Spacer(Modifier.height(8.dp))
+                Text("Choisissez la raison du signalement. Cette action sera enregistrée dans Firestore plus tard.", fontSize = 13.sp, color = Stone500, lineHeight = 19.sp)
+                Spacer(Modifier.height(16.dp))
+                listOf("Contenu inapproprié", "Information de lieu incorrecte", "Spam ou publicité", "Droits d'image").forEach { reason ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            showReportSheet = false
+                            coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré : $reason") }
+                        }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Outlined.Flag, null, tint = RedPrimary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(reason, fontSize = 14.sp, color = Stone800)
+                    }
+                }
             }
         }
     }

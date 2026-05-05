@@ -53,6 +53,7 @@ fun MapView(
     onSelectPhoto: (String) -> Unit
 ) {
     var selectedPin by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     val selectedPhoto = photos.find { it.id == selectedPin }
 
     val coroutineScope = rememberCoroutineScope()
@@ -173,6 +174,21 @@ fun MapView(
             }
         }
 
+        Surface(
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White.copy(alpha = 0.92f),
+            shadowElevation = 4.dp
+        ) {
+            Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Map, null, tint = RedPrimary, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("${photos.size} pins", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StoneText)
+            }
+        }
+
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+
         // 底部滑动详情页 (Bottom Sheet)
         AnimatedVisibility(
             visible = selectedPhoto != null,
@@ -223,15 +239,21 @@ fun MapView(
                                     Text("Voir les détails", fontWeight = FontWeight.Bold)
                                 }
                                 Button(
-                                    onClick = { /* TODO: 转到行程 */ },
+                                    onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} ajouté à TravelPath.") } },
                                     modifier = Modifier.weight(1f).height(48.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
                                 ) {
                                     Icon(Icons.Outlined.Route, null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Itinéraire", fontWeight = FontWeight.Bold)
+                                    Text("TravelPath", fontWeight = FontWeight.Bold)
                                 }
                             }
+                            Spacer(Modifier.height(10.dp))
+                            AssistChip(
+                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps vers ${photo.location}.") } },
+                                label = { Text("Ouvrir la navigation Google Maps") },
+                                leadingIcon = { Icon(Icons.Default.NearMe, null, modifier = Modifier.size(16.dp)) }
+                            )
                         }
                     }
                 }

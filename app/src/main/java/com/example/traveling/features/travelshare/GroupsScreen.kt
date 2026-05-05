@@ -53,10 +53,13 @@ fun GroupsScreen(
     onBack: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    var groupFilter by remember { mutableStateOf("all") }
+    val snackbarHostState = remember { SnackbarHostState() }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.fillMaxSize().background(BgColor)) {
+    Box(modifier = Modifier.fillMaxSize().background(BgColor)) {
+    Column(modifier = Modifier.fillMaxSize()) {
         // HEADER
         Surface(
             color = HeaderBg,
@@ -80,7 +83,10 @@ fun GroupsScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Stone500, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Mes Groupes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                    Column {
+                        Text("Groupes", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("Partager des photos avec une communauté", fontSize = 10.sp, color = Stone400)
+                    }
                 }
 
                 Box(
@@ -98,27 +104,47 @@ fun GroupsScreen(
         // CONTENU PRINCIPAL
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                GroupFilterChip("Tous", "all", groupFilter, { groupFilter = it }, Modifier.weight(1f))
+                GroupFilterChip("Mes groupes", "mine", groupFilter, { groupFilter = it }, Modifier.weight(1f))
+                GroupFilterChip("Découvrir", "discover", groupFilter, { groupFilter = it }, Modifier.weight(1f))
+            }
 
             // Section: Mes Groupes
-            Column {
+            if (groupFilter == "all" || groupFilter == "mine") Column {
                 Text("Mes groupes (${MOCK_GROUPS.size})", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Stone400, modifier = Modifier.padding(bottom = 12.dp, start = 4.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MOCK_GROUPS.forEach { group ->
-                        MyGroupCard(group)
+                        MyGroupCard(
+                            group = group,
+                            onPublishHere = { coroutineScope.launch { snackbarHostState.showSnackbar("Publication vers ${group.name} sélectionnée.") } },
+                            onFollow = { followed ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(if (followed) "Notifications activées pour ${group.name}." else "Notifications désactivées pour ${group.name}.")
+                                }
+                            }
+                        )
                     }
                 }
             }
 
             // Section: Découvrir
-            Column {
+            if (groupFilter == "all" || groupFilter == "discover") Column {
                 Text("Découvrir des groupes", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Stone400, modifier = Modifier.padding(bottom = 12.dp, start = 4.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DISCOVER_GROUPS.forEach { group ->
-                        DiscoverGroupCard(group)
+                        DiscoverGroupCard(
+                            group = group,
+                            onJoin = { joined ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(if (joined) "Vous avez rejoint ${group.name}." else "Vous avez quitté ${group.name}.")
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -142,45 +168,106 @@ fun GroupsScreen(
             )
         }
     }
+    SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+    }
+}
+
+@Composable
+private fun GroupFilterChip(
+    label: String,
+    value: String,
+    selectedValue: String,
+    onSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val selected = selectedValue == value
+    Surface(
+        onClick = { onSelected(value) },
+        modifier = modifier.height(36.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = if (selected) RedPrimary else Stone100
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(label, color = if (selected) Color.White else Stone500, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
 }
 
 // Sous-composant : Carte de mes groupes
 @Composable
-private fun MyGroupCard(group: GroupItem) {
-    Row(
+private fun MyGroupCard(
+    group: GroupItem,
+    onPublishHere: () -> Unit,
+    onFollow: (Boolean) -> Unit
+) {
+    var followed by remember { mutableStateOf(false) }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(CardBg, RoundedCornerShape(12.dp))
             .border(1.dp, Color(0x0D78350F), RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(14.dp)
     ) {
-        Box(modifier = Modifier.size(48.dp).background(group.color.copy(alpha = 0.12f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Group, null, tint = group.color, modifier = Modifier.size(24.dp))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.width(6.dp))
-                Icon(if (group.isPrivate) Icons.Default.Lock else Icons.Default.Public, null, tint = Stone400, modifier = Modifier.size(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(48.dp).background(group.color.copy(alpha = 0.12f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Group, null, tint = group.color, modifier = Modifier.size(24.dp))
             }
-            Spacer(Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("${group.members} membres", fontSize = 11.sp, color = Stone400)
-                Text(" · ", fontSize = 11.sp, color = Stone300)
-                Text("${group.photos} photos", fontSize = 11.sp, color = Stone400)
-                Text(" · ", fontSize = 11.sp, color = Stone300)
-                Text(group.lastActivity, fontSize = 11.sp, color = Stone400)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(group.name, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Spacer(Modifier.width(6.dp))
+                    Icon(if (group.isPrivate) Icons.Default.Lock else Icons.Default.Public, null, tint = Stone400, modifier = Modifier.size(12.dp))
+                }
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${group.members} membres", fontSize = 11.sp, color = Stone400)
+                    Text(" · ", fontSize = 11.sp, color = Stone300)
+                    Text("${group.photos} photos", fontSize = 11.sp, color = Stone400)
+                    Text(" · ", fontSize = 11.sp, color = Stone300)
+                    Text(group.lastActivity, fontSize = 11.sp, color = Stone400)
+                }
+            }
+            Icon(Icons.Default.ChevronRight, null, tint = Stone300, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier.weight(1f),
+                onClick = onPublishHere,
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFFEF2F2),
+                border = BorderStroke(1.dp, Color(0xFFFEE2E2))
+            ) {
+                Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AddPhotoAlternate, null, tint = RedPrimary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Publier ici", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Surface(
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    followed = !followed
+                    onFollow(followed)
+                },
+                shape = RoundedCornerShape(8.dp),
+                color = if (followed) Color(0xFFFEF2F2) else Stone100
+            ) {
+                Row(modifier = Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Notifications, null, tint = if (followed) RedPrimary else Stone500, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (followed) "Suivi" else "Suivre", color = if (followed) RedPrimary else Stone500, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
-        Icon(Icons.Default.ChevronRight, null, tint = Stone300, modifier = Modifier.size(16.dp))
     }
 }
 
 // Sous-composant : Carte découverte
 @Composable
-private fun DiscoverGroupCard(group: GroupItem) {
+private fun DiscoverGroupCard(group: GroupItem, onJoin: (Boolean) -> Unit) {
+    var joined by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -200,9 +287,16 @@ private fun DiscoverGroupCard(group: GroupItem) {
         }
         Spacer(Modifier.width(12.dp))
         Box(
-            modifier = Modifier.background(Color(0xFFFEF2F2), RoundedCornerShape(6.dp)).border(1.dp, Color(0xFFFEE2E2), RoundedCornerShape(6.dp)).clickable { }.padding(horizontal = 12.dp, vertical = 6.dp)
+            modifier = Modifier
+                .background(if (joined) RedPrimary else Color(0xFFFEF2F2), RoundedCornerShape(6.dp))
+                .border(1.dp, if (joined) RedPrimary else Color(0xFFFEE2E2), RoundedCornerShape(6.dp))
+                .clickable {
+                    joined = !joined
+                    onJoin(joined)
+                }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            Text("Rejoindre", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(if (joined) "Rejoint" else "Rejoindre", color = if (joined) Color.White else RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -212,7 +306,9 @@ private fun DiscoverGroupCard(group: GroupItem) {
 @Composable
 private fun CreateGroupContent(onClose: () -> Unit) {
     var groupName by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(false) }
+    var selectedTheme by remember { mutableStateOf("Voyage") }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -238,6 +334,38 @@ private fun CreateGroupContent(onClose: () -> Unit) {
             ),
             modifier = Modifier.fillMaxWidth().height(52.dp)
         )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("Description", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(bottom = 6.dp))
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            placeholder = { Text("Objectif du groupe, destination, type de photos...", color = Stone300) },
+            shape = RoundedCornerShape(8.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = Color(0xFFF5F5F4),
+                focusedContainerColor = Color(0xFFF5F5F4),
+                unfocusedBorderColor = Color.Transparent,
+                focusedBorderColor = Color(0xFFFECACA)
+            ),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp)
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Thème principal", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(bottom = 8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("Voyage", "Nature", "Culture").forEach { theme ->
+                AssistChip(
+                    onClick = { selectedTheme = theme },
+                    label = { Text(theme) },
+                    leadingIcon = {
+                        if (selectedTheme == theme) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                    }
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
