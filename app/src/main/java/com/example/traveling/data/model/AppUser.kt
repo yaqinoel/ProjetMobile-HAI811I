@@ -3,7 +3,7 @@ package com.example.traveling.data.model
 import com.google.firebase.Timestamp
 
 /** users/{userId} */
-data class TravelShareUser(
+data class User(
     val userId: String = "",
     val displayName: String = "",
     val email: String = "",
