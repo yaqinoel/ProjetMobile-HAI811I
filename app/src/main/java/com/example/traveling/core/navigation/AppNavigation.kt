@@ -1,6 +1,10 @@
 package com.example.traveling.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,7 +17,11 @@ import com.example.traveling.features.passerelle.LaunchScreen
 import com.example.traveling.features.passerelle.LoginScreen
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
+import com.example.traveling.features.profile.LikedPostsScreen
+import com.example.traveling.features.profile.MyPublishedPostsScreen
+import com.example.traveling.features.profile.SavedPostsScreen
 import com.example.traveling.features.travelshare.GroupsScreen
+import com.example.traveling.features.travelshare.PhotoPost
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
@@ -23,6 +31,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
     val startDest = if (auth.currentUser != null) "main" else "home"
+    var publishedPhotos by remember { mutableStateOf<List<PhotoPost>>(emptyList()) }
 
     NavHost(navController = navController, startDestination = startDest) {
         composable("home") {
@@ -62,8 +71,10 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
                 onOpenSettings = {
-                    // TODO: 通知设置页，在这里写跳转
-                    // navController.navigate("notification_settings")
+                    // Static settings panel is handled inside NotificationsScreen.
+                },
+                onOpenPhotoDetail = { photoId ->
+                    navController.navigate("photo_detail/$photoId")
                 }
             )
         }
@@ -80,16 +91,34 @@ fun AppNavigation() {
                     // Cancels publishing, goes back to where the user came from
                     navController.popBackStack()
                 },
-                onPublish = {
-                    // TODO: save the data to Firestore
+                onPublish = { photo ->
+                    publishedPhotos = listOf(photo) + publishedPhotos
+                    // Static publish confirmation is handled inside PublishPhotosScreen.
                     navController.navigate("main") {
                         popUpTo("main") { inclusive = true }
                     }
                 },
                 onOpenMapPicker = {
-                    // TODO: open map picker
-                    // Toast.makeText(context, "Ouverture de Google Maps...", Toast.LENGTH_SHORT).show()
+                    // Static map picker is handled inside PublishPhotosScreen.
                 }
+            )
+        }
+        composable("my_published_posts") {
+            MyPublishedPostsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
+            )
+        }
+        composable("liked_posts") {
+            LikedPostsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
+            )
+        }
+        composable("saved_posts") {
+            SavedPostsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
 
@@ -101,7 +130,10 @@ fun AppNavigation() {
             val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
             PhotoPostDetailScreen(
                 photoId = photoId,
-                onBack = { navController.popBackStack() }
+                isAnonymous = false,
+                onBack = { navController.popBackStack() },
+                onNavigateLogin = { navController.navigate("login") },
+                onNavigateRegister = { navController.navigate("register") }
             )
         }
 
@@ -115,10 +147,14 @@ fun AppNavigation() {
                 },
                 onNavigateToNotifications = { navController.navigate("notifications") },
                 onNavigateToGroups = { navController.navigate("groups") },
+                onNavigateToMyPublishedPosts = { navController.navigate("my_published_posts") },
+                onNavigateToLikedPosts = { navController.navigate("liked_posts") },
+                onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
-                }
+                },
+                publishedPhotos = publishedPhotos
             )
         }
 
@@ -129,10 +165,28 @@ fun AppNavigation() {
                 onLogout = { navController.navigate("home") { popUpTo(0) { inclusive = true } } },
                 onNavigateLogin = { navController.navigate("login") },
                 onNavigateRegister = { navController.navigate("register") },
+                onNavigateToMyPublishedPosts = { navController.navigate("login") },
+                onNavigateToLikedPosts = { navController.navigate("login") },
+                onNavigateToSavedPosts = { navController.navigate("login") },
                 // 匿名状态下如果也允许看照片详情，也把回调接上
                 onNavigateToPhotoDetail = { photoId ->
-                    navController.navigate("photo_detail/$photoId")
-                }
+                    navController.navigate("photo_detail_anonymous/$photoId")
+                },
+                publishedPhotos = publishedPhotos
+            )
+        }
+
+        composable(
+            route = "photo_detail_anonymous/{photoId}",
+            arguments = listOf(navArgument("photoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
+            PhotoPostDetailScreen(
+                photoId = photoId,
+                isAnonymous = true,
+                onBack = { navController.popBackStack() },
+                onNavigateLogin = { navController.navigate("login") },
+                onNavigateRegister = { navController.navigate("register") }
             )
         }
 

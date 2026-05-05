@@ -42,7 +42,12 @@ data class ProfileMenuItem(
     val action: () -> Unit = {}
 )
 
-data class ProfileStat(val label: String, val value: String, val icon: ImageVector)
+data class ProfileStat(
+    val label: String,
+    val value: String,
+    val icon: ImageVector,
+    val action: () -> Unit = {}
+)
 
 // ─── 假数据 ───
 private val PHOTOS_GRID = listOf(
@@ -65,14 +70,25 @@ fun ProfileScreen(
     onNavigateRegister: () -> Unit = {},
     onLogout: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
-    onOpenGroups: () -> Unit = {}
+    onOpenGroups: () -> Unit = {},
+    onOpenMyPhotos: () -> Unit = {},
+    onOpenLikedPosts: () -> Unit = {},
+    onOpenSavedPosts: () -> Unit = {}
 ) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     val userName = currentUser?.displayName ?: "Voyageur"
     if (isAnonymous) {
         AnonymousProfileView(onNavigateLogin, onNavigateRegister)
     } else {
-        AuthenticatedProfileView(userName, onLogout, onOpenNotifications, onOpenGroups)
+        AuthenticatedProfileView(
+            userName = userName,
+            onLogout = onLogout,
+            onOpenNotifications = onOpenNotifications,
+            onOpenGroups = onOpenGroups,
+            onOpenMyPhotos = onOpenMyPhotos,
+            onOpenLikedPosts = onOpenLikedPosts,
+            onOpenSavedPosts = onOpenSavedPosts
+        )
     }
 }
 
@@ -140,22 +156,27 @@ private fun AuthenticatedProfileView(
     userName: String,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
-    onOpenGroups: () -> Unit
+    onOpenGroups: () -> Unit,
+    onOpenMyPhotos: () -> Unit,
+    onOpenLikedPosts: () -> Unit,
+    onOpenSavedPosts: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
     val menuItems = listOf(
         ProfileMenuItem("Mes Groupes", "3 groupes actifs", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
-        ProfileMenuItem("Favoris", "12 enregistrés", Icons.Default.Bookmark, Color(0xFFD97706)),
+        ProfileMenuItem("Mes publications", "Modifier ou supprimer vos posts", Icons.Default.PhotoLibrary, Color(0xFFEA580C), action = onOpenMyPhotos),
+        ProfileMenuItem("Posts aimés", "Photos que vous avez aimées", Icons.Default.Favorite, Color(0xFFDC2626), action = onOpenLikedPosts),
+        ProfileMenuItem("Posts enregistrés", "Photos sauvegardées pour plus tard", Icons.Default.Bookmark, Color(0xFFD97706), action = onOpenSavedPosts),
         ProfileMenuItem("Notifications", "5 nouvelles", Icons.Default.Notifications, Color(0xFF10B981), badge = 5, action = onOpenNotifications),
         ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
     )
 
     val stats = listOf(
-        ProfileStat("Photos", "156", Icons.Default.PhotoCamera),
-        ProfileStat("Favoris", "42", Icons.Default.Favorite),
-        ProfileStat("Lieux", "23", Icons.Default.LocationOn),
-        ProfileStat("Note", "4.9", Icons.Default.Star)
+        ProfileStat("Photos", "12", Icons.Default.PhotoCamera, action = onOpenMyPhotos),
+        ProfileStat("Favoris", "42", Icons.Default.Favorite, action = onOpenLikedPosts),
+        ProfileStat("Enregistrés", "18", Icons.Default.Bookmark, action = onOpenSavedPosts),
+        ProfileStat("Lieux", "23", Icons.Default.LocationOn)
     )
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
@@ -222,7 +243,10 @@ private fun AuthenticatedProfileView(
             ) {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     stats.forEach { stat ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f).clickable { stat.action() }
+                        ) {
                             Icon(stat.icon, null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp).padding(bottom = 4.dp))
                             Text(stat.value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = StoneText)
                             Text(stat.label, fontSize = 10.sp, color = StoneMuted)
