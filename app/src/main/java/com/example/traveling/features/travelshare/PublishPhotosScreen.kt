@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -44,7 +45,7 @@ private const val MAX_SELECTED_PHOTOS = 14
 @Composable
 fun PublishPhotosScreen(
     onBack: () -> Unit = {},
-    onPublish: (PhotoPost) -> Unit = {},
+    onPublish: (PhotoPostUi) -> Unit = {},
     onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
     // États Obligatoires (Required)
@@ -543,7 +544,7 @@ fun PublishPhotosScreen(
                     onClick = {
                         publishPreview = false
                         onPublish(
-                            PhotoPost(
+                            PhotoPostUi(
                                 id = "local-${System.currentTimeMillis()}",
                                 imageUrl = selectedPhotos.first(),
                                 location = locationName.substringBefore(","),

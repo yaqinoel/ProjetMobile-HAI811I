@@ -35,6 +35,7 @@ import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
+import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 
 // 将坐标映射为 Google Maps 专用的 LatLng 对象
@@ -49,7 +50,7 @@ private val PHOTO_COORDS = mapOf(
 
 @Composable
 fun MapView(
-    photos: List<PhotoPost>,
+    photos: List<PhotoPostUi>,
     onSelectPhoto: (String) -> Unit
 ) {
     var selectedPin by remember { mutableStateOf<String?>(null) }

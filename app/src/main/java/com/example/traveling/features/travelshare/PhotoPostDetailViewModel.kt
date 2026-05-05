@@ -3,8 +3,8 @@ package com.example.traveling.features.travelshare
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.traveling.data.model.PhotoPostComment
-import com.example.traveling.data.model.PhotoPostDetail
+import com.example.traveling.features.travelshare.model.PhotoPostCommentUi
+import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 // ─── 页面状态密封类 ───
 sealed class PhotoPostDetailUiState {
     object Loading : PhotoPostDetailUiState()
-    data class Success(val photo: PhotoPostDetail) : PhotoPostDetailUiState()
+    data class Success(val photo: PhotoPostDetailUi) : PhotoPostDetailUiState()
     data class Error(val message: String) : PhotoPostDetailUiState()
 }
 
@@ -48,16 +48,16 @@ class PhotoPostDetailViewModel : ViewModel() {
     }
 
     // ─── 模拟数据库查询 (已更新 Figma 完整数据) ───
-    private fun fetchPhotoFromDatabase(id: String): PhotoPostDetail? {
+    private fun fetchPhotoFromDatabase(id: String): PhotoPostDetailUi? {
         // 构建模拟的评论列表
         val mockComments = listOf(
-            PhotoPostComment("c1", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), "Magnifique ! La lumière est parfaite, comme une peinture.", "Il y a 2 heures", 15),
-            PhotoPostComment("c2", "Wang Wanqing", "W", Color(0xFFD97706), "J'y suis allé le mois dernier, c'est encore plus impressionnant en vrai !", "Il y a 5 heures", 32),
-            PhotoPostComment("c3", "Chen Minghui", "C", Color(0xFF0D9488), "Quel objectif avez-vous utilisé ?", "Il y a 1 jour", 4)
+            PhotoPostCommentUi("c1", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), "Magnifique ! La lumière est parfaite, comme une peinture.", "Il y a 2 heures", 15),
+            PhotoPostCommentUi("c2", "Wang Wanqing", "W", Color(0xFFD97706), "J'y suis allé le mois dernier, c'est encore plus impressionnant en vrai !", "Il y a 5 heures", 32),
+            PhotoPostCommentUi("c3", "Chen Minghui", "C", Color(0xFF0D9488), "Quel objectif avez-vous utilisé ?", "Il y a 1 jour", 4)
         )
 
         // 返回完整的 PhotoDetail 对象
-        return PhotoPostDetail(
+        return PhotoPostDetailUi(
             id = id,
             imageUrls = listOf(
                 "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800",

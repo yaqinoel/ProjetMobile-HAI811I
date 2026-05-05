@@ -40,19 +40,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
 // ─── 数据模型 ───
 data class Story(val id: String, val name: String, val avatar: String, val color: Color, val hasNew: Boolean)
-
-data class PhotoPost(
-    val id: String, val imageUrl: String, val location: String, val country: String,
-    val date: String, val author: String, val authorAvatar: String, val authorColor: Color,
-    val likes: Int, val isLiked: Boolean, val isSaved: Boolean,
-    val description: String, val comments: Int, val tags: List<String>,
-    val placeType: String, val period: String
-)
 
 private data class PhotoFilterOption(val id: String, val label: String)
 
@@ -91,17 +84,17 @@ val STORIES = listOf(
 )
 
 val INITIAL_PHOTOS = listOf(
-    PhotoPost("1", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, false, false, "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. Au lever du soleil, la lumière dorée illumine les remparts.", 42, listOf("Grande Muraille", "Lever du soleil", "Monument"), "monument", "3months"),
-    PhotoPost("2", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Les murs rouges et les tuiles dorées de la Cité Interdite portent 600 ans d'histoire.", 89, listOf("Cité Interdite", "Architecture", "Impérial"), "architecture", "3months"),
-    PhotoPost("3", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Paysages de Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, false, false, "Les paysages de Guilin sont les plus beaux du monde.", 35, listOf("Guilin", "Paysage", "Nature"), "nature", "3months"),
-    PhotoPost("4", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, false, false, "Zhangjiajie ressemble à un paradis. Lieu de tournage d'Avatar !", 28, listOf("Zhangjiajie", "Nuages", "Nature"), "nature", "3months")
+    PhotoPostUi("1", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, false, false, "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. Au lever du soleil, la lumière dorée illumine les remparts.", 42, listOf("Grande Muraille", "Lever du soleil", "Monument"), "monument", "3months"),
+    PhotoPostUi("2", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Les murs rouges et les tuiles dorées de la Cité Interdite portent 600 ans d'histoire.", 89, listOf("Cité Interdite", "Architecture", "Impérial"), "architecture", "3months"),
+    PhotoPostUi("3", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Paysages de Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, false, false, "Les paysages de Guilin sont les plus beaux du monde.", 35, listOf("Guilin", "Paysage", "Nature"), "nature", "3months"),
+    PhotoPostUi("4", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, false, false, "Zhangjiajie ressemble à un paradis. Lieu de tournage d'Avatar !", 28, listOf("Zhangjiajie", "Nuages", "Nature"), "nature", "3months")
 )
 
 // ─── 核心 UI ───
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
-    publishedPhotos: List<PhotoPost> = emptyList(),
+    publishedPhotos: List<PhotoPostUi> = emptyList(),
     onOpenNotifications: () -> Unit = {},
     onPhotoClick: (String) -> Unit = {}
 ) {
@@ -452,7 +445,7 @@ private fun StoriesRow(isAnonymous: Boolean) {
 // ─── List 列表视图 (详细卡片) ───
 @Composable
 private fun PhotoListView(
-    photos: List<PhotoPost>,
+    photos: List<PhotoPostUi>,
     onLike: (String) -> Unit,
     onSave: (String) -> Unit,
     onReport: (String) -> Unit,
@@ -549,7 +542,7 @@ private fun PhotoListView(
 
 // ─── Grid 网格视图 ───
 @Composable
-private fun PhotoGridView(photos: List<PhotoPost>, onPhotoClick: (String) -> Unit) {
+private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(12.dp),

@@ -31,8 +31,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 
 // 导入数据模型
-import com.example.traveling.data.model.PhotoPostComment
-import com.example.traveling.data.model.PhotoPostDetail
+import com.example.traveling.features.travelshare.model.PhotoPostCommentUi
+import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -91,7 +91,7 @@ fun PhotoPostDetailScreen(
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun PhotoPostDetailContent(
-    photo: PhotoPostDetail,
+    photo: PhotoPostDetailUi,
     isAnonymous: Boolean,
     onBack: () -> Unit,
     onNavigateLogin: () -> Unit,
@@ -261,7 +261,7 @@ private fun PhotoPostDetailContent(
                         Surface(
                             onClick = {
                                 if (newComment.isNotBlank()) {
-                                    comments = comments + PhotoPostComment(
+                                    comments = comments + PhotoPostCommentUi(
                                         id = "local-${comments.size + 1}",
                                         author = "Vous",
                                         avatar = "V",
