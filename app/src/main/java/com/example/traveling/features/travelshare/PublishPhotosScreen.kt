@@ -34,8 +34,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -45,7 +45,7 @@ private const val MAX_SELECTED_PHOTOS = 14
 @Composable
 fun PublishPhotosScreen(
     onBack: () -> Unit = {},
-    onPublish: (PhotoPostUi) -> Unit = {},
+    onPublishSuccess: (String) -> Unit = {},
     onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
     // États Obligatoires (Required)
@@ -68,6 +68,8 @@ fun PublishPhotosScreen(
     var publishPreview by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val publishViewModel: PublishPhotosViewModel = viewModel()
+    val publishState by publishViewModel.uiState.collectAsState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTED_PHOTOS)
@@ -110,6 +112,21 @@ fun PublishPhotosScreen(
         tagInput = ""
     }
 
+    LaunchedEffect(publishState) {
+        when (val state = publishState) {
+            is PublishUiState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                publishViewModel.resetState()
+            }
+            is PublishUiState.Success -> {
+                snackbarHostState.showSnackbar("Publication réussie")
+                publishViewModel.resetState()
+                onPublishSuccess(state.postId)
+            }
+            else -> Unit
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
         Column(
             modifier = Modifier
@@ -128,9 +145,17 @@ fun PublishPhotosScreen(
                 onClick = {
                     publishPreview = true
                 },
-                enabled = title.isNotBlank() && selectedPhotos.isNotEmpty() && locationName.isNotBlank()
+                enabled = title.isNotBlank() &&
+                    selectedPhotos.isNotEmpty() &&
+                    locationName.isNotBlank() &&
+                    publishState !is PublishUiState.Uploading
             ) {
-                Text("Publier", color = if (title.isNotBlank()) RedPrimary else Stone400, fontWeight = FontWeight.Bold)
+                val uploading = publishState is PublishUiState.Uploading
+                Text(
+                    if (uploading) "Publication..." else "Publier",
+                    color = if (title.isNotBlank()) RedPrimary else Stone400,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -543,31 +568,30 @@ fun PublishPhotosScreen(
                 Button(
                     onClick = {
                         publishPreview = false
-                        onPublish(
-                            PhotoPostUi(
-                                id = "local-${System.currentTimeMillis()}",
-                                imageUrl = selectedPhotos.first(),
-                                location = locationName.substringBefore(","),
-                                country = locationName.substringAfter(",", "France").trim(),
-                                date = "À l'instant",
-                                author = "Vous",
-                                authorAvatar = "V",
-                                authorColor = RedPrimary,
-                                likes = 0,
-                                isLiked = false,
-                                isSaved = false,
-                                description = description.ifBlank { title },
-                                comments = 0,
-                                tags = selectedTags.ifEmpty { listOf("Voyage") },
-                                placeType = selectedCategory?.lowercase() ?: "street",
-                                period = "week"
-                            )
+                        publishViewModel.publish(
+                            selectedPhotoUris = selectedPhotos,
+                            title = title,
+                            description = description.ifBlank { title },
+                            locationName = locationName,
+                            locationPrecision = locationPrecision,
+                            visibility = visibility,
+                            selectedGroup = selectedGroup,
+                            tags = selectedTags.ifEmpty { listOf("Voyage") },
+                            placeType = selectedCategory?.lowercase() ?: "street",
+                            isLinkedToTravelPath = isLinkedToPath
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
+                    enabled = publishState !is PublishUiState.Uploading
                 ) {
-                    Text("Publier")
+                    Text(
+                        if (publishState is PublishUiState.Uploading) {
+                            (publishState as PublishUiState.Uploading).progressText
+                        } else {
+                            "Publier"
+                        }
+                    )
                 }
             }
         }
