@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
@@ -94,12 +95,23 @@ val INITIAL_PHOTOS = listOf(
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
-    publishedPhotos: List<PhotoPostUi> = emptyList(),
     onOpenNotifications: () -> Unit = {},
     onPhotoClick: (String) -> Unit = {}
 ) {
+    val galleryViewModel: GalleryViewModel = viewModel()
+    val galleryState by galleryViewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        galleryViewModel.observePublicPosts()
+    }
+
+    val remotePosts = when (val state = galleryState) {
+        is GalleryUiState.Success -> state.posts
+        else -> emptyList()
+    }
+
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
-    var photos by remember(publishedPhotos) { mutableStateOf(publishedPhotos + INITIAL_PHOTOS) }
+    var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("all") }
@@ -108,6 +120,12 @@ fun GalleryScreen(
     var isVoiceSearchActive by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(galleryState) {
+        if (galleryState is GalleryUiState.Success) {
+            photos = remotePosts
+        }
+    }
 
     val filteredPhotos = remember(photos, searchQuery, selectedType, selectedPeriod, selectedDiscovery) {
         photos.filter { photo ->
@@ -158,7 +176,12 @@ fun GalleryScreen(
             )
 
             Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
-                if (filteredPhotos.isEmpty()) {
+                if (galleryState is GalleryUiState.Error) {
+                    val message = (galleryState as GalleryUiState.Error).message
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(message, color = StoneMuted, fontSize = 13.sp)
+                    }
+                } else if (filteredPhotos.isEmpty()) {
                     EmptyPhotoResults()
                 } else {
                     when (mode) {
