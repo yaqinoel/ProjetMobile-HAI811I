@@ -1,10 +1,8 @@
 package com.example.traveling.core.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,7 +19,6 @@ import com.example.traveling.features.profile.LikedPostsScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
 import com.example.traveling.features.travelshare.GroupsScreen
-import com.example.traveling.features.travelshare.PhotoPost
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
@@ -31,7 +28,6 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
     val startDest = if (auth.currentUser != null) "main" else "home"
-    var publishedPhotos by remember { mutableStateOf<List<PhotoPost>>(emptyList()) }
 
     NavHost(navController = navController, startDestination = startDest) {
         composable("home") {
@@ -91,9 +87,7 @@ fun AppNavigation() {
                     // Cancels publishing, goes back to where the user came from
                     navController.popBackStack()
                 },
-                onPublish = { photo ->
-                    publishedPhotos = listOf(photo) + publishedPhotos
-                    // Static publish confirmation is handled inside PublishPhotosScreen.
+                onPublishSuccess = {
                     navController.navigate("main") {
                         popUpTo("main") { inclusive = true }
                     }
@@ -145,6 +139,8 @@ fun AppNavigation() {
                     auth.signOut()
                     navController.navigate("home") { popUpTo(0) { inclusive = true } }
                 },
+                onNavigateLogin = { navController.navigate("login") },
+                onNavigateRegister = { navController.navigate("register") },
                 onNavigateToNotifications = { navController.navigate("notifications") },
                 onNavigateToGroups = { navController.navigate("groups") },
                 onNavigateToMyPublishedPosts = { navController.navigate("my_published_posts") },
@@ -153,8 +149,7 @@ fun AppNavigation() {
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
-                },
-                publishedPhotos = publishedPhotos
+                }
             )
         }
 
@@ -171,8 +166,7 @@ fun AppNavigation() {
                 // 匿名状态下如果也允许看照片详情，也把回调接上
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail_anonymous/$photoId")
-                },
-                publishedPhotos = publishedPhotos
+                }
             )
         }
 

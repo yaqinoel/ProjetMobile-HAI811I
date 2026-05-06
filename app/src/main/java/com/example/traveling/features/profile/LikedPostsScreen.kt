@@ -28,15 +28,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.traveling.features.travelshare.PhotoPost
+import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
 private val MOCK_LIKED_POSTS = listOf(
-    PhotoPost("201", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, true, false, "Les pics karstiques de Guilin", 35, listOf("Nature", "Montagne"), "nature", "3months"),
-    PhotoPost("202", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Architecture impériale", 89, listOf("Musée", "Architecture"), "museum", "3months"),
-    PhotoPost("203", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, true, false, "Falaises de grès", 28, listOf("Nature", "Rue"), "street", "3months"),
-    PhotoPost("204", "https://images.unsplash.com/photo-1586862118451-efc84a66e704?w=800", "Xi'an", "Shaanxi, Chine", "01 mars 2026", "Lin Yuxuan", "L", Color(0xFF2563EB), 645, true, true, "Marché street food du soir", 18, listOf("Food", "Rue"), "street", "month")
+    PhotoPostUi("201", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, true, false, "Les pics karstiques de Guilin", 35, listOf("Nature", "Montagne"), "nature", "3months"),
+    PhotoPostUi("202", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Architecture impériale", 89, listOf("Musée", "Architecture"), "museum", "3months"),
+    PhotoPostUi("203", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, true, false, "Falaises de grès", 28, listOf("Nature", "Rue"), "street", "3months"),
+    PhotoPostUi("204", "https://images.unsplash.com/photo-1586862118451-efc84a66e704?w=800", "Xi'an", "Shaanxi, Chine", "01 mars 2026", "Lin Yuxuan", "L", Color(0xFF2563EB), 645, true, true, "Marché street food du soir", 18, listOf("Food", "Rue"), "street", "month")
 )
 
 @Composable
@@ -148,7 +148,7 @@ fun LikedPostsScreen(
 
 @Composable
 private fun LikedPostListCard(
-    post: PhotoPost,
+    post: PhotoPostUi,
     onOpen: () -> Unit,
     onUnlike: () -> Unit,
     onToggleSave: () -> Unit,
@@ -177,7 +177,7 @@ private fun LikedPostListCard(
 
 @Composable
 private fun LikedPostGridCard(
-    post: PhotoPost,
+    post: PhotoPostUi,
     onOpen: () -> Unit,
     onUnlike: () -> Unit
 ) {

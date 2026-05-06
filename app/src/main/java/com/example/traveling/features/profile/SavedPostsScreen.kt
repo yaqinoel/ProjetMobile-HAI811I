@@ -28,12 +28,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.traveling.features.travelshare.PhotoPost
+import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
 private data class SavedPostUi(
-    val post: PhotoPost,
+    val post: PhotoPostUi,
     val category: String,
     val savedAt: String,
     val linkedToTravelPath: Boolean = false,
@@ -42,24 +42,24 @@ private data class SavedPostUi(
 
 private val MOCK_SAVED_POSTS = listOf(
     SavedPostUi(
-        post = PhotoPost("301", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, true, true, "Lever de soleil à Badaling", 42, listOf("À visiter", "Monument"), "monument", "3months"),
+        post = PhotoPostUi("301", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, true, true, "Lever de soleil à Badaling", 42, listOf("À visiter", "Monument"), "monument", "3months"),
         category = "À visiter",
         savedAt = "Enregistré il y a 2 jours",
         linkedToTravelPath = true
     ),
     SavedPostUi(
-        post = PhotoPost("302", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, true, true, "Montagnes dans la brume", 35, listOf("Inspiration", "Nature"), "nature", "month"),
+        post = PhotoPostUi("302", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, true, true, "Montagnes dans la brume", 35, listOf("Inspiration", "Nature"), "nature", "month"),
         category = "Inspiration",
         savedAt = "Enregistré il y a 5 jours"
     ),
     SavedPostUi(
-        post = PhotoPost("303", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Perspective des palais", 89, listOf("TravelPath", "Architecture"), "museum", "month"),
+        post = PhotoPostUi("303", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Perspective des palais", 89, listOf("TravelPath", "Architecture"), "museum", "month"),
         category = "TravelPath",
         savedAt = "Enregistré il y a 1 semaine",
         linkedToTravelPath = true
     ),
     SavedPostUi(
-        post = PhotoPost("304", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, true, true, "Falaises vertes", 28, listOf("Groupes", "Nature"), "nature", "3months"),
+        post = PhotoPostUi("304", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, true, true, "Falaises vertes", 28, listOf("Groupes", "Nature"), "nature", "3months"),
         category = "Groupes",
         savedAt = "Enregistré il y a 10 jours",
         groupName = "Photo Paysages"

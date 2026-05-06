@@ -24,13 +24,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.traveling.features.travelshare.PhotoPost
+import com.example.traveling.data.model.PhotoPostDocument
+import com.example.traveling.features.travelshare.model.PhotoPostUi
+import com.example.traveling.features.travelshare.model.toPhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
 private data class ProfilePostUi(
-    val post: PhotoPost,
+    val post: PhotoPostUi,
     val title: String,
     val visibility: String,
     val groupName: String? = null,
@@ -40,47 +43,32 @@ private data class ProfilePostUi(
     val description: String = post.description
 )
 
-private val MOCK_MY_POSTS = listOf(
-    ProfilePostUi(
-        post = PhotoPost("101", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Vous", "V", Color(0xFFB91C1C), 1234, true, true, "Aube dorée sur la muraille", 42, listOf("Monument", "Aube"), "monument", "3months"),
-        title = "Grande Muraille à l'aube",
-        visibility = "Public",
-        linkedToTravelPath = true
-    ),
-    ProfilePostUi(
-        post = PhotoPost("102", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Vous", "V", Color(0xFFB91C1C), 934, true, false, "Lumières du soir", 21, listOf("Architecture", "Ville"), "architecture", "month"),
-        title = "Rouge impérial",
-        visibility = "Groupe",
-        groupName = "Voyageurs de Chine"
-    ),
-    ProfilePostUi(
-        post = PhotoPost("103", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "02 mars 2026", "Vous", "V", Color(0xFFB91C1C), 640, false, true, "Brume et rivière", 17, listOf("Nature", "Montagne"), "nature", "month"),
-        title = "Matin brumeux à Guilin",
-        visibility = "Public",
-        isReported = true
-    ),
-    ProfilePostUi(
-        post = PhotoPost("104", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "20 fév 2026", "Vous", "V", Color(0xFFB91C1C), 510, true, false, "Falaises verticales", 12, listOf("Nature", "Avatar"), "nature", "3months"),
-        title = "Pics de Zhangjiajie",
-        visibility = "Groupe",
-        groupName = "Photo Paysages",
-        isDraft = true
-    )
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyPublishedPostsScreen(
     onBack: () -> Unit = {},
     onOpenPhotoDetail: (String) -> Unit = {}
 ) {
-    var posts by remember { mutableStateOf(MOCK_MY_POSTS) }
+    val viewModel: MyPublishedPostsViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    var posts by remember { mutableStateOf(emptyList<ProfilePostUi>()) }
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tous") }
     var editingPostId by remember { mutableStateOf<String?>(null) }
     var deletingPostId by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.observeMyPosts()
+    }
+
+    LaunchedEffect(uiState) {
+        val state = uiState
+        if (state is MyPublishedUiState.Success) {
+            posts = state.posts.map { it.toProfilePostUi() }
+        }
+    }
 
     val filtered = remember(posts, query, selectedFilter) {
         posts.filter { item ->
@@ -146,14 +134,31 @@ fun MyPublishedPostsScreen(
                 }
             }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(filtered, key = { it.post.id }) { item ->
-                    PublishedPostCard(
-                        item = item,
-                        onView = { onOpenPhotoDetail(item.post.id) },
-                        onEdit = { editingPostId = item.post.id },
-                        onDelete = { deletingPostId = item.post.id }
+            when (val state = uiState) {
+                MyPublishedUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = RedPrimary)
+                    }
+                }
+                is MyPublishedUiState.Error -> {
+                    Text(
+                        text = state.message,
+                        color = StoneMuted,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 16.dp)
                     )
+                }
+                is MyPublishedUiState.Success -> {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        items(filtered, key = { it.post.id }) { item ->
+                            PublishedPostCard(
+                                item = item,
+                                onView = { onOpenPhotoDetail(item.post.id) },
+                                onEdit = { editingPostId = item.post.id },
+                                onDelete = { deletingPostId = item.post.id }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -186,6 +191,20 @@ fun MyPublishedPostsScreen(
             text = { Text("Cette action retire le post de votre liste locale.") }
         )
     }
+}
+
+private fun PhotoPostDocument.toProfilePostUi(): ProfilePostUi {
+    val ui = toPhotoPostUi(isLiked = false, isSaved = false)
+    return ProfilePostUi(
+        post = ui,
+        title = title.ifBlank { ui.location },
+        visibility = if (visibility == "group") "Groupe" else "Public",
+        groupName = groupName,
+        linkedToTravelPath = isLinkedToTravelPath,
+        isReported = status == "reported",
+        isDraft = status == "draft",
+        description = description.ifBlank { title }
+    )
 }
 
 @Composable

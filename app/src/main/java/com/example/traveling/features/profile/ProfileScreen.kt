@@ -14,6 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,8 +30,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.google.firebase.auth.FirebaseAuth
+import com.example.traveling.data.model.User
 import com.example.traveling.ui.theme.*
 
 
@@ -75,20 +79,56 @@ fun ProfileScreen(
     onOpenLikedPosts: () -> Unit = {},
     onOpenSavedPosts: () -> Unit = {}
 ) {
-    val currentUser = FirebaseAuth.getInstance().currentUser
-    val userName = currentUser?.displayName ?: "Voyageur"
     if (isAnonymous) {
         AnonymousProfileView(onNavigateLogin, onNavigateRegister)
     } else {
-        AuthenticatedProfileView(
-            userName = userName,
-            onLogout = onLogout,
-            onOpenNotifications = onOpenNotifications,
-            onOpenGroups = onOpenGroups,
-            onOpenMyPhotos = onOpenMyPhotos,
-            onOpenLikedPosts = onOpenLikedPosts,
-            onOpenSavedPosts = onOpenSavedPosts
-        )
+        val profileViewModel: ProfileViewModel = viewModel()
+        val uiState by profileViewModel.uiState.collectAsState()
+
+        LaunchedEffect(Unit) {
+            profileViewModel.observeCurrentUser()
+        }
+
+        when (val state = uiState) {
+            ProfileUiState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(ProfilePageBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = RedPrimary)
+                }
+            }
+            is ProfileUiState.Error -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(ProfilePageBg).padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Erreur de profil", color = Stone800, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        Text(state.message, color = StoneMuted, textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(16.dp))
+                        OutlinedButton(
+                            onClick = onLogout,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Retour à l'accueil")
+                        }
+                    }
+                }
+            }
+            is ProfileUiState.Success -> {
+                AuthenticatedProfileView(
+                    user = state.user,
+                    onLogout = onLogout,
+                    onOpenNotifications = onOpenNotifications,
+                    onOpenGroups = onOpenGroups,
+                    onOpenMyPhotos = onOpenMyPhotos,
+                    onOpenLikedPosts = onOpenLikedPosts,
+                    onOpenSavedPosts = onOpenSavedPosts
+                )
+            }
+        }
     }
 }
 
@@ -153,7 +193,7 @@ private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
 // ─── 已登录状态视图 ───
 @Composable
 private fun AuthenticatedProfileView(
-    userName: String,
+    user: User,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenGroups: () -> Unit,
@@ -173,10 +213,10 @@ private fun AuthenticatedProfileView(
     )
 
     val stats = listOf(
-        ProfileStat("Photos", "12", Icons.Default.PhotoCamera, action = onOpenMyPhotos),
-        ProfileStat("Favoris", "42", Icons.Default.Favorite, action = onOpenLikedPosts),
-        ProfileStat("Enregistrés", "18", Icons.Default.Bookmark, action = onOpenSavedPosts),
-        ProfileStat("Lieux", "23", Icons.Default.LocationOn)
+        ProfileStat("Photos", user.postCount.toString(), Icons.Default.PhotoCamera, action = onOpenMyPhotos),
+        ProfileStat("Favoris", user.likedCount.toString(), Icons.Default.Favorite, action = onOpenLikedPosts),
+        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts),
+        ProfileStat("Groupes", user.groupCount.toString(), Icons.Default.Group)
     )
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
@@ -214,13 +254,18 @@ private fun AuthenticatedProfileView(
                             .border(3.dp, Color(0x80FCD34D), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("L", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        val avatarInitial = user.displayName.firstOrNull()?.uppercase() ?: "V"
+                        Text(avatarInitial, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.width(16.dp))
                     // 资料
                     Column {
-                        Text(userName, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text("Photographe voyage · 23 villes visitées", color = Color.White.copy(0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                        Text(user.displayName.ifBlank { "Voyageur" }, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        val subtitle = listOfNotNull(
+                            user.bio?.takeIf { it.isNotBlank() },
+                            user.homeCity?.takeIf { it.isNotBlank() }
+                        ).joinToString(" · ").ifBlank { "Voyageur" }
+                        Text(subtitle, color = Color.White.copy(0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                             Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
@@ -329,7 +374,25 @@ private fun AuthenticatedProfileView(
 @Preview(showBackground = true, name = "Connecté")
 @Composable
 fun ProfileScreenPreview() {
-    ProfileScreen(isAnonymous = false)
+    AuthenticatedProfileView(
+        user = User(
+            userId = "preview",
+            displayName = "Voyageur Preview",
+            email = "preview@example.com",
+            bio = "Travel photographer",
+            homeCity = "Montpellier",
+            postCount = 12,
+            likedCount = 42,
+            savedCount = 18,
+            groupCount = 3
+        ),
+        onLogout = {},
+        onOpenNotifications = {},
+        onOpenGroups = {},
+        onOpenMyPhotos = {},
+        onOpenLikedPosts = {},
+        onOpenSavedPosts = {}
+    )
 }
 
 @Preview(showBackground = true, name = "Anonyme")
