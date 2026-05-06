@@ -29,8 +29,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.traveling.data.repository.UserRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.ui.theme.*
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +44,8 @@ fun LoginScreen(
     onNavigateForgotPwd: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val userRepository = remember { UserRepository() }
+    val coroutineScope = rememberCoroutineScope()
 
     // 状态管理
     var email by remember { mutableStateOf("") }
@@ -180,11 +184,38 @@ fun LoginScreen(
                             errorMessage = null
                             FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password)
                                 .addOnCompleteListener { task ->
-                                    isLoading = false
                                     if (task.isSuccessful) {
-                                        Toast.makeText(context, "Connexion réussie !", Toast.LENGTH_SHORT).show()
-                                        onLoginSuccess()
+                                        val currentUser = FirebaseAuth.getInstance().currentUser
+                                        val uid = currentUser?.uid
+                                        if (uid == null) {
+                                            isLoading = false
+                                            errorMessage = "Utilisateur introuvable après connexion"
+                                            return@addOnCompleteListener
+                                        }
+
+                                        coroutineScope.launch {
+                                            try {
+                                                val userDoc = userRepository.getUser(uid)
+                                                if (userDoc == null) {
+                                                    userRepository.createUserDocumentIfMissing(
+                                                        userId = uid,
+                                                        displayName = currentUser.displayName ?: email.substringBefore("@"),
+                                                        email = currentUser.email ?: email
+                                                    )
+                                                } else {
+                                                    userRepository.updateLastLoginAt(uid)
+                                                }
+                                                isLoading = false
+                                                Toast.makeText(context, "Connexion réussie !", Toast.LENGTH_SHORT).show()
+                                                onLoginSuccess()
+                                            } catch (e: Exception) {
+                                                isLoading = false
+                                                errorMessage = e.localizedMessage
+                                                    ?: "Échec de la synchronisation du profil"
+                                            }
+                                        }
                                     } else {
+                                        isLoading = false
                                         errorMessage = task.exception?.localizedMessage ?: "Échec de la connexion"
                                     }
                                 }

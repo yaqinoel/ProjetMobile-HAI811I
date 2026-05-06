@@ -35,7 +35,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.traveling.data.repository.UserRepository
 import com.example.traveling.ui.theme.*
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +48,8 @@ fun RegisterScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val userRepository = remember { UserRepository() }
+    val coroutineScope = rememberCoroutineScope()
 
     // 状态管理
     var name by remember { mutableStateOf("") }
@@ -194,20 +198,42 @@ fun RegisterScreen(
                             errorMessage = null
                             val auth = FirebaseAuth.getInstance()
 
-                            // 1. 创建用户
+                            // 1. Créer utilisateur Firebase Auth
                             auth.createUserWithEmailAndPassword(email, password)
                                 .addOnCompleteListener { task ->
                                     if (task.isSuccessful) {
-                                        // 2. 注册成功后，立刻更新用户的名字 (Display Name)
+                                        // 2. Mettre à jour displayName côté Firebase Auth
                                         val user = auth.currentUser
+                                        val uid = user?.uid
                                         val profileUpdates = UserProfileChangeRequest.Builder()
                                             .setDisplayName(name)
                                             .build()
 
-                                        user?.updateProfile(profileUpdates)?.addOnCompleteListener {
-                                            isLoading = false
-                                            Toast.makeText(context, "Compte créé avec succès !", Toast.LENGTH_SHORT).show()
-                                            onRegisterSuccess() // 跳转到首页
+                                        user?.updateProfile(profileUpdates)?.addOnCompleteListener { updateTask ->
+                                            if (!updateTask.isSuccessful || uid == null) {
+                                                isLoading = false
+                                                errorMessage = updateTask.exception?.localizedMessage
+                                                    ?: "Échec de la mise à jour du profil"
+                                                return@addOnCompleteListener
+                                            }
+
+                                            // 3. Initialiser users/{uid} dans Firestore
+                                            coroutineScope.launch {
+                                                try {
+                                                    userRepository.createUserDocumentIfMissing(
+                                                        userId = uid,
+                                                        displayName = name,
+                                                        email = email
+                                                    )
+                                                    isLoading = false
+                                                    Toast.makeText(context, "Compte créé avec succès !", Toast.LENGTH_SHORT).show()
+                                                    onRegisterSuccess()
+                                                } catch (e: Exception) {
+                                                    isLoading = false
+                                                    errorMessage = e.localizedMessage
+                                                        ?: "Échec de l'initialisation du profil"
+                                                }
+                                            }
                                         }
                                     } else {
                                         isLoading = false
