@@ -23,7 +23,6 @@ import com.example.traveling.ui.theme.*
 import com.example.traveling.features.profile.ProfileScreen
 import com.example.traveling.features.travelpath.TravelPathScreen
 import com.example.traveling.features.travelshare.GalleryScreen
-import com.example.traveling.features.travelshare.PhotoPost
 
 // Tab 定义
 enum class MainTab(
@@ -48,8 +47,7 @@ fun MainScreen(
     onNavigateToLikedPosts: () -> Unit = {},
     onNavigateToSavedPosts: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
-    onNavigateToPhotoDetail: (String) -> Unit = {},
-    publishedPhotos: List<PhotoPost> = emptyList()
+    onNavigateToPhotoDetail: (String) -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -75,7 +73,6 @@ fun MainScreen(
             when (selectedTab) {
                 MainTab.PHOTOS -> GalleryScreen(
                     isAnonymous = isAnonymous,
-                    publishedPhotos = publishedPhotos,
                     onOpenNotifications = onNavigateToNotifications,
                     onPhotoClick = onNavigateToPhotoDetail // 👈 2. 把它传给 GalleryScreen
                 )

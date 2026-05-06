@@ -31,7 +31,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 
 // 导入数据模型
-import com.example.traveling.features.travelshare.model.PhotoPostCommentUi
 import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
@@ -80,7 +79,8 @@ fun PhotoPostDetailScreen(
                 isAnonymous = isAnonymous,
                 onBack = onBack,
                 onNavigateLogin = onNavigateLogin,
-                onNavigateRegister = onNavigateRegister
+                onNavigateRegister = onNavigateRegister,
+                viewModel = viewModel
             )
         }
     }
@@ -95,16 +95,13 @@ private fun PhotoPostDetailContent(
     isAnonymous: Boolean,
     onBack: () -> Unit,
     onNavigateLogin: () -> Unit,
-    onNavigateRegister: () -> Unit
+    onNavigateRegister: () -> Unit,
+    viewModel: PhotoPostDetailViewModel
 ) {
     val pagerState = rememberPagerState(pageCount = { photo.imageUrls.size })
     var newComment by remember { mutableStateOf("") }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
-    var isLiked by remember(photo.id) { mutableStateOf(photo.isLiked) }
-    var likes by remember(photo.id) { mutableStateOf(photo.likes) }
-    var isSaved by remember(photo.id) { mutableStateOf(photo.isSaved) }
-    var comments by remember(photo.id) { mutableStateOf(photo.commentsList) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -261,15 +258,7 @@ private fun PhotoPostDetailContent(
                         Surface(
                             onClick = {
                                 if (newComment.isNotBlank()) {
-                                    comments = comments + PhotoPostCommentUi(
-                                        id = "local-${comments.size + 1}",
-                                        author = "Vous",
-                                        avatar = "V",
-                                        color = RedPrimary,
-                                        text = newComment.trim(),
-                                        date = "À l'instant",
-                                        likes = 0
-                                    )
+                                    viewModel.addComment(newComment)
                                     newComment = ""
                                 }
                             },
@@ -327,28 +316,27 @@ private fun PhotoPostDetailContent(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable {
-                            isLiked = !isLiked
-                            likes = if (isLiked) likes + 1 else (likes - 1).coerceAtLeast(0)
+                            viewModel.toggleLike()
                         }
                     ) {
-                        Icon(if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (isLiked) Color.Red else Stone600, modifier = Modifier.size(22.dp))
+                        Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, null, tint = if (photo.isLiked) Color.Red else Stone600, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("$likes", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("${photo.likes}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.ChatBubbleOutline, null, tint = Stone600, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(6.dp))
                         // 👈 这里动态读取了真实的评论列表长度
-                        Text("${comments.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                        Text("${photo.commentsList.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
                     Icon(Icons.Outlined.Share, null, tint = Stone600, modifier = Modifier.size(20.dp))
                     Icon(Icons.Outlined.Flag, null, tint = Stone600, modifier = Modifier.size(20.dp).clickable { showReportSheet = true })
                 }
                 Icon(
-                    if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
+                    if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
                     null,
-                    tint = if (isSaved) AmberAccent else Stone600,
-                    modifier = Modifier.size(22.dp).clickable { isSaved = !isSaved }
+                    tint = if (photo.isSaved) AmberAccent else Stone600,
+                    modifier = Modifier.size(22.dp).clickable { viewModel.toggleSave() }
                 )
             }
 
@@ -457,12 +445,12 @@ private fun PhotoPostDetailContent(
                 Spacer(Modifier.height(32.dp))
 
                 // ─── 6. 真实的评论列表 ───
-                Text("Commentaires (${comments.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text("Commentaires (${photo.commentsList.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                 Spacer(Modifier.height(16.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // 👈 动态遍历 viewModel 传过来的评论列表
-                    comments.forEach { comment ->
+                    photo.commentsList.forEach { comment ->
                         Row(verticalAlignment = Alignment.Top) {
                             Box(modifier = Modifier.size(32.dp).background(comment.color, CircleShape), contentAlignment = Alignment.Center) {
                                 Text(comment.avatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
