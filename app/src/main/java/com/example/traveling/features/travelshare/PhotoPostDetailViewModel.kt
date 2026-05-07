@@ -127,6 +127,19 @@ class PhotoPostDetailViewModel(
         }
     }
 
+    fun reportPost(reason: String, description: String? = null) {
+        val postId = currentPostId ?: return
+        val reporterId = auth.currentUser?.uid
+        viewModelScope.launch {
+            repository.reportPost(
+                postId = postId,
+                reporterId = reporterId,
+                reason = reason,
+                description = description
+            )
+        }
+    }
+
     private fun publishUiState(isLiked: Boolean = false, isSaved: Boolean = false) {
         val post = currentPost
         if (post == null) {

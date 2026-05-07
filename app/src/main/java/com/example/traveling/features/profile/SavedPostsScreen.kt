@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
@@ -40,43 +41,30 @@ private data class SavedPostUi(
     val groupName: String? = null
 )
 
-private val MOCK_SAVED_POSTS = listOf(
-    SavedPostUi(
-        post = PhotoPostUi("301", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, true, true, "Lever de soleil à Badaling", 42, listOf("À visiter", "Monument"), "monument", "3months"),
-        category = "À visiter",
-        savedAt = "Enregistré il y a 2 jours",
-        linkedToTravelPath = true
-    ),
-    SavedPostUi(
-        post = PhotoPostUi("302", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=800", "Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, true, true, "Montagnes dans la brume", 35, listOf("Inspiration", "Nature"), "nature", "month"),
-        category = "Inspiration",
-        savedAt = "Enregistré il y a 5 jours"
-    ),
-    SavedPostUi(
-        post = PhotoPostUi("303", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Perspective des palais", 89, listOf("TravelPath", "Architecture"), "museum", "month"),
-        category = "TravelPath",
-        savedAt = "Enregistré il y a 1 semaine",
-        linkedToTravelPath = true
-    ),
-    SavedPostUi(
-        post = PhotoPostUi("304", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, true, true, "Falaises vertes", 28, listOf("Groupes", "Nature"), "nature", "3months"),
-        category = "Groupes",
-        savedAt = "Enregistré il y a 10 jours",
-        groupName = "Photo Paysages"
-    )
-)
-
 @Composable
 fun SavedPostsScreen(
     onBack: () -> Unit = {},
     onOpenPhotoDetail: (String) -> Unit = {}
 ) {
-    var posts by remember { mutableStateOf(MOCK_SAVED_POSTS) }
+    val viewModel: SavedPostsViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    var posts by remember { mutableStateOf(emptyList<SavedPostUi>()) }
     var query by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("Tous") }
     var viewMode by remember { mutableStateOf("Liste") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadSavedPosts()
+    }
+
+    LaunchedEffect(uiState) {
+        val state = uiState
+        if (state is SavedPostsUiState.Success) {
+            posts = state.posts.map { it.toSavedPostUi() }
+        }
+    }
 
     val filtered = remember(posts, query, selectedCategory) {
         posts.filter { item ->
@@ -133,7 +121,7 @@ fun SavedPostsScreen(
                             item = item,
                             onView = { onOpenPhotoDetail(item.post.id) },
                             onRemove = {
-                                posts = posts.filterNot { it.post.id == item.post.id }
+                                viewModel.unsave(item.post.id)
                                 scope.launch { snackbarHostState.showSnackbar("Retiré des enregistrements") }
                             },
                             onAddToTravelPath = {
@@ -154,7 +142,7 @@ fun SavedPostsScreen(
                             item = item,
                             onView = { onOpenPhotoDetail(item.post.id) },
                             onRemove = {
-                                posts = posts.filterNot { it.post.id == item.post.id }
+                                viewModel.unsave(item.post.id)
                                 scope.launch { snackbarHostState.showSnackbar("Retiré des enregistrements") }
                             }
                         )
@@ -163,6 +151,21 @@ fun SavedPostsScreen(
             }
         }
     }
+}
+
+private fun PhotoPostUi.toSavedPostUi(): SavedPostUi {
+    val category = when {
+        tags.any { it.equals("TravelPath", true) } -> "TravelPath"
+        tags.any { it.equals("Inspiration", true) } -> "Inspiration"
+        tags.any { it.equals("Groupes", true) } -> "Groupes"
+        else -> "À visiter"
+    }
+    return SavedPostUi(
+        post = this,
+        category = category,
+        savedAt = "Enregistré récemment",
+        linkedToTravelPath = tags.any { it.equals("TravelPath", true) }
+    )
 }
 
 @Composable

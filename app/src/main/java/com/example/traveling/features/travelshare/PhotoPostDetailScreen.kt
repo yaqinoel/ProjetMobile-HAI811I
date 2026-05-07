@@ -493,6 +493,7 @@ private fun PhotoPostDetailContent(
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable {
                             showReportSheet = false
+                            viewModel.reportPost(reason = reason)
                             coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré : $reason") }
                         }.padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically

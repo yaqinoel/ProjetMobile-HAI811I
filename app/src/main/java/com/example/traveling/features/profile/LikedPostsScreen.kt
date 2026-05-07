@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
@@ -44,12 +45,25 @@ fun LikedPostsScreen(
     onBack: () -> Unit = {},
     onOpenPhotoDetail: (String) -> Unit = {}
 ) {
-    var posts by remember { mutableStateOf(MOCK_LIKED_POSTS) }
+    val viewModel: LikedPostsViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+    var posts by remember { mutableStateOf(emptyList<PhotoPostUi>()) }
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tous") }
     var viewMode by remember { mutableStateOf("Liste") }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadLikedPosts()
+    }
+
+    LaunchedEffect(uiState) {
+        val state = uiState
+        if (state is LikedPostsUiState.Success) {
+            posts = state.posts
+        }
+    }
 
     val filtered = remember(posts, query, selectedFilter) {
         posts.filter { post ->
@@ -111,11 +125,11 @@ fun LikedPostsScreen(
                             post = post,
                             onOpen = { onOpenPhotoDetail(post.id) },
                             onUnlike = {
-                                posts = posts.filterNot { it.id == post.id }
+                                viewModel.unlike(post.id)
                                 scope.launch { snackbarHostState.showSnackbar("Retiré des favoris") }
                             },
                             onToggleSave = {
-                                posts = posts.map { if (it.id == post.id) it.copy(isSaved = !it.isSaved) else it }
+                                viewModel.toggleSave(post.id, post.isSaved)
                             },
                             onRoute = {
                                 scope.launch { snackbarHostState.showSnackbar("Ouverture de l'itinéraire...") }
@@ -135,7 +149,7 @@ fun LikedPostsScreen(
                             post = post,
                             onOpen = { onOpenPhotoDetail(post.id) },
                             onUnlike = {
-                                posts = posts.filterNot { it.id == post.id }
+                                viewModel.unlike(post.id)
                                 scope.launch { snackbarHostState.showSnackbar("Retiré des favoris") }
                             }
                         )

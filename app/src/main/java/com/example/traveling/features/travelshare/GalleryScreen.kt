@@ -188,20 +188,12 @@ fun GalleryScreen(
                         "list" -> PhotoListView(
                             photos = filteredPhotos,
                             onLike = { photoId ->
-                                photos = photos.map { photo ->
-                                    if (photo.id == photoId) {
-                                        val nextLiked = !photo.isLiked
-                                        photo.copy(
-                                            isLiked = nextLiked,
-                                            likes = if (nextLiked) photo.likes + 1 else (photo.likes - 1).coerceAtLeast(0)
-                                        )
-                                    } else photo
-                                }
+                                val target = photos.find { it.id == photoId } ?: return@PhotoListView
+                                galleryViewModel.toggleLike(photoId, target.isLiked)
                             },
                             onSave = { photoId ->
-                                photos = photos.map { photo ->
-                                    if (photo.id == photoId) photo.copy(isSaved = !photo.isSaved) else photo
-                                }
+                                val target = photos.find { it.id == photoId } ?: return@PhotoListView
+                                galleryViewModel.toggleSave(photoId, target.isSaved)
                             },
                             onReport = { coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") } },
                             onNavigate = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps.") } },

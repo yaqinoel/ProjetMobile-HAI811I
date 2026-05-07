@@ -70,6 +70,12 @@ fun MyPublishedPostsScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     val filtered = remember(posts, query, selectedFilter) {
         posts.filter { item ->
             val matchesQuery = query.isBlank() ||
@@ -169,9 +175,15 @@ fun MyPublishedPostsScreen(
             item = editing,
             onDismiss = { editingPostId = null },
             onSave = { updated ->
-                posts = posts.map { if (it.post.id == updated.post.id) updated else it }
+                val parsedTags = updated.post.tags
+                viewModel.updatePost(
+                    postId = updated.post.id,
+                    title = updated.title,
+                    description = updated.description,
+                    visibility = updated.visibility,
+                    tags = parsedTags
+                )
                 editingPostId = null
-                scope.launch { snackbarHostState.showSnackbar("Publication modifiée") }
             }
         )
     }
@@ -181,9 +193,8 @@ fun MyPublishedPostsScreen(
             onDismissRequest = { deletingPostId = null },
             confirmButton = {
                 TextButton(onClick = {
-                    posts = posts.filterNot { it.post.id == deleting.post.id }
+                    viewModel.deletePost(deleting.post.id)
                     deletingPostId = null
-                    scope.launch { snackbarHostState.showSnackbar("Publication supprimée") }
                 }) { Text("Supprimer", color = Color(0xFFDC2626)) }
             },
             dismissButton = { TextButton(onClick = { deletingPostId = null }) { Text("Annuler") } },

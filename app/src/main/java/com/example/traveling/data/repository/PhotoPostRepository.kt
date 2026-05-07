@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.WriteBatch
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -220,104 +221,120 @@ class PhotoPostRepository(
 
     suspend fun likePost(userId: String, postId: String): Result<Unit> {
         return runCatching {
-            val postLikeRef = db.collection(FirestoreCollections.PHOTO_POSTS)
-                .document(postId)
-                .collection(FirestoreCollections.LIKES)
-                .document(userId)
-            val userLikedRef = db.collection(FirestoreCollections.USERS)
-                .document(userId)
-                .collection(FirestoreCollections.LIKED_POSTS)
-                .document(postId)
-            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
-            val userRef = db.collection(FirestoreCollections.USERS).document(userId)
+            db.runTransaction { transaction ->
+                val postLikeRef = db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .collection(FirestoreCollections.LIKES)
+                    .document(userId)
+                val userLikedRef = db.collection(FirestoreCollections.USERS)
+                    .document(userId)
+                    .collection(FirestoreCollections.LIKED_POSTS)
+                    .document(postId)
+                val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+                val userRef = db.collection(FirestoreCollections.USERS).document(userId)
 
-            val batch = db.batch()
-            batch.set(postLikeRef, PostLikeDocument(userId = userId, postId = postId, createdAt = Timestamp.now()))
-            batch.set(userLikedRef, UserLikedPostDocument(postId = postId, createdAt = Timestamp.now()))
-            batch.update(postRef, "likeCount", FieldValue.increment(1))
-            batch.set(userRef, mapOf("likedCount" to FieldValue.increment(1)), SetOptions.merge())
-            batch.commit().awaitResult()
+                val alreadyLiked = transaction.get(postLikeRef).exists()
+                if (alreadyLiked) return@runTransaction Unit
+
+                transaction.set(postLikeRef, PostLikeDocument(userId = userId, postId = postId, createdAt = Timestamp.now()))
+                transaction.set(userLikedRef, UserLikedPostDocument(postId = postId, createdAt = Timestamp.now()))
+                transaction.update(postRef, "likeCount", FieldValue.increment(1))
+                transaction.set(userRef, mapOf("likedCount" to FieldValue.increment(1)), SetOptions.merge())
+                Unit
+            }.awaitResult()
         }
     }
 
     suspend fun unlikePost(userId: String, postId: String): Result<Unit> {
         return runCatching {
-            val postLikeRef = db.collection(FirestoreCollections.PHOTO_POSTS)
-                .document(postId)
-                .collection(FirestoreCollections.LIKES)
-                .document(userId)
-            val userLikedRef = db.collection(FirestoreCollections.USERS)
-                .document(userId)
-                .collection(FirestoreCollections.LIKED_POSTS)
-                .document(postId)
-            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
-            val userRef = db.collection(FirestoreCollections.USERS).document(userId)
+            db.runTransaction { transaction ->
+                val postLikeRef = db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .collection(FirestoreCollections.LIKES)
+                    .document(userId)
+                val userLikedRef = db.collection(FirestoreCollections.USERS)
+                    .document(userId)
+                    .collection(FirestoreCollections.LIKED_POSTS)
+                    .document(postId)
+                val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+                val userRef = db.collection(FirestoreCollections.USERS).document(userId)
 
-            val batch = db.batch()
-            batch.delete(postLikeRef)
-            batch.delete(userLikedRef)
-            batch.update(postRef, "likeCount", FieldValue.increment(-1))
-            batch.set(userRef, mapOf("likedCount" to FieldValue.increment(-1)), SetOptions.merge())
-            batch.commit().awaitResult()
+                val alreadyLiked = transaction.get(postLikeRef).exists()
+                if (!alreadyLiked) return@runTransaction Unit
+
+                transaction.delete(postLikeRef)
+                transaction.delete(userLikedRef)
+                transaction.update(postRef, "likeCount", FieldValue.increment(-1))
+                transaction.set(userRef, mapOf("likedCount" to FieldValue.increment(-1)), SetOptions.merge())
+                Unit
+            }.awaitResult()
         }
     }
 
     suspend fun savePost(userId: String, postId: String, collectionName: String?): Result<Unit> {
         return runCatching {
-            val postSaveRef = db.collection(FirestoreCollections.PHOTO_POSTS)
-                .document(postId)
-                .collection(FirestoreCollections.SAVES)
-                .document(userId)
-            val userSaveRef = db.collection(FirestoreCollections.USERS)
-                .document(userId)
-                .collection(FirestoreCollections.SAVED_POSTS)
-                .document(postId)
-            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
-            val userRef = db.collection(FirestoreCollections.USERS).document(userId)
+            db.runTransaction { transaction ->
+                val postSaveRef = db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .collection(FirestoreCollections.SAVES)
+                    .document(userId)
+                val userSaveRef = db.collection(FirestoreCollections.USERS)
+                    .document(userId)
+                    .collection(FirestoreCollections.SAVED_POSTS)
+                    .document(postId)
+                val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+                val userRef = db.collection(FirestoreCollections.USERS).document(userId)
 
-            val batch = db.batch()
-            batch.set(
-                postSaveRef,
-                PostSaveDocument(
-                    userId = userId,
-                    postId = postId,
-                    createdAt = Timestamp.now(),
-                    collectionName = collectionName
+                val alreadySaved = transaction.get(postSaveRef).exists()
+                if (alreadySaved) return@runTransaction Unit
+
+                transaction.set(
+                    postSaveRef,
+                    PostSaveDocument(
+                        userId = userId,
+                        postId = postId,
+                        createdAt = Timestamp.now(),
+                        collectionName = collectionName
+                    )
                 )
-            )
-            batch.set(
-                userSaveRef,
-                UserSavedPostDocument(
-                    postId = postId,
-                    createdAt = Timestamp.now(),
-                    collectionName = collectionName
+                transaction.set(
+                    userSaveRef,
+                    UserSavedPostDocument(
+                        postId = postId,
+                        createdAt = Timestamp.now(),
+                        collectionName = collectionName
+                    )
                 )
-            )
-            batch.update(postRef, "saveCount", FieldValue.increment(1))
-            batch.set(userRef, mapOf("savedCount" to FieldValue.increment(1)), SetOptions.merge())
-            batch.commit().awaitResult()
+                transaction.update(postRef, "saveCount", FieldValue.increment(1))
+                transaction.set(userRef, mapOf("savedCount" to FieldValue.increment(1)), SetOptions.merge())
+                Unit
+            }.awaitResult()
         }
     }
 
     suspend fun unsavePost(userId: String, postId: String): Result<Unit> {
         return runCatching {
-            val postSaveRef = db.collection(FirestoreCollections.PHOTO_POSTS)
-                .document(postId)
-                .collection(FirestoreCollections.SAVES)
-                .document(userId)
-            val userSaveRef = db.collection(FirestoreCollections.USERS)
-                .document(userId)
-                .collection(FirestoreCollections.SAVED_POSTS)
-                .document(postId)
-            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
-            val userRef = db.collection(FirestoreCollections.USERS).document(userId)
+            db.runTransaction { transaction ->
+                val postSaveRef = db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .collection(FirestoreCollections.SAVES)
+                    .document(userId)
+                val userSaveRef = db.collection(FirestoreCollections.USERS)
+                    .document(userId)
+                    .collection(FirestoreCollections.SAVED_POSTS)
+                    .document(postId)
+                val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+                val userRef = db.collection(FirestoreCollections.USERS).document(userId)
 
-            val batch = db.batch()
-            batch.delete(postSaveRef)
-            batch.delete(userSaveRef)
-            batch.update(postRef, "saveCount", FieldValue.increment(-1))
-            batch.set(userRef, mapOf("savedCount" to FieldValue.increment(-1)), SetOptions.merge())
-            batch.commit().awaitResult()
+                val alreadySaved = transaction.get(postSaveRef).exists()
+                if (!alreadySaved) return@runTransaction Unit
+
+                transaction.delete(postSaveRef)
+                transaction.delete(userSaveRef)
+                transaction.update(postRef, "saveCount", FieldValue.increment(-1))
+                transaction.set(userRef, mapOf("savedCount" to FieldValue.increment(-1)), SetOptions.merge())
+                Unit
+            }.awaitResult()
         }
     }
 
@@ -339,6 +356,114 @@ class PhotoPostRepository(
             .get()
             .awaitResult()
         return doc.exists()
+    }
+
+    suspend fun softDeletePost(postId: String, userId: String): Result<Unit> {
+        return runCatching {
+            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+            val userRef = db.collection(FirestoreCollections.USERS).document(userId)
+            val batch: WriteBatch = db.batch()
+            batch.update(
+                postRef,
+                mapOf(
+                    "status" to "deleted",
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+            )
+            batch.set(userRef, mapOf("postCount" to FieldValue.increment(-1)), SetOptions.merge())
+            batch.commit().awaitResult()
+        }
+    }
+
+    suspend fun updatePost(
+        postId: String,
+        title: String,
+        description: String,
+        visibility: String,
+        tags: List<String>
+    ): Result<Unit> {
+        return runCatching {
+            db.collection(FirestoreCollections.PHOTO_POSTS)
+                .document(postId)
+                .update(
+                    mapOf(
+                        "title" to title,
+                        "description" to description,
+                        "visibility" to visibility,
+                        "tags" to tags,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+                .awaitResult()
+        }
+    }
+
+    suspend fun getLikedPosts(userId: String): Result<List<PhotoPostDocument>> {
+        return runCatching {
+            val likedDocs = db.collection(FirestoreCollections.USERS)
+                .document(userId)
+                .collection(FirestoreCollections.LIKED_POSTS)
+                .get()
+                .awaitResult()
+                .documents
+
+            val postIds = likedDocs.map { it.id }
+            postIds.mapNotNull { postId ->
+                db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .get()
+                    .awaitResult()
+                    .toObject(PhotoPostDocument::class.java)
+            }.filterNot { it.status == "deleted" }.sortedByNewest()
+        }
+    }
+
+    suspend fun getSavedPosts(userId: String): Result<List<PhotoPostDocument>> {
+        return runCatching {
+            val savedDocs = db.collection(FirestoreCollections.USERS)
+                .document(userId)
+                .collection(FirestoreCollections.SAVED_POSTS)
+                .get()
+                .awaitResult()
+                .documents
+
+            val postIds = savedDocs.map { it.id }
+            postIds.mapNotNull { postId ->
+                db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .get()
+                    .awaitResult()
+                    .toObject(PhotoPostDocument::class.java)
+            }.filterNot { it.status == "deleted" }.sortedByNewest()
+        }
+    }
+
+    suspend fun reportPost(
+        postId: String,
+        reporterId: String?,
+        reason: String,
+        description: String? = null
+    ): Result<String> {
+        return runCatching {
+            val reportRef = db.collection(FirestoreCollections.REPORTS).document()
+            val reportId = reportRef.id
+            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+
+            val payload = mapOf(
+                "reportId" to reportId,
+                "postId" to postId,
+                "reporterId" to reporterId,
+                "reason" to reason,
+                "description" to description,
+                "createdAt" to Timestamp.now(),
+                "status" to "pending"
+            )
+            val batch = db.batch()
+            batch.set(reportRef, payload)
+            batch.update(postRef, "reportCount", FieldValue.increment(1))
+            batch.commit().awaitResult()
+            reportId
+        }
     }
 
     private suspend fun uploadAllImages(
