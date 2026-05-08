@@ -18,6 +18,7 @@ import com.example.traveling.features.passerelle.RegisterScreen
 import com.example.traveling.features.profile.LikedPostsScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
+import com.example.traveling.features.travelshare.GroupDetailScreen
 import com.example.traveling.features.travelshare.GroupsScreen
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
@@ -78,7 +79,21 @@ fun AppNavigation() {
             GroupsScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onOpenGroupDetail = { groupId ->
+                    navController.navigate("group_detail/$groupId")
                 }
+            )
+        }
+        composable(
+            route = "group_detail/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            GroupDetailScreen(
+                groupId = groupId,
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
         composable("publish_photos") {

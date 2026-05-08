@@ -3,6 +3,8 @@ package com.example.traveling.features.travelshare
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.traveling.data.model.UserJoinedGroupDocument
+import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.PublishPhotoPostInput
 import com.example.traveling.data.repository.UserRepository
@@ -23,11 +25,23 @@ sealed interface PublishUiState {
 class PublishPhotosViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val userRepository: UserRepository = UserRepository(),
-    private val photoPostRepository: PhotoPostRepository = PhotoPostRepository()
+    private val photoPostRepository: PhotoPostRepository = PhotoPostRepository(),
+    private val groupRepository: GroupRepository = GroupRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PublishUiState>(PublishUiState.Idle)
     val uiState: StateFlow<PublishUiState> = _uiState.asStateFlow()
+    private val _joinedGroups = MutableStateFlow<List<UserJoinedGroupDocument>>(emptyList())
+    val joinedGroups: StateFlow<List<UserJoinedGroupDocument>> = _joinedGroups.asStateFlow()
+
+    fun loadJoinedGroups() {
+        val uid = auth.currentUser?.uid ?: return
+        viewModelScope.launch {
+            groupRepository.getJoinedGroups(uid)
+                .onSuccess { _joinedGroups.value = it }
+                .onFailure { _uiState.value = PublishUiState.Error(it.localizedMessage ?: "Impossible de charger les groupes") }
+        }
+    }
 
     fun publish(
         selectedPhotoUris: List<String>,
@@ -35,7 +49,7 @@ class PublishPhotosViewModel(
         description: String,
         selectedLocation: SelectedLocationUi,
         visibility: String,
-        selectedGroup: String?,
+        selectedGroup: UserJoinedGroupDocument?,
         tags: List<String>,
         placeType: String,
         isLinkedToTravelPath: Boolean
@@ -48,6 +62,10 @@ class PublishPhotosViewModel(
 
         if (selectedPhotoUris.isEmpty()) {
             _uiState.value = PublishUiState.Error("Ajoutez au moins une photo")
+            return
+        }
+        if (visibility == "group" && selectedGroup == null) {
+            _uiState.value = PublishUiState.Error("Sélectionnez un groupe")
             return
         }
 
@@ -83,8 +101,8 @@ class PublishPhotosViewModel(
                 placeType = placeType,
                 tags = tags,
                 visibility = visibility,
-                groupId = null,
-                groupName = if (visibility == "group") selectedGroup else null,
+                groupId = if (visibility == "group") selectedGroup?.groupId else null,
+                groupName = if (visibility == "group") selectedGroup?.name else null,
                 isLinkedToTravelPath = isLinkedToTravelPath
             )
 

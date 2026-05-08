@@ -35,6 +35,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.traveling.data.model.UserJoinedGroupDocument
 import com.example.traveling.features.travelshare.model.SelectedLocationUi
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
@@ -55,7 +56,7 @@ fun PublishPhotosScreen(
     var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
     var selectedLocation by remember { mutableStateOf<SelectedLocationUi?>(null) }
     var visibility by remember { mutableStateOf("public") }
-    var selectedGroup by remember { mutableStateOf("Voyageurs de Chine") }
+    var selectedGroup by remember { mutableStateOf<UserJoinedGroupDocument?>(null) }
 
     // États Optionnels (Optional)
     var description by remember { mutableStateOf("") }
@@ -70,6 +71,7 @@ fun PublishPhotosScreen(
     val coroutineScope = rememberCoroutineScope()
     val publishViewModel: PublishPhotosViewModel = viewModel()
     val publishState by publishViewModel.uiState.collectAsState()
+    val joinedGroups by publishViewModel.joinedGroups.collectAsState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTED_PHOTOS)
@@ -127,6 +129,10 @@ fun PublishPhotosScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        publishViewModel.loadJoinedGroups()
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
         Column(
             modifier = Modifier
@@ -148,6 +154,7 @@ fun PublishPhotosScreen(
                 enabled = title.isNotBlank() &&
                     selectedPhotos.isNotEmpty() &&
                     selectedLocation != null &&
+                    (visibility != "group" || selectedGroup != null) &&
                     publishState !is PublishUiState.Uploading
             ) {
                 val uploading = publishState is PublishUiState.Uploading
@@ -310,21 +317,31 @@ fun PublishPhotosScreen(
                         selected = visibility == "group",
                         icon = Icons.Default.Group,
                         title = "Groupe",
-                        subtitle = selectedGroup,
+                        subtitle = selectedGroup?.name ?: "Choisir un groupe",
                         modifier = Modifier.weight(1f),
                         onClick = { visibility = "group" }
                     )
                 }
                 if (visibility == "group") {
-                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("Voyageurs de Chine", "Route de la Soie 2026", "Photo Paysages").forEach { group ->
-                            AssistChip(
-                                onClick = { selectedGroup = group },
-                                label = { Text(group) },
-                                leadingIcon = {
-                                    if (selectedGroup == group) Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
-                                }
-                            )
+                    if (joinedGroups.isEmpty()) {
+                        Text(
+                            "Vous n'avez rejoint aucun groupe. Créez ou rejoignez un groupe d'abord.",
+                            color = Stone400,
+                            fontSize = 12.sp
+                        )
+                    } else {
+                        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            joinedGroups.forEach { group ->
+                                AssistChip(
+                                    onClick = { selectedGroup = group },
+                                    label = { Text(group.name) },
+                                    leadingIcon = {
+                                        if (selectedGroup?.groupId == group.groupId) {
+                                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -556,7 +573,7 @@ fun PublishPhotosScreen(
                 Text("Vérifiez les informations avant publication.", fontSize = 13.sp, color = Stone500)
                 Spacer(Modifier.height(16.dp))
                 InfoLine("Titre", title)
-                InfoLine("Visibilité", if (visibility == "public") "Public" else "Groupe : $selectedGroup")
+                InfoLine("Visibilité", if (visibility == "public") "Public" else "Groupe : ${selectedGroup?.name ?: "-"}")
                 InfoLine(
                     "Lieu",
                     selectedLocation?.let {

@@ -206,10 +206,11 @@ fun MyPublishedPostsScreen(
 
 private fun PhotoPostDocument.toProfilePostUi(): ProfilePostUi {
     val ui = toPhotoPostUi(isLiked = false, isSaved = false)
+    val normalizedVisibility = visibility.trim().lowercase()
     return ProfilePostUi(
         post = ui,
         title = title.ifBlank { ui.location },
-        visibility = if (visibility == "group") "Groupe" else "Public",
+        visibility = if (normalizedVisibility == "group" || normalizedVisibility == "groupe") "Groupe" else "Public",
         groupName = groupName,
         linkedToTravelPath = isLinkedToTravelPath,
         isReported = status == "reported",

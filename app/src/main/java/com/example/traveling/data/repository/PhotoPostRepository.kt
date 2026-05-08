@@ -14,7 +14,6 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
-import com.google.firebase.firestore.WriteBatch
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -111,6 +110,10 @@ class PhotoPostRepository(
             val batch = db.batch()
             batch.set(postRef, post)
             batch.update(userRef, "postCount", FieldValue.increment(1))
+            if (input.visibility == "group" && !input.groupId.isNullOrBlank()) {
+                val groupRef = db.collection(FirestoreCollections.GROUPS).document(input.groupId)
+                batch.set(groupRef, mapOf("postCount" to FieldValue.increment(1)), SetOptions.merge())
+            }
             batch.commit().awaitResult()
 
             postId
@@ -152,6 +155,28 @@ class PhotoPostRepository(
                 val posts = snapshot?.documents
                     ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
                     ?.filterNot { it.status == "deleted" }
+                    ?.sortedByNewest()
+                    ?: emptyList()
+                onChanged(posts)
+            }
+    }
+
+    fun observeGroupPublishedPosts(
+        groupId: String,
+        onChanged: (List<PhotoPostDocument>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        return db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("status", "published")
+            .whereEqualTo("visibility", "group")
+            .whereEqualTo("groupId", groupId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+                val posts = snapshot?.documents
+                    ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
                     ?.sortedByNewest()
                     ?: emptyList()
                 onChanged(posts)
@@ -378,16 +403,26 @@ class PhotoPostRepository(
         return runCatching {
             val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
             val userRef = db.collection(FirestoreCollections.USERS).document(userId)
-            val batch: WriteBatch = db.batch()
-            batch.update(
-                postRef,
-                mapOf(
-                    "status" to "deleted",
-                    "updatedAt" to FieldValue.serverTimestamp()
+            db.runTransaction { transaction ->
+                val postSnap = transaction.get(postRef)
+                val post = postSnap.toObject(PhotoPostDocument::class.java)
+                    ?: return@runTransaction Unit
+                if (post.status == "deleted") return@runTransaction Unit
+
+                transaction.update(
+                    postRef,
+                    mapOf(
+                        "status" to "deleted",
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
                 )
-            )
-            batch.set(userRef, mapOf("postCount" to FieldValue.increment(-1)), SetOptions.merge())
-            batch.commit().awaitResult()
+                transaction.set(userRef, mapOf("postCount" to FieldValue.increment(-1)), SetOptions.merge())
+                if (post.visibility == "group" && !post.groupId.isNullOrBlank()) {
+                    val groupRef = db.collection(FirestoreCollections.GROUPS).document(post.groupId)
+                    transaction.set(groupRef, mapOf("postCount" to FieldValue.increment(-1)), SetOptions.merge())
+                }
+                Unit
+            }.awaitResult()
         }
     }
 
