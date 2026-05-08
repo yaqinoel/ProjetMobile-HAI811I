@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
@@ -98,6 +100,7 @@ fun GalleryScreen(
     onOpenNotifications: () -> Unit = {},
     onPhotoClick: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val galleryViewModel: GalleryViewModel = viewModel()
     val galleryState by galleryViewModel.uiState.collectAsState()
 
@@ -196,7 +199,22 @@ fun GalleryScreen(
                                 galleryViewModel.toggleSave(photoId, target.isSaved)
                             },
                             onReport = { coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") } },
-                            onNavigate = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps.") } },
+                            onNavigate = { photoId ->
+                                val target = photos.find { it.id == photoId }
+                                if (target != null) {
+                                    val opened = openNavigationToPlace(
+                                        context = context,
+                                        placeName = target.location,
+                                        latitude = target.latitude,
+                                        longitude = target.longitude
+                                    )
+                                    if (!opened) {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Aucune application de carte disponible.")
+                                        }
+                                    }
+                                }
+                            },
                             showStories = searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all" && selectedDiscovery == "all",
                             isAnonymous = isAnonymous,
                             onPhotoClick = onPhotoClick

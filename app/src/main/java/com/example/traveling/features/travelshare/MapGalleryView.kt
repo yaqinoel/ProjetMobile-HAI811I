@@ -7,7 +7,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +34,7 @@ import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
+import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 
@@ -255,7 +255,19 @@ fun MapView(
                             }
                             Spacer(Modifier.height(10.dp))
                             AssistChip(
-                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps vers ${photo.location}.") } },
+                                onClick = {
+                                    val opened = openNavigationToPlace(
+                                        context = context,
+                                        placeName = photo.location,
+                                        latitude = photo.latitude,
+                                        longitude = photo.longitude
+                                    )
+                                    if (!opened) {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Aucune application de carte disponible.")
+                                        }
+                                    }
+                                },
                                 label = { Text("Ouvrir la navigation Google Maps") },
                                 leadingIcon = { Icon(Icons.Default.NearMe, null, modifier = Modifier.size(16.dp)) }
                             )

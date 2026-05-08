@@ -29,8 +29,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import androidx.compose.ui.platform.LocalContext
 
 // 导入数据模型
+import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
@@ -98,6 +100,7 @@ private fun PhotoPostDetailContent(
     onNavigateRegister: () -> Unit,
     viewModel: PhotoPostDetailViewModel
 ) {
+    val context = LocalContext.current
     val pagerState = rememberPagerState(pageCount = { photo.imageUrls.size })
     var newComment by remember { mutableStateOf("") }
     var showActionsMenu by remember { mutableStateOf(false) }
@@ -400,7 +403,19 @@ private fun PhotoPostDetailContent(
                 // ─── 5. 导航操作双按钮 ───
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Ouverture de Google Maps vers ${photo.location}.") } },
+                        onClick = {
+                            val opened = openNavigationToPlace(
+                                context = context,
+                                placeName = photo.location,
+                                latitude = photo.lat,
+                                longitude = photo.lng
+                            )
+                            if (!opened) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Aucune application de carte disponible.")
+                                }
+                            }
+                        },
                         modifier = Modifier.weight(1f).height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = RedDark)

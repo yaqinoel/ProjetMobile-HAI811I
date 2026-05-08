@@ -23,12 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
@@ -45,6 +47,7 @@ fun LikedPostsScreen(
     onBack: () -> Unit = {},
     onOpenPhotoDetail: (String) -> Unit = {}
 ) {
+    val context = LocalContext.current
     val viewModel: LikedPostsViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     var posts by remember { mutableStateOf(emptyList<PhotoPostUi>()) }
@@ -132,7 +135,15 @@ fun LikedPostsScreen(
                                 viewModel.toggleSave(post.id, post.isSaved)
                             },
                             onRoute = {
-                                scope.launch { snackbarHostState.showSnackbar("Ouverture de l'itinéraire...") }
+                                val opened = openNavigationToPlace(
+                                    context = context,
+                                    placeName = post.location,
+                                    latitude = post.latitude,
+                                    longitude = post.longitude
+                                )
+                                if (!opened) {
+                                    scope.launch { snackbarHostState.showSnackbar("Aucune application de carte disponible.") }
+                                }
                             }
                         )
                     }
