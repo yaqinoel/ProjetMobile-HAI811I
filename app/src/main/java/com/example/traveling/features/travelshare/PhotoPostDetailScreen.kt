@@ -382,8 +382,13 @@ private fun PhotoPostDetailContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        val precisionLabel = if (photo.locationPrecision == "approx") {
+                            "Zone approximative"
+                        } else {
+                            "Position exacte"
+                        }
                         // 👈 这里使用了新增的 lat 和 lng
-                        InfoRow(Icons.Outlined.Place, Color(0xFFFEE2E2), RedDark, photo.location, "${photo.country}\n${photo.lat}, ${photo.lng}")
+                        InfoRow(Icons.Outlined.Place, Color(0xFFFEE2E2), RedDark, photo.location, "${photo.country}\n$precisionLabel\n${photo.lat}, ${photo.lng}")
                         InfoRow(Icons.Outlined.CalendarToday, Color(0xFFFEF3C7), Color(0xFFB45309), "Date", photo.date)
                         // 👈 这里使用了新增的 howToGetThere
                         InfoRow(Icons.Outlined.NearMe, Color(0xFFF3E8FF), Color(0xFF7E22CE), "Comment s'y rendre", photo.howToGetThere)

@@ -22,7 +22,10 @@ data class PhotoPostUi(
     val comments: Int,
     val tags: List<String>,
     val placeType: String,
-    val period: String
+    val period: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val locationPrecision: String = "exact"
 )
 
 data class PhotoPostCommentUi(
@@ -53,13 +56,16 @@ data class PhotoPostDetailUi(
     val commentsCount: Int,
     val tags: List<String>,
     val howToGetThere: String,
-    val commentsList: List<PhotoPostCommentUi>
+    val commentsList: List<PhotoPostCommentUi>,
+    val locationPrecision: String
 )
 
 fun PhotoPostDocument.toPhotoPostUi(
     isLiked: Boolean = false,
     isSaved: Boolean = false
 ): PhotoPostUi {
+    val visibleLat = displayLatitude ?: latitude ?: rawLatitude
+    val visibleLng = displayLongitude ?: longitude ?: rawLongitude
     return PhotoPostUi(
         id = postId,
         imageUrl = imageUrls.firstOrNull().orEmpty(),
@@ -76,7 +82,10 @@ fun PhotoPostDocument.toPhotoPostUi(
         comments = commentCount,
         tags = tags,
         placeType = placeType,
-        period = periodLabel ?: "all"
+        period = periodLabel ?: "all",
+        latitude = visibleLat,
+        longitude = visibleLng,
+        locationPrecision = locationPrecision
     )
 }
 
@@ -85,13 +94,15 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
     isLiked: Boolean = false,
     isSaved: Boolean = false
 ): PhotoPostDetailUi {
+    val visibleLat = displayLatitude ?: latitude ?: rawLatitude
+    val visibleLng = displayLongitude ?: longitude ?: rawLongitude
     return PhotoPostDetailUi(
         id = postId,
         imageUrls = imageUrls,
         location = locationName.ifBlank { city ?: country ?: "Lieu inconnu" },
         country = listOfNotNull(city, country).joinToString(", ").ifBlank { country.orEmpty() },
-        lat = latitude ?: 0.0,
-        lng = longitude ?: 0.0,
+        lat = visibleLat ?: 0.0,
+        lng = visibleLng ?: 0.0,
         date = createdAt?.toDate()?.let { DISPLAY_DATE_FORMAT.format(it) } ?: periodLabel.orEmpty(),
         author = authorName.ifBlank { "Voyageur" },
         authorAvatar = authorName.firstOrNull()?.uppercaseChar()?.toString() ?: "V",
@@ -103,7 +114,8 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
         commentsCount = commentCount,
         tags = tags,
         howToGetThere = "Ouvrir l'itinéraire avec Google Maps depuis cette fiche.",
-        commentsList = comments.map { it.toPhotoPostCommentUi() }
+        commentsList = comments.map { it.toPhotoPostCommentUi() },
+        locationPrecision = locationPrecision
     )
 }
 

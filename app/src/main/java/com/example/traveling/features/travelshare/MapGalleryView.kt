@@ -89,7 +89,11 @@ fun MapView(
         ) {
             // 在地图上绘制所有的自定义图钉
             photos.forEach { photo ->
-                val coord = PHOTO_COORDS[photo.id] ?: LatLng(35.0, 105.0)
+                val coord = if (photo.latitude != null && photo.longitude != null) {
+                    LatLng(photo.latitude, photo.longitude)
+                } else {
+                    PHOTO_COORDS[photo.id] ?: LatLng(35.0, 105.0)
+                }
                 val isSelected = selectedPin == photo.id
 
                 MarkerComposable(

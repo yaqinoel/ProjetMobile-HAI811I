@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.PublishPhotoPostInput
 import com.example.traveling.data.repository.UserRepository
+import com.example.traveling.features.travelshare.model.SelectedLocationUi
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +33,7 @@ class PublishPhotosViewModel(
         selectedPhotoUris: List<String>,
         title: String,
         description: String,
-        locationName: String,
-        locationPrecision: String,
+        selectedLocation: SelectedLocationUi,
         visibility: String,
         selectedGroup: String?,
         tags: List<String>,
@@ -69,8 +69,17 @@ class PublishPhotosViewModel(
                 localImageUris = selectedPhotoUris.map(Uri::parse),
                 title = title,
                 description = description,
-                locationName = locationName,
-                locationPrecision = locationPrecision,
+                locationName = selectedLocation.name,
+                locationAddress = selectedLocation.address,
+                googlePlaceId = selectedLocation.googlePlaceId,
+                locationSource = selectedLocation.source,
+                city = selectedLocation.city,
+                country = selectedLocation.country,
+                rawLatitude = selectedLocation.rawLatitude,
+                rawLongitude = selectedLocation.rawLongitude,
+                displayLatitude = selectedLocation.displayLatitude,
+                displayLongitude = selectedLocation.displayLongitude,
+                locationPrecision = selectedLocation.precision,
                 placeType = placeType,
                 tags = tags,
                 visibility = visibility,

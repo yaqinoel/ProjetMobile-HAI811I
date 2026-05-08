@@ -35,9 +35,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.traveling.features.travelshare.model.SelectedLocationUi
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 private const val MAX_SELECTED_PHOTOS = 14
 
@@ -51,9 +53,7 @@ fun PublishPhotosScreen(
     // États Obligatoires (Required)
     var title by remember { mutableStateOf("") }
     var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
-    // Defaulting to current GPS location.
-    var locationName by remember { mutableStateOf("Montpellier, France (Position Actuelle)") }
-    var locationPrecision by remember { mutableStateOf("exact") }
+    var selectedLocation by remember { mutableStateOf<SelectedLocationUi?>(null) }
     var visibility by remember { mutableStateOf("public") }
     var selectedGroup by remember { mutableStateOf("Voyageurs de Chine") }
 
@@ -147,7 +147,7 @@ fun PublishPhotosScreen(
                 },
                 enabled = title.isNotBlank() &&
                     selectedPhotos.isNotEmpty() &&
-                    locationName.isNotBlank() &&
+                    selectedLocation != null &&
                     publishState !is PublishUiState.Uploading
             ) {
                 val uploading = publishState is PublishUiState.Uploading
@@ -339,7 +339,7 @@ fun PublishPhotosScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(CardBg, RoundedCornerShape(12.dp))
-                        .border(1.dp, if(locationName.isBlank()) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
+                        .border(1.dp, if(selectedLocation == null) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
                         .padding(16.dp)
                         .clickable {
                             showMapPicker = true
@@ -352,15 +352,31 @@ fun PublishPhotosScreen(
                         Icon(Icons.Default.LocationOn, null, tint = RedPrimary, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            Text(if(locationName.isNotBlank()) locationName else "Sélectionner un lieu *", fontSize = 14.sp, color = if(locationName.isNotBlank()) Stone800 else RedPrimary, fontWeight = FontWeight.Medium)
+                            Text(
+                                selectedLocation?.name ?: "Sélectionner un lieu *",
+                                fontSize = 14.sp,
+                                color = if (selectedLocation != null) Stone800 else RedPrimary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            selectedLocation?.let {
+                                val mode = if (it.precision == "approx") "Zone approximative" else "Position exacte"
+                                it.address?.let { address ->
+                                    Text(
+                                        address,
+                                        fontSize = 11.sp,
+                                        color = Stone400,
+                                        maxLines = 1
+                                    )
+                                }
+                                Text(
+                                    "$mode · ${"%.5f".format(Locale.US, it.displayLatitude)}, ${"%.5f".format(Locale.US, it.displayLongitude)}",
+                                    fontSize = 11.sp,
+                                    color = Stone400
+                                )
+                            }
                         }
                     }
                     Icon(Icons.Default.Map, "Ouvrir la carte", tint = Stone400)
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    PrecisionChip("Exacte", "exact", locationPrecision, { locationPrecision = it }, Modifier.weight(1f))
-                    PrecisionChip("Approximative", "approx", locationPrecision, { locationPrecision = it }, Modifier.weight(1f))
                 }
 
                 Row(
@@ -519,33 +535,14 @@ fun PublishPhotosScreen(
     }
 
     if (showMapPicker) {
-        ModalBottomSheet(
-            onDismissRequest = { showMapPicker = false },
-            containerColor = CardBg
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
-                Text("Choisir un lieu", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
-                Spacer(Modifier.height(12.dp))
-                listOf(
-                    "Montpellier, France (Position Actuelle)",
-                    "Grande Muraille, Pékin",
-                    "Cité Interdite, Pékin",
-                    "Paysages de Guilin"
-                ).forEach { place ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable {
-                            locationName = place
-                            showMapPicker = false
-                        }.padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.LocationOn, null, tint = RedPrimary, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(place, fontSize = 14.sp, color = Stone800)
-                    }
-                }
+        MapLocationPickerOverlay(
+            initialLocation = selectedLocation,
+            onDismiss = { showMapPicker = false },
+            onConfirm = {
+                selectedLocation = it
+                showMapPicker = false
             }
-        }
+        )
     }
 
     if (publishPreview) {
@@ -560,7 +557,12 @@ fun PublishPhotosScreen(
                 Spacer(Modifier.height(16.dp))
                 InfoLine("Titre", title)
                 InfoLine("Visibilité", if (visibility == "public") "Public" else "Groupe : $selectedGroup")
-                InfoLine("Lieu", "$locationName (${if (locationPrecision == "exact") "exact" else "approximatif"})")
+                InfoLine(
+                    "Lieu",
+                    selectedLocation?.let {
+                        "${it.name} (${if (it.precision == "exact") "exact" else "approximatif"})"
+                    } ?: "Non défini"
+                )
                 InfoLine("Photos", "${selectedPhotos.size}")
                 InfoLine("Tags", selectedTags.ifEmpty { listOf("Voyage") }.joinToString(", ") { "#$it" })
                 InfoLine("TravelPath", if (isLinkedToPath) "Étape TravelPath" else "Non lié")
@@ -572,8 +574,7 @@ fun PublishPhotosScreen(
                             selectedPhotoUris = selectedPhotos,
                             title = title,
                             description = description.ifBlank { title },
-                            locationName = locationName,
-                            locationPrecision = locationPrecision,
+                            selectedLocation = selectedLocation ?: return@Button,
                             visibility = visibility,
                             selectedGroup = selectedGroup,
                             tags = selectedTags.ifEmpty { listOf("Voyage") },
