@@ -16,3 +16,13 @@ data class NotificationDocument(
     val isRead: Boolean = false,
     val createdAt: Timestamp? = null
 )
+
+object NotificationTypes {
+    const val USER_PUBLISH = "user_publish"
+    const val GROUP_PUBLISH = "group_publish"
+    const val TAG_MATCH = "tag_match"
+    const val PLACE_TYPE_MATCH = "place_type_match"
+    const val LIKE = "like"
+    const val COMMENT = "comment"
+    const val SYSTEM = "system"
+}
