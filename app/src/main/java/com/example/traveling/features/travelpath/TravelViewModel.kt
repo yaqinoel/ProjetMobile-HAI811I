@@ -1,5 +1,7 @@
 package com.example.traveling.features.travelpath
 
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.traveling.data.model.Attraction
@@ -7,15 +9,30 @@ import com.example.traveling.data.model.Destination
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelRoute
+import com.example.traveling.data.repository.LocalStorageRepository
+import com.example.traveling.data.repository.OpenMeteoService
+import com.example.traveling.data.repository.PdfExportService
 import com.example.traveling.data.repository.TravelRepository
+import com.example.traveling.data.repository.WeatherInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 class TravelViewModel : ViewModel() {
 
     private val repository = TravelRepository()
+    private val weatherService = OpenMeteoService()
+    private val pdfService = PdfExportService()
+    private var localStorage: LocalStorageRepository? = null
+
+    /** Must be called once from a Composable with LocalContext */
+    fun initLocalStorage(context: Context) {
+        if (localStorage == null) {
+            localStorage = LocalStorageRepository(context.applicationContext)
+        }
+    }
 
     // ── Destinations ──
     private val _destinations = MutableStateFlow<List<Destination>>(emptyList())
@@ -51,6 +68,14 @@ class TravelViewModel : ViewModel() {
     // ── Loading state ──
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    // ── Weather ──
+    private val _weather = MutableStateFlow<WeatherInfo?>(null)
+    val weather: StateFlow<WeatherInfo?> = _weather.asStateFlow()
+
+    // ── PDF export result ──
+    private val _pdfExportPath = MutableStateFlow<File?>(null)
+    val pdfExportPath: StateFlow<File?> = _pdfExportPath.asStateFlow()
 
     // ── État de navigation de l'écran (persiste entre les changements de tab) ──
     private val _currentStep = MutableStateFlow("preferences") // preferences, loading, results, detail
@@ -470,5 +495,107 @@ class TravelViewModel : ViewModel() {
                 Math.sin(dLon / 2) * Math.sin(dLon / 2)
         val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
         return r * c
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  §3. INTERACTION — Like / Save / Share / Regenerate
+    // ═══════════════════════════════════════════════════
+
+    fun isRouteLiked(routeId: String): Boolean =
+        localStorage?.isRouteLiked(routeId) ?: false
+
+    fun toggleRouteLike(routeId: String): Boolean =
+        localStorage?.toggleRouteLike(routeId) ?: false
+
+    fun isRouteSaved(routeId: String): Boolean =
+        localStorage?.isRouteSaved(routeId) ?: false
+
+    fun toggleRouteSave(routeId: String): Boolean =
+        localStorage?.toggleRouteSave(routeId) ?: false
+
+    /** Re-generate the current route with shuffled attractions */
+    fun regenerateCurrentRoute() {
+        val routeId = _selectedRoute.value?.id ?: return
+        val attractions = routeAttractionsMap[routeId] ?: return
+        viewModelScope.launch {
+            _isLoading.value = true
+            _routeStops.value = generateStops(attractions.shuffled())
+            _isLoading.value = false
+        }
+    }
+
+    /** Build a share text and return an ACTION_SEND Intent */
+    fun buildShareIntent(): Intent {
+        val route = _selectedRoute.value
+        val dest = _selectedDestination.value
+        val stops = _routeStops.value
+
+        val text = buildString {
+            appendLine("🗺️ Mon itinéraire ${route?.name ?: ""} — ${dest?.name ?: ""}")
+            appendLine("Budget : ${route?.budget ?: 0} € | Durée : ${route?.duration ?: ""}")
+            appendLine()
+            stops.forEachIndexed { i, s ->
+                appendLine("${i + 1}. ${s.arrivalTime} — ${s.name} (${s.type})")
+            }
+            appendLine()
+            appendLine("Généré par Voyageur du Monde 🌍")
+        }
+
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Itinéraire ${dest?.name ?: ""}")
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  §4. OFFLINE MODE — Cache routes locally
+    // ═══════════════════════════════════════════════════
+
+    fun cacheCurrentRoute() {
+        val route = _selectedRoute.value ?: return
+        val stops = _routeStops.value
+        if (stops.isEmpty()) return
+        val key = "${_selectedDestination.value?.name ?: "dest"}_${route.id}"
+        localStorage?.cacheRoute(key, route, stops)
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  §5. WEATHER — Fetch from Open-Meteo
+    // ═══════════════════════════════════════════════════
+
+    fun fetchWeather() {
+        val dest = _selectedDestination.value ?: return
+        if (dest.lat == 0.0 && dest.lng == 0.0) {
+            // Use first stop coords as fallback
+            val firstStop = _routeStops.value.firstOrNull { it.lat != 0.0 } ?: return
+            fetchWeatherAt(firstStop.lat, firstStop.lng)
+        } else {
+            fetchWeatherAt(dest.lat, dest.lng)
+        }
+    }
+
+    private fun fetchWeatherAt(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            _weather.value = weatherService.getWeather(lat, lng)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    //  §6. PDF EXPORT
+    // ═══════════════════════════════════════════════════
+
+    fun exportPdf(context: Context) {
+        val route = _selectedRoute.value ?: return
+        val stops = _routeStops.value
+        val destName = _selectedDestination.value?.name ?: "Destination"
+        viewModelScope.launch {
+            val file = pdfService.exportItinerary(context, route, stops, destName)
+            _pdfExportPath.value = file
+        }
+    }
+
+    fun clearPdfExport() {
+        _pdfExportPath.value = null
     }
 }

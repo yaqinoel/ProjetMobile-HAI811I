@@ -1,11 +1,13 @@
 package com.example.traveling.features.travelpath
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,12 +21,35 @@ fun RouteDetailScreen(
     onBack: () -> Unit,
     travelViewModel: TravelViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val stops by travelViewModel.routeStops.collectAsState()
     val selectedDest by travelViewModel.selectedDestination.collectAsState()
     val selectedRoute by travelViewModel.selectedRoute.collectAsState()
-    var liked by remember { mutableStateOf(false) }
-    var saved by remember { mutableStateOf(false) }
+    val weather by travelViewModel.weather.collectAsState()
+    val pdfExportPath by travelViewModel.pdfExportPath.collectAsState()
+
+    // Initialize local storage for SharedPreferences access
+    LaunchedEffect(Unit) {
+        travelViewModel.initLocalStorage(context)
+        travelViewModel.fetchWeather()
+    }
+
+    // Like / Save state persisted via SharedPreferences
+    var liked by remember(routeId) {
+        mutableStateOf(travelViewModel.isRouteLiked(routeId))
+    }
+    var saved by remember(routeId) {
+        mutableStateOf(travelViewModel.isRouteSaved(routeId))
+    }
     var expandedStopId by remember { mutableStateOf<String?>("s1") }
+
+    // Handle PDF export result
+    LaunchedEffect(pdfExportPath) {
+        pdfExportPath?.let { file ->
+            Toast.makeText(context, "PDF enregistré : ${file.name}", Toast.LENGTH_LONG).show()
+            travelViewModel.clearPdfExport()
+        }
+    }
 
     val destName = selectedDest?.name ?: "Destination"
     val routeName = selectedRoute?.name ?: "Route"
@@ -58,14 +83,20 @@ fun RouteDetailScreen(
                 routeReviews = routeReviews,
                 liked = liked,
                 onBack = onBack,
-                onToggleLike = { liked = !liked },
-                onShare = { }
+                onToggleLike = {
+                    liked = travelViewModel.toggleRouteLike(routeId)
+                },
+                onShare = {
+                    val intent = travelViewModel.buildShareIntent()
+                    context.startActivity(intent)
+                }
             )
 
-            // 2. Stats bar + weather info
+            // 2. Stats bar + real weather info
             RouteStatsBar(
                 stops = stops,
-                routeDuration = selectedRoute?.duration ?: "5-6h"
+                routeDuration = selectedRoute?.duration ?: "5-6h",
+                weather = weather
             )
 
             // 3. Mini map
@@ -85,7 +116,23 @@ fun RouteDetailScreen(
             // 5. Action buttons + offline banner
             RouteActionButtons(
                 saved = saved,
-                onToggleSave = { saved = !saved }
+                onToggleSave = {
+                    saved = travelViewModel.toggleRouteSave(routeId)
+                },
+                onExportPdf = {
+                    travelViewModel.exportPdf(context)
+                },
+                onRegenerate = {
+                    travelViewModel.regenerateCurrentRoute()
+                },
+                onShare = {
+                    val intent = travelViewModel.buildShareIntent()
+                    context.startActivity(intent)
+                },
+                onDownloadOffline = {
+                    travelViewModel.cacheCurrentRoute()
+                    Toast.makeText(context, "Itinéraire téléchargé pour usage hors ligne", Toast.LENGTH_SHORT).show()
+                }
             )
 
             Spacer(Modifier.height(80.dp))

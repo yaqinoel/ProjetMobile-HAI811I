@@ -15,11 +15,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.ui.theme.*
 
-// Bottom action buttons: Save / Export PDF / Regenerate / Report + Offline banner
+// Bottom action buttons: Save / Export PDF / Regenerate / Share + Offline banner
 @Composable
 internal fun RouteActionButtons(
     saved: Boolean,
-    onToggleSave: () -> Unit
+    onToggleSave: () -> Unit,
+    onExportPdf: () -> Unit,
+    onRegenerate: () -> Unit,
+    onShare: () -> Unit,
+    onDownloadOffline: () -> Unit
 ) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
@@ -46,15 +50,15 @@ internal fun RouteActionButtons(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (saved) "Enregistré" else "Enregistrer l'itinéraire",
-                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                        if (saved) "Enregistré" else "Enregistrer",
+                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                         color = if (saved) Color.White else RedPrimary
                     )
                 }
             }
             // Export PDF
             Surface(
-                onClick = { },
+                onClick = onExportPdf,
                 modifier = Modifier.weight(1f).height(44.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = AmberLight,
@@ -67,14 +71,15 @@ internal fun RouteActionButtons(
                 ) {
                     Icon(Icons.Default.Description, null, tint = Color(0xFFB45309), modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Exporter en PDF", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB45309))
+                    Text("Exporter PDF", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB45309))
                 }
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Regenerate
             Surface(
-                onClick = { },
+                onClick = onRegenerate,
                 modifier = Modifier.weight(1f).height(44.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = Color(0xFFF5F5F4)
@@ -86,11 +91,12 @@ internal fun RouteActionButtons(
                 ) {
                     Icon(Icons.Default.Refresh, null, tint = StoneMuted, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Regénérer", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
+                    Text("Regénérer", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
                 }
             }
+            // Share
             Surface(
-                onClick = { },
+                onClick = onShare,
                 modifier = Modifier.weight(1f).height(44.dp),
                 shape = RoundedCornerShape(12.dp),
                 color = Color(0xFFF5F5F4)
@@ -100,9 +106,9 @@ internal fun RouteActionButtons(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Default.ThumbDown, null, tint = StoneMuted, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Share, null, tint = StoneMuted, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Inapproprié", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
+                    Text("Partager", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
                 }
             }
         }
@@ -124,7 +130,7 @@ internal fun RouteActionButtons(
                     Text("Téléchargez pour consulter sans connexion internet", fontSize = 11.sp, color = StoneLighter)
                 }
                 Surface(
-                    onClick = { },
+                    onClick = onDownloadOffline,
                     shape = RoundedCornerShape(8.dp),
                     color = Color.White,
                     border = BorderStroke(1.dp, Color(0xFFE7E5E4))
