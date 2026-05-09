@@ -31,7 +31,8 @@ data class RouteStop(
     val rating: Float,
     val openHours: String,
     val lat: Double = 0.0,
-    val lng: Double = 0.0
+    val lng: Double = 0.0,
+    val polylineToNext: String? = null
 )
 
 enum class TimeSlot(val label: String) {

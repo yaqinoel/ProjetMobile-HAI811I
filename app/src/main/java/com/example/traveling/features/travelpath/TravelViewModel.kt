@@ -344,12 +344,16 @@ class TravelViewModel : ViewModel() {
     fun selectRoute(routeId: String) {
         _selectedRoute.value = _routes.value.find { it.id == routeId }
         val routeAttractions = routeAttractionsMap[routeId] ?: return
-        _routeStops.value = generateStops(routeAttractions)
+        viewModelScope.launch {
+            _isLoading.value = true
+            _routeStops.value = generateStops(routeAttractions)
+            _isLoading.value = false
+        }
     }
 
     //  STOP GENERATION (SCHEDULING)
 
-    private fun generateStops(attractions: List<Attraction>): List<RouteStop> {
+    private suspend fun generateStops(attractions: List<Attraction>): List<RouteStop> {
         if (attractions.isEmpty()) return emptyList()
 
         // Trier par créneaux horaires pour un planning logique
@@ -365,7 +369,7 @@ class TravelViewModel : ViewModel() {
         var currentHour = 9
         var currentMinute = 0
 
-        return ordered.mapIndexed { index, attr ->
+        val basicStops = ordered.mapIndexed { index, attr ->
             // ── Distance & temps de marche ──
             var distString = "Départ"
             var walkStr = ""
@@ -426,6 +430,32 @@ class TravelViewModel : ViewModel() {
 
             stop
         }
+        
+        // ── Real Directions via Google Maps API ──
+        try {
+            val apiKey = com.example.traveling.BuildConfig.MAPS_API_KEY
+            val directionsService = com.example.traveling.data.repository.GoogleDirectionsService()
+            val directions = directionsService.getDirections(basicStops, apiKey)
+            
+            if (directions.size == basicStops.size - 1) {
+                return basicStops.mapIndexed { index, stop ->
+                    if (index > 0) {
+                        val dir = directions[index - 1]
+                        stop.copy(
+                            distance = dir.distanceText,
+                            walkTime = dir.durationText,
+                            polylineToNext = dir.polyline
+                        )
+                    } else {
+                        stop
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return basicStops
     }
 
     /**
