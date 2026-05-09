@@ -1,8 +1,6 @@
 package com.example.traveling.core.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,7 +26,12 @@ import com.example.traveling.features.travelshare.notifications.NotificationsScr
 fun AppNavigation() {
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
-    val startDest = if (auth.currentUser != null) "main" else "home"
+    val currentUser = auth.currentUser
+    val startDest = when {
+        currentUser == null -> "home"
+        currentUser.isAnonymous -> "main_anonymous"
+        else -> "main"
+    }
 
     NavHost(navController = navController, startDestination = startDest) {
         composable("home") {
@@ -72,6 +75,9 @@ fun AppNavigation() {
                 },
                 onOpenPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
+                },
+                onOpenGroupDetail = { groupId ->
+                    navController.navigate("group_detail/$groupId")
                 }
             )
         }
@@ -99,7 +105,6 @@ fun AppNavigation() {
         composable("publish_photos") {
             PublishPhotosScreen(
                 onBack = {
-                    // Cancels publishing, goes back to where the user came from
                     navController.popBackStack()
                 },
                 onPublishSuccess = {
@@ -131,7 +136,6 @@ fun AppNavigation() {
             )
         }
 
-        // ── 照片详情页 ──
         composable(
             route = "photo_detail/{photoId}",
             arguments = listOf(navArgument("photoId") { type = NavType.StringType })
@@ -146,7 +150,6 @@ fun AppNavigation() {
             )
         }
 
-        // ── 主屏幕 (已登录) ──
         composable("main") {
             MainScreen(
                 isAnonymous = false,
@@ -168,17 +171,21 @@ fun AppNavigation() {
             )
         }
 
-        // ── 主屏幕 (匿名) ──
         composable("main_anonymous") {
             MainScreen(
                 isAnonymous = true,
                 onLogout = { navController.navigate("home") { popUpTo(0) { inclusive = true } } },
-                onNavigateLogin = { navController.navigate("login") },
-                onNavigateRegister = { navController.navigate("register") },
+                onNavigateLogin = {
+                    auth.signOut()
+                    navController.navigate("login")
+                },
+                onNavigateRegister = {
+                    auth.signOut()
+                    navController.navigate("register")
+                },
                 onNavigateToMyPublishedPosts = { navController.navigate("login") },
-                onNavigateToLikedPosts = { navController.navigate("login") },
-                onNavigateToSavedPosts = { navController.navigate("login") },
-                // 匿名状态下如果也允许看照片详情，也把回调接上
+                onNavigateToLikedPosts = { navController.navigate("liked_posts") },
+                onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail_anonymous/$photoId")
                 }
@@ -194,8 +201,14 @@ fun AppNavigation() {
                 photoId = photoId,
                 isAnonymous = true,
                 onBack = { navController.popBackStack() },
-                onNavigateLogin = { navController.navigate("login") },
-                onNavigateRegister = { navController.navigate("register") }
+                onNavigateLogin = {
+                    auth.signOut()
+                    navController.navigate("login")
+                },
+                onNavigateRegister = {
+                    auth.signOut()
+                    navController.navigate("register")
+                }
             )
         }
 

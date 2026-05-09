@@ -80,7 +80,12 @@ fun ProfileScreen(
     onOpenSavedPosts: () -> Unit = {}
 ) {
     if (isAnonymous) {
-        AnonymousProfileView(onNavigateLogin, onNavigateRegister)
+        AnonymousProfileView(
+            onLogin = onNavigateLogin,
+            onRegister = onNavigateRegister,
+            onOpenLikedPosts = onOpenLikedPosts,
+            onOpenSavedPosts = onOpenSavedPosts
+        )
     } else {
         val profileViewModel: ProfileViewModel = viewModel()
         val uiState by profileViewModel.uiState.collectAsState()
@@ -134,7 +139,12 @@ fun ProfileScreen(
 
 // ─── 匿名状态视图 ───
 @Composable
-private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
+private fun AnonymousProfileView(
+    onLogin: () -> Unit,
+    onRegister: () -> Unit,
+    onOpenLikedPosts: () -> Unit,
+    onOpenSavedPosts: () -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxSize().background(ProfilePageBg).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -156,9 +166,31 @@ private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
         Text("Mode Navigation Anonyme", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = StoneText)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Connectez-vous pour publier des photos, rejoindre des groupes et recevoir des recommandations personnalisées",
+            "Vous pouvez consulter vos photos aimées et enregistrées. Connectez-vous pour publier, commenter et rejoindre des groupes.",
             fontSize = 14.sp, color = StoneMuted, textAlign = TextAlign.Center, lineHeight = 22.sp
         )
+
+        Spacer(Modifier.height(24.dp))
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            AnonymousProfileAction(
+                label = "Posts aimés",
+                subtitle = "Photos que vous avez aimées",
+                icon = Icons.Default.Favorite,
+                iconColor = Color(0xFFDC2626),
+                onClick = onOpenLikedPosts
+            )
+            AnonymousProfileAction(
+                label = "Posts enregistrés",
+                subtitle = "Photos sauvegardées pour plus tard",
+                icon = Icons.Default.Bookmark,
+                iconColor = Color(0xFFD97706),
+                onClick = onOpenSavedPosts
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
 
@@ -187,6 +219,39 @@ private fun AnonymousProfileView(onLogin: () -> Unit, onRegister: () -> Unit) {
         ) {
             Text("Créer un compte", color = StoneText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+@Composable
+private fun AnonymousProfileAction(
+    label: String,
+    subtitle: String,
+    icon: ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(ProfileCardBg)
+            .border(1.dp, StoneBorder, RoundedCornerShape(10.dp))
+            .clickable { onClick() }
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(42.dp).background(iconColor.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = iconColor, modifier = Modifier.size(21.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneText)
+            Text(subtitle, fontSize = 11.sp, color = StoneMuted)
+        }
+        Icon(Icons.Default.ChevronRight, null, tint = StoneMuted, modifier = Modifier.size(18.dp))
     }
 }
 

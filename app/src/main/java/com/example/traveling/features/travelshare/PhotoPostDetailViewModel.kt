@@ -75,6 +75,7 @@ class PhotoPostDetailViewModel(
     fun addComment(content: String) {
         val postId = currentPostId ?: return
         val user = auth.currentUser ?: return
+        if (user.isAnonymous) return
         if (content.isBlank()) return
 
         viewModelScope.launch {

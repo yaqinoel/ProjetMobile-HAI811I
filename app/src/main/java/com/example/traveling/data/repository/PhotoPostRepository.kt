@@ -50,7 +50,8 @@ data class PublishPhotoPostInput(
 
 class PhotoPostRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
+    private val notificationRepository: NotificationRepository = NotificationRepository()
 ) {
 
     suspend fun publishPhotoPost(input: PublishPhotoPostInput): Result<String> {
@@ -115,6 +116,7 @@ class PhotoPostRepository(
                 batch.set(groupRef, mapOf("postCount" to FieldValue.increment(1)), SetOptions.merge())
             }
             batch.commit().awaitResult()
+            runCatching { notificationRepository.createNotificationsForNewPost(post) }
 
             postId
         }
@@ -256,6 +258,17 @@ class PhotoPostRepository(
             batch.update(postRef, "commentCount", FieldValue.increment(1))
             batch.update(postRef, "updatedAt", FieldValue.serverTimestamp())
             batch.commit().awaitResult()
+
+            runCatching {
+                val postDoc = postRef.get().awaitResult().toObject(PhotoPostDocument::class.java)
+                if (postDoc != null) {
+                    notificationRepository.createCommentNotificationIfNeeded(
+                        post = postDoc,
+                        actorUserId = comment.authorId,
+                        actorName = comment.authorName
+                    )
+                }
+            }
             commentId
         }
     }
@@ -283,6 +296,27 @@ class PhotoPostRepository(
                 transaction.set(userRef, mapOf("likedCount" to FieldValue.increment(1)), SetOptions.merge())
                 Unit
             }.awaitResult()
+
+            runCatching {
+                val post = db.collection(FirestoreCollections.PHOTO_POSTS)
+                    .document(postId)
+                    .get()
+                    .awaitResult()
+                    .toObject(PhotoPostDocument::class.java)
+                val actorName = db.collection(FirestoreCollections.USERS)
+                    .document(userId)
+                    .get()
+                    .awaitResult()
+                    .getString("displayName")
+                    .orEmpty()
+                if (post != null) {
+                    notificationRepository.createLikeNotificationIfNeeded(
+                        post = post,
+                        actorUserId = userId,
+                        actorName = actorName
+                    )
+                }
+            }
         }
     }
 
