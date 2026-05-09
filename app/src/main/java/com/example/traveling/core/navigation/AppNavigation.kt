@@ -14,8 +14,11 @@ import com.example.traveling.features.passerelle.LoginScreen
 import com.example.traveling.features.passerelle.ForgotPasswordScreen
 import com.example.traveling.features.passerelle.RegisterScreen
 import com.example.traveling.features.profile.LikedPostsScreen
+import com.example.traveling.features.profile.LikedRoutesScreen
+import com.example.traveling.features.profile.ImageMigrationScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
+import com.example.traveling.features.profile.SavedRoutesScreen
 import com.example.traveling.features.travelshare.GroupDetailScreen
 import com.example.traveling.features.travelshare.GroupsScreen
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
@@ -135,6 +138,31 @@ fun AppNavigation() {
                 onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
+        composable("liked_routes") {
+            LikedRoutesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRoute = { routeId -> navController.navigate("route_detail_cached/$routeId") }
+            )
+        }
+        composable("saved_routes") {
+            SavedRoutesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenRoute = { routeId -> navController.navigate("route_detail_cached/$routeId") }
+            )
+        }
+        composable(
+            route = "route_detail_cached/{routeId}",
+            arguments = listOf(navArgument("routeId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val routeId = backStackEntry.arguments?.getString("routeId") ?: ""
+            CachedRouteDetailScreen(
+                routeId = routeId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("image_migration") {
+            ImageMigrationScreen(onBack = { navController.popBackStack() })
+        }
 
         composable(
             route = "photo_detail/{photoId}",
@@ -164,7 +192,10 @@ fun AppNavigation() {
                 onNavigateToMyPublishedPosts = { navController.navigate("my_published_posts") },
                 onNavigateToLikedPosts = { navController.navigate("liked_posts") },
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
+                onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
+                onNavigateToImageMigration = { navController.navigate("image_migration") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
                 }

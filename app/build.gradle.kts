@@ -55,6 +55,8 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
+    // coroutines support for Firebase Task.await()
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
     // navigation compose
     implementation("androidx.navigation:navigation-compose:2.7.7")

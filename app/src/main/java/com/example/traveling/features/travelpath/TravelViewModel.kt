@@ -12,6 +12,7 @@ import com.example.traveling.data.model.TravelRoute
 import com.example.traveling.data.repository.LocalStorageRepository
 import com.example.traveling.data.repository.OpenMeteoService
 import com.example.traveling.data.repository.PdfExportService
+import com.example.traveling.data.repository.SavedRoutesRepository
 import com.example.traveling.data.repository.TravelRepository
 import com.example.traveling.data.repository.WeatherInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ class TravelViewModel : ViewModel() {
     private val weatherService = OpenMeteoService()
     private val pdfService = PdfExportService()
     private var localStorage: LocalStorageRepository? = null
+    private val savedRoutesRepo = SavedRoutesRepository()
 
     /** Must be called once from a Composable with LocalContext */
     fun initLocalStorage(context: Context) {
@@ -272,23 +274,23 @@ class TravelViewModel : ViewModel() {
 
         // Stocker les associations route → attractions
         routeAttractionsMap = mapOf(
-            "1" to cheapAttractions,
-            "2" to balancedAttractions,
-            "3" to premiumAttractions
+            "${dest.id}_eco" to cheapAttractions,
+            "${dest.id}_bal" to balancedAttractions,
+            "${dest.id}_pre" to premiumAttractions
         )
 
         val routes = mutableListOf<TravelRoute>()
 
         if (cheapAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("1", "Route Économique", "Budget maîtrisé", cheapAttractions, dest,
+            routes.add(buildTravelRoute("${dest.id}_eco", "Route Économique", "Budget maîtrisé", cheapAttractions, dest,
                 "Modéré", 3, Pair(0xFF10B981, 0xFF0D9488)))
         }
         if (balancedAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("2", "Route Équilibrée", "Meilleur rapport qualité-prix", balancedAttractions, dest,
+            routes.add(buildTravelRoute("${dest.id}_bal", "Route Équilibrée", "Meilleur rapport qualité-prix", balancedAttractions, dest,
                 "Facile", 2, Pair(0xFFB91C1C, 0xFF991B1B)))
         }
         if (premiumAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("3", "Route Premium", "Expérience haut de gamme", premiumAttractions, dest,
+            routes.add(buildTravelRoute("${dest.id}_pre", "Route Premium", "Expérience haut de gamme", premiumAttractions, dest,
                 "Très facile", 1, Pair(0xFFF59E0B, 0xFFB45309)))
         }
 
@@ -353,6 +355,7 @@ class TravelViewModel : ViewModel() {
 
         return TravelRoute(
             id = id, name = name, subtitle = subtitle,
+            destName = dest.name,
             budget = attractions.sumOf { it.cost },
             duration = durationStr,
             effort = effort, effortLevel = effortLevel,
@@ -504,14 +507,102 @@ class TravelViewModel : ViewModel() {
     fun isRouteLiked(routeId: String): Boolean =
         localStorage?.isRouteLiked(routeId) ?: false
 
-    fun toggleRouteLike(routeId: String): Boolean =
-        localStorage?.toggleRouteLike(routeId) ?: false
+    fun toggleRouteLike(routeId: String): Boolean {
+        val route = _selectedRoute.value
+        val destName = route?.destName ?: _selectedDestination.value?.name ?: ""
+
+        // Local persistence
+        route?.let {
+            localStorage?.storeRouteInfo(it, destName)
+            localStorage?.cacheRoute(it.id, it, _routeStops.value)
+        }
+        val nowLiked = localStorage?.toggleRouteLike(routeId) ?: false
+
+        // Sync to Firestore
+        viewModelScope.launch {
+            try {
+                if (nowLiked && route != null) {
+                    savedRoutesRepo.saveRoute(route, _routeStops.value, destName, "liked")
+                } else {
+                    savedRoutesRepo.removeRoute(routeId, "liked")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return nowLiked
+    }
 
     fun isRouteSaved(routeId: String): Boolean =
         localStorage?.isRouteSaved(routeId) ?: false
 
-    fun toggleRouteSave(routeId: String): Boolean =
-        localStorage?.toggleRouteSave(routeId) ?: false
+    fun toggleRouteSave(routeId: String): Boolean {
+        val route = _selectedRoute.value
+        val destName = route?.destName ?: _selectedDestination.value?.name ?: ""
+
+        route?.let {
+            localStorage?.storeRouteInfo(it, destName)
+            localStorage?.cacheRoute(it.id, it, _routeStops.value)
+        }
+        val nowSaved = localStorage?.toggleRouteSave(routeId) ?: false
+
+        // Sync to Firestore
+        viewModelScope.launch {
+            try {
+                if (nowSaved && route != null) {
+                    savedRoutesRepo.saveRoute(route, _routeStops.value, destName, "saved")
+                } else {
+                    savedRoutesRepo.removeRoute(routeId, "saved")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return nowSaved
+    }
+
+    fun getLikedRoutes() = localStorage?.getLikedRoutes() ?: emptyList()
+    fun getSavedRoutes() = localStorage?.getSavedRoutes() ?: emptyList()
+
+    /** Load a cached route into ViewModel state so RouteDetailScreen can display it.
+     *  Tries local cache first, then falls back to Firestore. */
+    fun loadCachedRoute(routeId: String): Boolean {
+        // Try local cache first
+        val cached = localStorage?.getCachedRoute(routeId)
+        if (cached != null) {
+            val (route, stops) = cached
+            _selectedRoute.value = route
+            _routeStops.value = stops
+            return true
+        }
+        // Will try Firestore asynchronously
+        return false
+    }
+
+    /** Async version: load route from Firestore when local cache is empty */
+    suspend fun loadCachedRouteAsync(routeId: String): Boolean {
+        // Try local first
+        val cached = localStorage?.getCachedRoute(routeId)
+        if (cached != null) {
+            val (route, stops) = cached
+            _selectedRoute.value = route
+            _routeStops.value = stops
+            return true
+        }
+        // Try Firestore (check both types)
+        for (type in listOf("liked", "saved")) {
+            val doc = savedRoutesRepo.getRoute(routeId, type)
+            if (doc != null) {
+                val (route, stops) = savedRoutesRepo.toRouteAndStops(doc)
+                _selectedRoute.value = route
+                _routeStops.value = stops
+                // Also cache locally for next time
+                localStorage?.cacheRoute(route.id, route, stops)
+                return true
+            }
+        }
+        return false
+    }
 
     /** Re-generate the current route with shuffled attractions */
     fun regenerateCurrentRoute() {
@@ -531,7 +622,7 @@ class TravelViewModel : ViewModel() {
         val stops = _routeStops.value
 
         val text = buildString {
-            appendLine("🗺️ Mon itinéraire ${route?.name ?: ""} — ${dest?.name ?: ""}")
+            appendLine("🗺️ Mon itinéraire ${route?.name ?: ""} — ${dest?.name ?: route?.destName ?: ""}")
             appendLine("Budget : ${route?.budget ?: 0} € | Durée : ${route?.duration ?: ""}")
             appendLine()
             stops.forEachIndexed { i, s ->
@@ -543,7 +634,7 @@ class TravelViewModel : ViewModel() {
 
         return Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "Itinéraire ${dest?.name ?: ""}")
+            putExtra(Intent.EXTRA_SUBJECT, "Itinéraire ${dest?.name ?: route?.destName ?: ""}")
             putExtra(Intent.EXTRA_TEXT, text)
         }
     }
@@ -556,7 +647,7 @@ class TravelViewModel : ViewModel() {
         val route = _selectedRoute.value ?: return
         val stops = _routeStops.value
         if (stops.isEmpty()) return
-        val key = "${_selectedDestination.value?.name ?: "dest"}_${route.id}"
+        val key = "${_selectedDestination.value?.name ?: route.destName.ifBlank { "dest" }}_${route.id}"
         localStorage?.cacheRoute(key, route, stops)
     }
 

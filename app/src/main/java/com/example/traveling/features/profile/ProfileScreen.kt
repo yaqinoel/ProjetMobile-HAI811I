@@ -74,10 +74,11 @@ fun ProfileScreen(
     onNavigateRegister: () -> Unit = {},
     onLogout: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
-    onOpenGroups: () -> Unit = {},
     onOpenMyPhotos: () -> Unit = {},
     onOpenLikedPosts: () -> Unit = {},
-    onOpenSavedPosts: () -> Unit = {}
+    onOpenSavedPosts: () -> Unit = {},
+    onOpenLikedRoutes: () -> Unit = {},
+    onOpenSavedRoutes: () -> Unit = {}
 ) {
     if (isAnonymous) {
         AnonymousProfileView(
@@ -127,10 +128,11 @@ fun ProfileScreen(
                     user = state.user,
                     onLogout = onLogout,
                     onOpenNotifications = onOpenNotifications,
-                    onOpenGroups = onOpenGroups,
                     onOpenMyPhotos = onOpenMyPhotos,
                     onOpenLikedPosts = onOpenLikedPosts,
-                    onOpenSavedPosts = onOpenSavedPosts
+                    onOpenSavedPosts = onOpenSavedPosts,
+                    onOpenLikedRoutes = onOpenLikedRoutes,
+                    onOpenSavedRoutes = onOpenSavedRoutes
                 )
             }
         }
@@ -261,18 +263,20 @@ private fun AuthenticatedProfileView(
     user: User,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
-    onOpenGroups: () -> Unit,
     onOpenMyPhotos: () -> Unit,
     onOpenLikedPosts: () -> Unit,
-    onOpenSavedPosts: () -> Unit
+    onOpenSavedPosts: () -> Unit,
+    onOpenLikedRoutes: () -> Unit,
+    onOpenSavedRoutes: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
     val menuItems = listOf(
-        ProfileMenuItem("Mes Groupes", "3 groupes actifs", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
         ProfileMenuItem("Mes publications", "Modifier ou supprimer vos posts", Icons.Default.PhotoLibrary, Color(0xFFEA580C), action = onOpenMyPhotos),
         ProfileMenuItem("Posts aimés", "Photos que vous avez aimées", Icons.Default.Favorite, Color(0xFFDC2626), action = onOpenLikedPosts),
         ProfileMenuItem("Posts enregistrés", "Photos sauvegardées pour plus tard", Icons.Default.Bookmark, Color(0xFFD97706), action = onOpenSavedPosts),
+        ProfileMenuItem("Itinéraires aimés", "Routes que vous avez aimées", Icons.Default.FavoriteBorder, Color(0xFFE11D48), action = onOpenLikedRoutes),
+        ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes),
         ProfileMenuItem("Notifications", "5 nouvelles", Icons.Default.Notifications, Color(0xFF10B981), badge = 5, action = onOpenNotifications),
         ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
     )
@@ -280,8 +284,7 @@ private fun AuthenticatedProfileView(
     val stats = listOf(
         ProfileStat("Photos", user.postCount.toString(), Icons.Default.PhotoCamera, action = onOpenMyPhotos),
         ProfileStat("Favoris", user.likedCount.toString(), Icons.Default.Favorite, action = onOpenLikedPosts),
-        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts),
-        ProfileStat("Groupes", user.groupCount.toString(), Icons.Default.Group)
+        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts)
     )
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
@@ -453,10 +456,11 @@ fun ProfileScreenPreview() {
         ),
         onLogout = {},
         onOpenNotifications = {},
-        onOpenGroups = {},
         onOpenMyPhotos = {},
         onOpenLikedPosts = {},
-        onOpenSavedPosts = {}
+        onOpenSavedPosts = {},
+        onOpenLikedRoutes = {},
+        onOpenSavedRoutes = {}
     )
 }
 

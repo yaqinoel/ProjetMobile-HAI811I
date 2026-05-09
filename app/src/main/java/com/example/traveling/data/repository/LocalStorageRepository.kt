@@ -47,6 +47,62 @@ class LocalStorageRepository(context: Context) {
         return nowSaved
     }
 
+    /** Store lightweight route metadata so profile can display it */
+    fun storeRouteInfo(route: TravelRoute, destName: String) {
+        val effectiveDestName = destName.ifBlank { route.destName }
+        val json = JSONObject().apply {
+            put("id", route.id)
+            put("name", route.name)
+            put("subtitle", route.subtitle)
+            put("budget", route.budget)
+            put("duration", route.duration)
+            put("stops", route.stops)
+            put("rating", route.rating.toDouble())
+            put("imageUrl", route.imageUrl)
+            put("destName", effectiveDestName)
+        }
+        prefs.edit().putString("route_info_${route.id}", json.toString()).apply()
+    }
+
+    data class RouteInfoSummary(
+        val id: String,
+        val name: String,
+        val subtitle: String,
+        val budget: Int,
+        val duration: String,
+        val stops: Int,
+        val rating: Float,
+        val imageUrl: String,
+        val destName: String
+    )
+
+    private fun getRouteInfo(routeId: String): RouteInfoSummary? {
+        val raw = prefs.getString("route_info_$routeId", null) ?: return null
+        return try {
+            val j = JSONObject(raw)
+            RouteInfoSummary(
+                id = j.getString("id"), name = j.getString("name"),
+                subtitle = j.optString("subtitle", ""),
+                budget = j.optInt("budget", 0),
+                duration = j.optString("duration", ""),
+                stops = j.optInt("stops", 0),
+                rating = j.optDouble("rating", 0.0).toFloat(),
+                imageUrl = j.optString("imageUrl", ""),
+                destName = j.optString("destName", "")
+            )
+        } catch (e: Exception) { null }
+    }
+
+    fun getLikedRoutes(): List<RouteInfoSummary> {
+        val ids = prefs.getStringSet("liked_routes", emptySet()) ?: emptySet()
+        return ids.mapNotNull { getRouteInfo(it) }
+    }
+
+    fun getSavedRoutes(): List<RouteInfoSummary> {
+        val ids = prefs.getStringSet("saved_routes", emptySet()) ?: emptySet()
+        return ids.mapNotNull { getRouteInfo(it) }
+    }
+
     // ─── Offline Route Caching ───
 
     fun cacheRoute(routeKey: String, route: TravelRoute, stops: List<RouteStop>) {
@@ -83,6 +139,7 @@ class LocalStorageRepository(context: Context) {
 
     private fun routeToJson(r: TravelRoute) = JSONObject().apply {
         put("id", r.id); put("name", r.name); put("subtitle", r.subtitle)
+        put("destName", r.destName)
         put("budget", r.budget); put("duration", r.duration)
         put("effort", r.effort); put("effortLevel", r.effortLevel)
         put("stops", r.stops); put("rating", r.rating.toDouble())
@@ -94,7 +151,9 @@ class LocalStorageRepository(context: Context) {
 
     private fun jsonToRoute(j: JSONObject) = TravelRoute(
         id = j.getString("id"), name = j.getString("name"),
-        subtitle = j.getString("subtitle"), budget = j.getInt("budget"),
+        subtitle = j.getString("subtitle"),
+        destName = j.optString("destName", ""),
+        budget = j.getInt("budget"),
         duration = j.getString("duration"), effort = j.getString("effort"),
         effortLevel = j.getInt("effortLevel"), stops = j.getInt("stops"),
         rating = j.getDouble("rating").toFloat(), reviews = j.getInt("reviews"),

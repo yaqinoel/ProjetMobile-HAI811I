@@ -46,6 +46,8 @@ fun MainScreen(
     onNavigateToMyPublishedPosts: () -> Unit = {},
     onNavigateToLikedPosts: () -> Unit = {},
     onNavigateToSavedPosts: () -> Unit = {},
+    onNavigateToLikedRoutes: () -> Unit = {},
+    onNavigateToSavedRoutes: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
     onNavigateToPhotoDetail: (String) -> Unit = {}
 ) {
@@ -83,10 +85,11 @@ fun MainScreen(
                     onNavigateLogin = onNavigateLogin,
                     onNavigateRegister = onNavigateRegister,
                     onOpenNotifications = onNavigateToNotifications,
-                    onOpenGroups = onNavigateToGroups,
                     onOpenMyPhotos = onNavigateToMyPublishedPosts,
                     onOpenLikedPosts = onNavigateToLikedPosts,
-                    onOpenSavedPosts = onNavigateToSavedPosts
+                    onOpenSavedPosts = onNavigateToSavedPosts,
+                    onOpenLikedRoutes = onNavigateToLikedRoutes,
+                    onOpenSavedRoutes = onNavigateToSavedRoutes
                 )
             }
         }
