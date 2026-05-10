@@ -24,14 +24,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.example.traveling.data.model.User
 import com.example.traveling.ui.theme.*
 
@@ -53,19 +51,6 @@ data class ProfileStat(
     val action: () -> Unit = {}
 )
 
-// ─── 假数据 ───
-private val PHOTOS_GRID = listOf(
-    "https://images.unsplash.com/photo-1558507564-c573429b9ceb?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1586862118451-efc84a66e704?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1647067151201-0b37c7555870?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1709133332724-2f56232c77eb?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1672891197847-d3a65c11b33d?w=300&fit=crop",
-    "https://images.unsplash.com/photo-1755710116297-20f8e42d3c28?w=300&fit=crop"
-)
-
 // ─── 核心组件 ───
 @Composable
 fun ProfileScreen(
@@ -74,6 +59,7 @@ fun ProfileScreen(
     onNavigateRegister: () -> Unit = {},
     onLogout: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
+    onOpenGroups: () -> Unit = {},
     onOpenMyPhotos: () -> Unit = {},
     onOpenLikedPosts: () -> Unit = {},
     onOpenSavedPosts: () -> Unit = {},
@@ -128,6 +114,7 @@ fun ProfileScreen(
                     user = state.user,
                     onLogout = onLogout,
                     onOpenNotifications = onOpenNotifications,
+                    onOpenGroups = onOpenGroups,
                     onOpenMyPhotos = onOpenMyPhotos,
                     onOpenLikedPosts = onOpenLikedPosts,
                     onOpenSavedPosts = onOpenSavedPosts,
@@ -263,6 +250,7 @@ private fun AuthenticatedProfileView(
     user: User,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
+    onOpenGroups: () -> Unit,
     onOpenMyPhotos: () -> Unit,
     onOpenLikedPosts: () -> Unit,
     onOpenSavedPosts: () -> Unit,
@@ -272,6 +260,7 @@ private fun AuthenticatedProfileView(
     val scrollState = rememberScrollState()
 
     val menuItems = listOf(
+        ProfileMenuItem("Mes groupes", "Créer, rejoindre et gérer vos groupes", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
         ProfileMenuItem("Mes publications", "Modifier ou supprimer vos posts", Icons.Default.PhotoLibrary, Color(0xFFEA580C), action = onOpenMyPhotos),
         ProfileMenuItem("Posts aimés", "Photos que vous avez aimées", Icons.Default.Favorite, Color(0xFFDC2626), action = onOpenLikedPosts),
         ProfileMenuItem("Posts enregistrés", "Photos sauvegardées pour plus tard", Icons.Default.Bookmark, Color(0xFFD97706), action = onOpenSavedPosts),
@@ -407,34 +396,7 @@ private fun AuthenticatedProfileView(
             }
         }
 
-        // 个人照片墙网格
-        Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Mes Photos", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = StoneText)
-                Text("Voir tout", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = RedPrimary)
-            }
-
-            // 将 9 张图片切分为每 3 张一行
-            PHOTOS_GRID.chunked(3).forEach { rowImages ->
-                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    rowImages.forEach { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                    }
-                    // 如果最后一行不足 3 张，补充空白的 Box 以保持对齐
-                    repeat(3 - rowImages.size) {
-                        Spacer(modifier = Modifier.weight(1f).aspectRatio(1f))
-                    }
-                }
-            }
-        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -456,6 +418,7 @@ fun ProfileScreenPreview() {
         ),
         onLogout = {},
         onOpenNotifications = {},
+        onOpenGroups = {},
         onOpenMyPhotos = {},
         onOpenLikedPosts = {},
         onOpenSavedPosts = {},

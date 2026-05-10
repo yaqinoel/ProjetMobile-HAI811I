@@ -85,6 +85,7 @@ fun MainScreen(
                     onNavigateLogin = onNavigateLogin,
                     onNavigateRegister = onNavigateRegister,
                     onOpenNotifications = onNavigateToNotifications,
+                    onOpenGroups = onNavigateToGroups,
                     onOpenMyPhotos = onNavigateToMyPublishedPosts,
                     onOpenLikedPosts = onNavigateToLikedPosts,
                     onOpenSavedPosts = onNavigateToSavedPosts,

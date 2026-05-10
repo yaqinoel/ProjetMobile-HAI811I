@@ -195,7 +195,6 @@ fun AppNavigation() {
                 onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
                 onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
-                onNavigateToImageMigration = { navController.navigate("image_migration") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
                 }
