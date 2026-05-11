@@ -52,6 +52,7 @@ class GalleryViewModel(
     private var followedUsers: List<User> = emptyList()
     private var joinedGroups: List<GroupDocument> = emptyList()
     private var postsLoaded = false
+    private var reactionsReady = false
     private var postsVersion = 0
     private val optimisticLikeStates = mutableMapOf<String, Boolean>()
     private val optimisticLikeCounts = mutableMapOf<String, Int>()
@@ -68,6 +69,7 @@ class GalleryViewModel(
         optimisticLikeCounts.clear()
         optimisticSaveStates.clear()
         postsLoaded = false
+        reactionsReady = false
         postsVersion += 1
         _uiState.value = GalleryUiState.Loading
 
@@ -171,6 +173,8 @@ class GalleryViewModel(
         val uid = auth.currentUser?.uid
         val version = ++postsVersion
         postsLoaded = true
+        val hadVisiblePosts = latestPosts.isNotEmpty()
+        reactionsReady = uid == null || documents.isEmpty() || hadVisiblePosts
         val previousPostsById = latestPosts.associateBy { it.id }
         latestPosts = documents.map { document ->
             val previous = previousPostsById[document.postId]
@@ -181,16 +185,21 @@ class GalleryViewModel(
                 if (optimisticLikeCount != null) post.copy(likes = optimisticLikeCount) else post
             }
         }
-        emitSuccess()
 
         if (uid == null || documents.isEmpty()) {
+            emitSuccess()
             return
+        }
+        if (hadVisiblePosts) {
+            emitSuccess()
         }
 
         viewModelScope.launch {
+            val likedIds = runCatching { repository.getLikedPostIds(uid) }.getOrDefault(emptySet())
+            val savedIds = runCatching { repository.getSavedPostIds(uid) }.getOrDefault(emptySet())
             val posts = documents.map { doc ->
-                val liked = runCatching { repository.isPostLikedByUser(uid, doc.postId) }.getOrDefault(false)
-                val saved = runCatching { repository.isPostSavedByUser(uid, doc.postId) }.getOrDefault(false)
+                val liked = likedIds.contains(doc.postId)
+                val saved = savedIds.contains(doc.postId)
                 val resolvedLiked = optimisticLikeStates[doc.postId] ?: liked
                 val resolvedSaved = optimisticSaveStates[doc.postId] ?: saved
                 val optimisticLikeCount = optimisticLikeCounts[doc.postId]
@@ -200,6 +209,7 @@ class GalleryViewModel(
             }
             if (version != postsVersion) return@launch
             latestPosts = posts
+            reactionsReady = true
             emitSuccess()
         }
     }
@@ -212,7 +222,7 @@ class GalleryViewModel(
     }
 
     private fun emitSuccess() {
-        if (!postsLoaded) return
+        if (!postsLoaded || !reactionsReady) return
         _uiState.value = GalleryUiState.Success(
             posts = latestPosts,
             shortcuts = buildShortcuts()

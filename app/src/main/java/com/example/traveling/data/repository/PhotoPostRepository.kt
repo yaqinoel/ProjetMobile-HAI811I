@@ -530,6 +530,28 @@ class PhotoPostRepository(
         return doc.exists()
     }
 
+    suspend fun getLikedPostIds(userId: String): Set<String> {
+        return db.collection(FirestoreCollections.USERS)
+            .document(userId)
+            .collection(FirestoreCollections.LIKED_POSTS)
+            .get()
+            .awaitResult()
+            .documents
+            .map { it.id }
+            .toSet()
+    }
+
+    suspend fun getSavedPostIds(userId: String): Set<String> {
+        return db.collection(FirestoreCollections.USERS)
+            .document(userId)
+            .collection(FirestoreCollections.SAVED_POSTS)
+            .get()
+            .awaitResult()
+            .documents
+            .map { it.id }
+            .toSet()
+    }
+
     suspend fun softDeletePost(postId: String, userId: String): Result<Unit> {
         return runCatching {
             val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
