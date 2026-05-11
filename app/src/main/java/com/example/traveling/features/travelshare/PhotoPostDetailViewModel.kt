@@ -34,11 +34,17 @@ class PhotoPostDetailViewModel(
     private var currentPost: PhotoPostDocument? = null
     private var currentComments: List<PhotoCommentDocument> = emptyList()
     private var currentPostId: String? = null
+    private var currentLiked = false
+    private var currentSaved = false
+    private var stateVersion = 0
 
     fun loadPhoto(photoId: String) {
         currentPostId = photoId
         currentPost = null
         currentComments = emptyList()
+        currentLiked = false
+        currentSaved = false
+        stateVersion += 1
         _uiState.value = PhotoPostDetailUiState.Loading
 
         detailListener?.remove()
@@ -47,9 +53,13 @@ class PhotoPostDetailViewModel(
         detailListener = repository.observePostDetail(
             postId = photoId,
             onChanged = { post ->
-                currentPost = post
-                publishUiState()
-                checkLikeSaveStateAndRefresh()
+                if (post == null) {
+                    _uiState.value = PhotoPostDetailUiState.Error("Photo introuvable.")
+                } else {
+                    currentPost = post
+                    publishUiState()
+                    checkLikeSaveStateAndRefresh()
+                }
             },
             onError = { error ->
                 _uiState.value = PhotoPostDetailUiState.Error(
@@ -98,15 +108,27 @@ class PhotoPostDetailViewModel(
         val postId = currentPostId ?: return
         val user = auth.currentUser ?: return
 
+        stateVersion += 1
+        val previousLiked = currentLiked
+        val nextLiked = !previousLiked
+        currentLiked = nextLiked
+        currentPost = currentPost?.copy(
+            likeCount = ((currentPost?.likeCount ?: 0) + if (nextLiked) 1 else -1).coerceAtLeast(0)
+        )
+        publishUiState()
+
         viewModelScope.launch {
-            val isLiked = runCatching { repository.isPostLikedByUser(user.uid, postId) }.getOrDefault(false)
-            val result = if (isLiked) {
+            val result = if (previousLiked) {
                 repository.unlikePost(user.uid, postId)
             } else {
                 repository.likePost(user.uid, postId)
             }
             result.onFailure {
-                // Keep the current detail visible; listener updates state when write succeeds.
+                currentLiked = previousLiked
+                currentPost = currentPost?.copy(
+                    likeCount = ((currentPost?.likeCount ?: 0) + if (previousLiked) 1 else -1).coerceAtLeast(0)
+                )
+                publishUiState()
             }
         }
     }
@@ -115,15 +137,20 @@ class PhotoPostDetailViewModel(
         val postId = currentPostId ?: return
         val user = auth.currentUser ?: return
 
+        stateVersion += 1
+        val previousSaved = currentSaved
+        currentSaved = !previousSaved
+        publishUiState()
+
         viewModelScope.launch {
-            val isSaved = runCatching { repository.isPostSavedByUser(user.uid, postId) }.getOrDefault(false)
-            val result = if (isSaved) {
+            val result = if (previousSaved) {
                 repository.unsavePost(user.uid, postId)
             } else {
                 repository.savePost(user.uid, postId, null)
             }
             result.onFailure {
-                // Keep the current detail visible; listener updates state when write succeeds.
+                currentSaved = previousSaved
+                publishUiState()
             }
         }
     }
@@ -141,18 +168,17 @@ class PhotoPostDetailViewModel(
         }
     }
 
-    private fun publishUiState(isLiked: Boolean = false, isSaved: Boolean = false) {
+    private fun publishUiState() {
         val post = currentPost
         if (post == null) {
-            _uiState.value = PhotoPostDetailUiState.Error("Photo introuvable.")
             return
         }
 
         _uiState.value = PhotoPostDetailUiState.Success(
             photo = post.toPhotoPostDetailUi(
                 comments = currentComments,
-                isLiked = isLiked,
-                isSaved = isSaved
+                isLiked = currentLiked,
+                isSaved = currentSaved
             )
         )
     }
@@ -160,11 +186,15 @@ class PhotoPostDetailViewModel(
     private fun checkLikeSaveStateAndRefresh() {
         val postId = currentPostId ?: return
         val user = auth.currentUser ?: return
+        val version = stateVersion
 
         viewModelScope.launch {
             val liked = runCatching { repository.isPostLikedByUser(user.uid, postId) }.getOrDefault(false)
             val saved = runCatching { repository.isPostSavedByUser(user.uid, postId) }.getOrDefault(false)
-            publishUiState(isLiked = liked, isSaved = saved)
+            if (version != stateVersion) return@launch
+            currentLiked = liked
+            currentSaved = saved
+            publishUiState()
         }
     }
 
