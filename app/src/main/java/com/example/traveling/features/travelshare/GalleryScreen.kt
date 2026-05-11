@@ -1,5 +1,10 @@
 package com.example.traveling.features.travelshare
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandVertically
@@ -49,6 +54,7 @@ import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.features.travelshare.util.filterGalleryPosts
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 private data class PhotoFilterOption(val id: String, val label: String)
@@ -113,6 +119,52 @@ fun GalleryScreen(
     var isVoiceSearchActive by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val voiceSearchLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isVoiceSearchActive = false
+        if (result.resultCode == Activity.RESULT_OK) {
+            val recognizedText = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                .orEmpty()
+
+            if (recognizedText.isNotBlank()) {
+                searchQuery = recognizedText
+            } else {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Aucun texte reconnu.")
+                }
+            }
+        }
+    }
+    val startVoiceSearch: () -> Unit = {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Décrivez une photo, un lieu ou un thème")
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+        }
+
+        if (intent.resolveActivity(context.packageManager) == null) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Recherche vocale indisponible sur cet appareil.")
+            }
+        } else {
+            isVoiceSearchActive = true
+            runCatching { voiceSearchLauncher.launch(intent) }
+                .onFailure {
+                    isVoiceSearchActive = false
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Recherche vocale indisponible sur cet appareil.")
+                    }
+                }
+        }
+        Unit
+    }
 
     LaunchedEffect(remotePosts) {
         shuffledPhotos = null
@@ -155,12 +207,7 @@ fun GalleryScreen(
                 onTypeSelected = { selectedType = it },
                 onPeriodSelected = { selectedPeriod = it },
                 onDiscoverySelected = { selectedDiscovery = it },
-                onToggleVoiceSearch = {
-                    isVoiceSearchActive = !isVoiceSearchActive
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Recherche vocale à connecter plus tard.")
-                    }
-                },
+                onToggleVoiceSearch = startVoiceSearch,
                 isAnonymous = isAnonymous,
                 onShuffle = { shuffledPhotos = photos.shuffled() }
             )
