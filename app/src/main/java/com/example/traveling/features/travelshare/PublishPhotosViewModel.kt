@@ -1,5 +1,6 @@
 package com.example.traveling.features.travelshare
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,6 +9,7 @@ import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.PublishPhotoPostInput
 import com.example.traveling.data.repository.UserRepository
+import com.example.traveling.features.travelshare.ai.ImageAnnotationRepository
 import com.example.traveling.features.travelshare.model.SelectedLocationUi
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,15 +24,25 @@ sealed interface PublishUiState {
     data class Error(val message: String) : PublishUiState
 }
 
+sealed interface AiAnnotationUiState {
+    data object Idle : AiAnnotationUiState
+    data object Loading : AiAnnotationUiState
+    data class Success(val tags: List<String>) : AiAnnotationUiState
+    data class Error(val message: String) : AiAnnotationUiState
+}
+
 class PublishPhotosViewModel(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val userRepository: UserRepository = UserRepository(),
     private val photoPostRepository: PhotoPostRepository = PhotoPostRepository(),
-    private val groupRepository: GroupRepository = GroupRepository()
+    private val groupRepository: GroupRepository = GroupRepository(),
+    private val imageAnnotationRepository: ImageAnnotationRepository = ImageAnnotationRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PublishUiState>(PublishUiState.Idle)
     val uiState: StateFlow<PublishUiState> = _uiState.asStateFlow()
+    private val _aiAnnotationState = MutableStateFlow<AiAnnotationUiState>(AiAnnotationUiState.Idle)
+    val aiAnnotationState: StateFlow<AiAnnotationUiState> = _aiAnnotationState.asStateFlow()
     private val _joinedGroups = MutableStateFlow<List<UserJoinedGroupDocument>>(emptyList())
     val joinedGroups: StateFlow<List<UserJoinedGroupDocument>> = _joinedGroups.asStateFlow()
 
@@ -40,6 +52,33 @@ class PublishPhotosViewModel(
             groupRepository.getJoinedGroups(uid)
                 .onSuccess { _joinedGroups.value = it }
                 .onFailure { _uiState.value = PublishUiState.Error(it.localizedMessage ?: "Impossible de charger les groupes") }
+        }
+    }
+
+    fun annotateSelectedImages(context: Context, selectedPhotoUris: List<String>) {
+        if (selectedPhotoUris.isEmpty()) {
+            _aiAnnotationState.value = AiAnnotationUiState.Error("Ajoutez au moins une photo avant l'annotation IA")
+            return
+        }
+
+        viewModelScope.launch {
+            _aiAnnotationState.value = AiAnnotationUiState.Loading
+            runCatching {
+                imageAnnotationRepository.annotateImages(
+                    context = context.applicationContext,
+                    imageUris = selectedPhotoUris.map(Uri::parse)
+                )
+            }.onSuccess { result ->
+                _aiAnnotationState.value = if (result.tags.isEmpty()) {
+                    AiAnnotationUiState.Error("Aucun tag IA pertinent trouvé")
+                } else {
+                    AiAnnotationUiState.Success(result.tags)
+                }
+            }.onFailure { error ->
+                _aiAnnotationState.value = AiAnnotationUiState.Error(
+                    error.localizedMessage ?: "Échec de l'annotation IA"
+                )
+            }
         }
     }
 
@@ -120,5 +159,9 @@ class PublishPhotosViewModel(
 
     fun resetState() {
         _uiState.value = PublishUiState.Idle
+    }
+
+    fun resetAiAnnotationState() {
+        _aiAnnotationState.value = AiAnnotationUiState.Idle
     }
 }

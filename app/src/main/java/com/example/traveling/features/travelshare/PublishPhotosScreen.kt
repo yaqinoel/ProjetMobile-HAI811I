@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -51,6 +52,7 @@ fun PublishPhotosScreen(
     onPublishSuccess: (String) -> Unit = {},
     onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
+    val context = LocalContext.current
     // États Obligatoires (Required)
     var title by remember { mutableStateOf("") }
     var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
@@ -63,7 +65,6 @@ fun PublishPhotosScreen(
     var tagInput by remember { mutableStateOf("") }
     var selectedTags by remember { mutableStateOf(emptyList<String>()) }
     var voiceNoteAdded by remember { mutableStateOf(false) }
-    var aiAnnotationEnabled by remember { mutableStateOf(false) }
     var isLinkedToPath by remember { mutableStateOf(false) }
     var showMapPicker by remember { mutableStateOf(false) }
     var publishPreview by remember { mutableStateOf(false) }
@@ -71,6 +72,7 @@ fun PublishPhotosScreen(
     val coroutineScope = rememberCoroutineScope()
     val publishViewModel: PublishPhotosViewModel = viewModel()
     val publishState by publishViewModel.uiState.collectAsState()
+    val aiAnnotationState by publishViewModel.aiAnnotationState.collectAsState()
     val joinedGroups by publishViewModel.joinedGroups.collectAsState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -113,6 +115,17 @@ fun PublishPhotosScreen(
         }
         tagInput = ""
     }
+    val mergeTags: (List<String>) -> Int = { tags ->
+        val normalizedTags = tags
+            .map { it.trim().trimStart('#') }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+            .filter { candidate ->
+                selectedTags.none { it.equals(candidate, ignoreCase = true) }
+            }
+        selectedTags = selectedTags + normalizedTags
+        normalizedTags.size
+    }
 
     LaunchedEffect(publishState) {
         when (val state = publishState) {
@@ -126,6 +139,28 @@ fun PublishPhotosScreen(
                 onPublishSuccess(state.postId)
             }
             else -> Unit
+        }
+    }
+
+    LaunchedEffect(aiAnnotationState) {
+        when (val state = aiAnnotationState) {
+            is AiAnnotationUiState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                publishViewModel.resetAiAnnotationState()
+            }
+            AiAnnotationUiState.Loading -> Unit
+            is AiAnnotationUiState.Success -> {
+                val addedCount = mergeTags(state.tags)
+                snackbarHostState.showSnackbar(
+                    if (addedCount > 0) {
+                        "$addedCount tag${if (addedCount > 1) "s" else ""} IA ajouté${if (addedCount > 1) "s" else ""}."
+                    } else {
+                        "Les tags IA sont déjà présents."
+                    }
+                )
+                publishViewModel.resetAiAnnotationState()
+            }
+            AiAnnotationUiState.Idle -> Unit
         }
     }
 
@@ -293,10 +328,28 @@ fun PublishPhotosScreen(
                         Spacer(Modifier.width(8.dp))
                         Text(if (voiceNoteAdded) "Audio ajouté" else "Note vocale", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { aiAnnotationEnabled = !aiAnnotationEnabled }) {
-                        Icon(Icons.Default.AutoAwesome, "IA", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable(enabled = aiAnnotationState !is AiAnnotationUiState.Loading) {
+                            publishViewModel.annotateSelectedImages(context, selectedPhotos)
+                        }
+                    ) {
+                        if (aiAnnotationState is AiAnnotationUiState.Loading) {
+                            CircularProgressIndicator(
+                                color = Color(0xFFD97706),
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        } else {
+                            Icon(Icons.Default.AutoAwesome, "IA", tint = Color(0xFFD97706), modifier = Modifier.size(16.dp))
+                        }
                         Spacer(Modifier.width(4.dp))
-                        Text(if (aiAnnotationEnabled) "IA activée" else "Générer via IA", color = Color(0xFFD97706), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (aiAnnotationState is AiAnnotationUiState.Loading) "Analyse IA..." else "Générer via IA",
+                            color = Color(0xFFD97706),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }

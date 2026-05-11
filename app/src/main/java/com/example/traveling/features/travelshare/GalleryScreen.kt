@@ -639,11 +639,7 @@ fun PhotoListView(
                         }
 
                         Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            photo.tags.forEach { tag ->
-                                Text("#$tag", fontSize = 11.sp, color = RedPrimary, fontWeight = FontWeight.Medium, modifier = Modifier.background(RedLight, RoundedCornerShape(12.dp)).border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)).padding(horizontal = 8.dp, vertical = 2.dp))
-                            }
-                        }
+                        PostTags(tags = photo.tags)
 
                         Spacer(Modifier.height(8.dp))
                         Text(photo.date, fontSize = 10.sp, color = Color.LightGray)
@@ -652,6 +648,45 @@ fun PhotoListView(
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PostTags(tags: List<String>) {
+    if (tags.isEmpty()) return
+
+    val visibleTags = tags.take(6)
+    val hiddenCount = tags.size - visibleTags.size
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        visibleTags.forEach { tag ->
+            TagChip(text = "#$tag")
+        }
+        if (hiddenCount > 0) {
+            TagChip(text = "+$hiddenCount")
+        }
+    }
+}
+
+@Composable
+private fun TagChip(text: String) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        color = RedPrimary,
+        fontWeight = FontWeight.Medium,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+            .widthIn(max = 112.dp)
+            .background(RedLight, RoundedCornerShape(12.dp))
+            .border(1.dp, RedPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    )
 }
 
 // ─── Grid 网格视图 ───
