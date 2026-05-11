@@ -229,7 +229,7 @@ class LocalStorageRepository(context: Context) {
         } ?: listOf(j.getString("imageUrl")).filter { it.isNotBlank() },
         rating = j.getDouble("rating").toFloat(), openHours = j.getString("openHours"),
         lat = j.getDouble("lat"), lng = j.getDouble("lng"),
-        polylineToNext = j.optString("polylineToNext", null)
+        polylineToNext = j.optString("polylineToNext").ifBlank { null }
     )
 
     private fun cacheCompressedMedia(url: String, key: String): String? {
