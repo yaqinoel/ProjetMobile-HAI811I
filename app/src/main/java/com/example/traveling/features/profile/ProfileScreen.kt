@@ -266,13 +266,9 @@ private fun AuthenticatedProfileView(
 
     val menuItems = listOf(
         ProfileMenuItem("Mes groupes", "Créer, rejoindre et gérer vos groupes", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
-        ProfileMenuItem("Mes publications", "Modifier ou supprimer vos posts", Icons.Default.PhotoLibrary, Color(0xFFEA580C), action = onOpenMyPhotos),
-        ProfileMenuItem("Posts aimés", "Photos que vous avez aimées", Icons.Default.Favorite, Color(0xFFDC2626), action = onOpenLikedPosts),
-        ProfileMenuItem("Posts enregistrés", "Photos sauvegardées pour plus tard", Icons.Default.Bookmark, Color(0xFFD97706), action = onOpenSavedPosts),
+        ProfileMenuItem("Notifications", "Préférences et alertes", Icons.Default.Notifications, Color(0xFF10B981), action = onOpenNotifications),
         ProfileMenuItem("Itinéraires aimés", "Routes que vous avez aimées", Icons.Default.FavoriteBorder, Color(0xFFE11D48), action = onOpenLikedRoutes),
         ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes),
-        ProfileMenuItem("Notifications", "5 nouvelles", Icons.Default.Notifications, Color(0xFF10B981), badge = 5, action = onOpenNotifications),
-        ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
     )
 
     val stats = listOf(

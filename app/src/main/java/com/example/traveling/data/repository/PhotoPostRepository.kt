@@ -152,10 +152,16 @@ class PhotoPostRepository(
         }
 
         var publicPosts: List<PhotoPostDocument> = emptyList()
+        var publicLoaded = false
+        var joinedGroupsLoaded = false
+        var currentGroupIds: Set<String> = emptySet()
         val groupPostsByGroupId = mutableMapOf<String, List<PhotoPostDocument>>()
         val groupListeners = mutableListOf<ListenerRegistration>()
 
         fun emit() {
+            if (!publicLoaded || !joinedGroupsLoaded) return
+            if (!groupPostsByGroupId.keys.containsAll(currentGroupIds)) return
+
             val posts = (publicPosts + groupPostsByGroupId.values.flatten())
                 .distinctBy { it.postId }
                 .sortedByNewest()
@@ -165,6 +171,7 @@ class PhotoPostRepository(
         val publicListener = observePublicPublishedPosts(
             onChanged = { posts ->
                 publicPosts = posts
+                publicLoaded = true
                 emit()
             },
             onError = onError
@@ -184,6 +191,8 @@ class PhotoPostRepository(
                 groupPostsByGroupId.clear()
 
                 val groupIds = snapshot?.documents?.map { it.id }.orEmpty()
+                currentGroupIds = groupIds.toSet()
+                joinedGroupsLoaded = true
                 if (groupIds.isEmpty()) {
                     emit()
                     return@addSnapshotListener

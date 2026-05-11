@@ -145,6 +145,7 @@ fun GroupDetailScreen(
                                         .padding(10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    val displayTitle = item.title.ifBlank { item.description.ifBlank { item.location } }
                                     AsyncImage(
                                         model = item.imageUrl,
                                         contentDescription = null,
@@ -154,7 +155,7 @@ fun GroupDetailScreen(
                                     Spacer(Modifier.size(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = item.description.ifBlank { item.location },
+                                            text = displayTitle,
                                             color = Stone800,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 1

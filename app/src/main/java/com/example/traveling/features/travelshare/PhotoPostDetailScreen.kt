@@ -46,6 +46,7 @@ fun PhotoPostDetailScreen(
     onBack: () -> Unit = {},
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
+    onAuthorClick: (String) -> Unit = {},
     viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,6 +83,7 @@ fun PhotoPostDetailScreen(
                 onBack = onBack,
                 onNavigateLogin = onNavigateLogin,
                 onNavigateRegister = onNavigateRegister,
+                onAuthorClick = onAuthorClick,
                 viewModel = viewModel
             )
         }
@@ -98,6 +100,7 @@ private fun PhotoPostDetailContent(
     onBack: () -> Unit,
     onNavigateLogin: () -> Unit,
     onNavigateRegister: () -> Unit,
+    onAuthorClick: (String) -> Unit,
     viewModel: PhotoPostDetailViewModel
 ) {
     val context = LocalContext.current
@@ -107,6 +110,8 @@ private fun PhotoPostDetailContent(
     var showReportSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val displayTitle = photo.title.ifBlank { photo.location }
+    val bodyText = photo.description.takeIf { it.isNotBlank() && it != displayTitle }
 
     Scaffold(
         containerColor = PageBg,
@@ -140,7 +145,13 @@ private fun PhotoPostDetailContent(
                         }
 
                         // 顶部作者头像与名字
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.clickable(enabled = photo.authorId.isNotBlank()) {
+                                onAuthorClick(photo.authorId)
+                            }
+                        ) {
                             Box(modifier = Modifier.size(32.dp).background(photo.authorColor, CircleShape), contentAlignment = Alignment.Center) {
                                 Text(photo.authorAvatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
@@ -332,8 +343,6 @@ private fun PhotoPostDetailContent(
                         // 👈 这里动态读取了真实的评论列表长度
                         Text("${photo.commentsList.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
-                    Icon(Icons.Outlined.Share, null, tint = Stone600, modifier = Modifier.size(20.dp))
-                    Icon(Icons.Outlined.Flag, null, tint = Stone600, modifier = Modifier.size(20.dp).clickable { showReportSheet = true })
                 }
                 Icon(
                     if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
@@ -348,17 +357,27 @@ private fun PhotoPostDetailContent(
             // ─── 3. 描述正文与标签 ───
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = buildAnnotatedString {
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Stone800)) {
-                            append(photo.author)
-                        }
-                        append(" ")
-                        append(photo.description)
-                    },
-                    fontSize = 14.sp,
+                    text = displayTitle,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
                     color = Stone800,
-                    lineHeight = 22.sp
+                    lineHeight = 26.sp
                 )
+                Spacer(Modifier.height(8.dp))
+                if (bodyText != null) {
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = Stone800)) {
+                                append(photo.author)
+                            }
+                            append(" ")
+                            append(bodyText)
+                        },
+                        fontSize = 14.sp,
+                        color = Stone800,
+                        lineHeight = 22.sp
+                    )
+                }
 
                 Spacer(Modifier.height(12.dp))
 

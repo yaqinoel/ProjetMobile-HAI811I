@@ -188,10 +188,6 @@ fun GalleryScreen(
                                 val target = filteredPhotos.find { it.id == photoId } ?: return@PhotoListView
                                 galleryViewModel.toggleSave(photoId, target.isSaved)
                             },
-                            onReport = { photoId ->
-                                galleryViewModel.reportPost(photoId)
-                                coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") }
-                            },
                             onNavigate = { photoId ->
                                 val target = filteredPhotos.find { it.id == photoId }
                                 if (target != null) {
@@ -480,7 +476,6 @@ fun PhotoListView(
     photos: List<PhotoPostUi>,
     onLike: (String) -> Unit,
     onSave: (String) -> Unit,
-    onReport: (String) -> Unit,
     onNavigate: (String) -> Unit,
     showStories: Boolean,
     shortcuts: List<TravelShareShortcutUi> = emptyList(),
@@ -503,6 +498,8 @@ fun PhotoListView(
             items = photos,
             key = { it.id }
         ) { photo ->
+            val displayTitle = photo.title.ifBlank { photo.location }
+            val bodyText = photo.description.takeIf { it.isNotBlank() && it != displayTitle }
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -573,8 +570,6 @@ fun PhotoListView(
                                     Spacer(Modifier.width(4.dp))
                                     Text("${photo.comments}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
-                                Icon(Icons.Outlined.Share, contentDescription = "Share", tint = StoneText, modifier = Modifier.size(20.dp))
-                                Icon(Icons.Outlined.Flag, contentDescription = "Signaler", tint = StoneText, modifier = Modifier.size(20.dp).clickable { onReport(photo.id) })
                             }
                             Icon(
                                 if (photo.isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder,
@@ -585,7 +580,11 @@ fun PhotoListView(
                         }
 
                         Spacer(Modifier.height(8.dp))
-                        Text(text = photo.description, fontSize = 13.sp, color = StoneText, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(text = displayTitle, fontSize = 14.sp, color = StoneText, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (bodyText != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(text = bodyText, fontSize = 13.sp, color = StoneText, lineHeight = 18.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
 
                         Spacer(Modifier.height(8.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -616,8 +615,9 @@ private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> U
             items = photos,
             key = { it.id }
         ) { photo ->
+            val displayTitle = photo.title.ifBlank { photo.location }
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).clickable { onPhotoClick(photo.id) }) {
-                AsyncImage(model = photo.imageUrl, contentDescription = photo.location, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                AsyncImage(model = photo.imageUrl, contentDescription = displayTitle, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 // 底部渐变黑色背景
                 Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.8f)))))
 
@@ -647,9 +647,9 @@ private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> U
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFDE047), modifier = Modifier.size(10.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(photo.location, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(displayTitle, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Text(photo.country, color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp)
+                    Text(listOf(photo.location, photo.country).filter { it.isNotBlank() }.distinct().joinToString(" · "), color = Color.White.copy(alpha = 0.7f), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

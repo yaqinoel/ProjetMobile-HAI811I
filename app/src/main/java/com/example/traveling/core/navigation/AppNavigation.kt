@@ -201,7 +201,8 @@ fun AppNavigation() {
                 isAnonymous = false,
                 onBack = { navController.popBackStack() },
                 onNavigateLogin = { navController.navigate("login") },
-                onNavigateRegister = { navController.navigate("register") }
+                onNavigateRegister = { navController.navigate("register") },
+                onAuthorClick = { userId -> navController.navigate("author_profile/$userId") }
             )
         }
 
@@ -271,7 +272,8 @@ fun AppNavigation() {
                 onNavigateRegister = {
                     auth.signOut()
                     navController.navigate("register")
-                }
+                },
+                onAuthorClick = { userId -> navController.navigate("author_profile/$userId") }
             )
         }
 

@@ -102,9 +102,17 @@ class AuthorProfileViewModel(
     private var posts: List<PhotoPostUi> = emptyList()
     private var settings: NotificationSettingsDocument = NotificationSettingsDocument()
     private var authorId: String = ""
+    private var postsVersion = 0
+    private val optimisticLikeStates = mutableMapOf<String, Boolean>()
+    private val optimisticLikeCounts = mutableMapOf<String, Int>()
+    private val optimisticSaveStates = mutableMapOf<String, Boolean>()
 
     fun observe(authorId: String) {
         this.authorId = authorId
+        postsVersion += 1
+        optimisticLikeStates.clear()
+        optimisticLikeCounts.clear()
+        optimisticSaveStates.clear()
         _uiState.value = AuthorProfileUiState.Loading
         userListener?.remove()
         postsListener?.remove()
@@ -139,15 +147,50 @@ class AuthorProfileViewModel(
 
     fun toggleLike(postId: String, currentlyLiked: Boolean) {
         val uid = auth.currentUser?.uid ?: return
+        postsVersion += 1
+        val nextLiked = !currentlyLiked
+        var nextLikeCount = 0
+        updatePostLocally(postId) { post ->
+            nextLikeCount = (post.likes + if (nextLiked) 1 else -1).coerceAtLeast(0)
+            post.copy(isLiked = nextLiked, likes = nextLikeCount)
+        }
+        optimisticLikeStates[postId] = nextLiked
+        optimisticLikeCounts[postId] = nextLikeCount
         viewModelScope.launch {
-            if (currentlyLiked) postRepository.unlikePost(uid, postId) else postRepository.likePost(uid, postId)
+            val result = runCatching {
+                if (currentlyLiked) postRepository.unlikePost(uid, postId) else postRepository.likePost(uid, postId)
+            }
+            optimisticLikeStates.remove(postId)
+            optimisticLikeCounts.remove(postId)
+            if (result.isFailure) {
+                updatePostLocally(postId) { post ->
+                    post.copy(
+                        isLiked = currentlyLiked,
+                        likes = (post.likes + if (currentlyLiked) 1 else -1).coerceAtLeast(0)
+                    )
+                }
+            }
         }
     }
 
     fun toggleSave(postId: String, currentlySaved: Boolean) {
         val uid = auth.currentUser?.uid ?: return
+        postsVersion += 1
+        val nextSaved = !currentlySaved
+        updatePostLocally(postId) { post ->
+            post.copy(isSaved = nextSaved)
+        }
+        optimisticSaveStates[postId] = nextSaved
         viewModelScope.launch {
-            if (currentlySaved) postRepository.unsavePost(uid, postId) else postRepository.savePost(uid, postId, null)
+            val result = runCatching {
+                if (currentlySaved) postRepository.unsavePost(uid, postId) else postRepository.savePost(uid, postId, null)
+            }
+            optimisticSaveStates.remove(postId)
+            if (result.isFailure) {
+                updatePostLocally(postId) { post ->
+                    post.copy(isSaved = currentlySaved)
+                }
+            }
         }
     }
 
@@ -172,8 +215,18 @@ class AuthorProfileViewModel(
 
     private fun emitPostsFromDocuments(documents: List<com.example.traveling.data.model.PhotoPostDocument>) {
         val uid = auth.currentUser?.uid
+        val version = ++postsVersion
+        val previousPostsById = posts.associateBy { it.id }
         if (uid == null) {
-            posts = documents.map { it.toPhotoPostUi() }
+            posts = documents.map { doc ->
+                val previous = previousPostsById[doc.postId]
+                val liked = optimisticLikeStates[doc.postId] ?: previous?.isLiked ?: false
+                val saved = optimisticSaveStates[doc.postId] ?: previous?.isSaved ?: false
+                val optimisticLikeCount = optimisticLikeCounts[doc.postId]
+                doc.toPhotoPostUi(isLiked = liked, isSaved = saved).let { post ->
+                    if (optimisticLikeCount != null) post.copy(likes = optimisticLikeCount) else post
+                }
+            }
             emit()
             return
         }
@@ -182,10 +235,23 @@ class AuthorProfileViewModel(
             posts = documents.map { doc ->
                 val liked = runCatching { postRepository.isPostLikedByUser(uid, doc.postId) }.getOrDefault(false)
                 val saved = runCatching { postRepository.isPostSavedByUser(uid, doc.postId) }.getOrDefault(false)
-                doc.toPhotoPostUi(isLiked = liked, isSaved = saved)
+                val resolvedLiked = optimisticLikeStates[doc.postId] ?: liked
+                val resolvedSaved = optimisticSaveStates[doc.postId] ?: saved
+                val optimisticLikeCount = optimisticLikeCounts[doc.postId]
+                doc.toPhotoPostUi(isLiked = resolvedLiked, isSaved = resolvedSaved).let { post ->
+                    if (optimisticLikeCount != null) post.copy(likes = optimisticLikeCount) else post
+                }
             }
+            if (version != postsVersion) return@launch
             emit()
         }
+    }
+
+    private fun updatePostLocally(postId: String, transform: (PhotoPostUi) -> PhotoPostUi) {
+        posts = posts.map { post ->
+            if (post.id == postId) transform(post) else post
+        }
+        emit()
     }
 
     private fun emit() {
@@ -315,10 +381,6 @@ fun AuthorProfileScreen(
                                 current.posts.find { it.id == postId }?.let { post ->
                                     viewModel.toggleSave(postId, post.isSaved)
                                 }
-                            },
-                            onReport = { postId ->
-                                viewModel.reportPost(postId)
-                                coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") }
                             },
                             onNavigate = { postId ->
                                 current.posts.find { it.id == postId }?.let { post ->
