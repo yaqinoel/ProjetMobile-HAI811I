@@ -69,7 +69,9 @@ fun SavedPostsScreen(
     val filtered = remember(posts, query, selectedCategory) {
         posts.filter { item ->
             val matchesQuery = query.isBlank() ||
+                item.post.title.contains(query, true) ||
                 item.post.location.contains(query, true) ||
+                item.post.description.contains(query, true) ||
                 item.post.author.contains(query, true) ||
                 item.post.tags.any { it.contains(query, true) }
             val matchesCategory = when (selectedCategory) {
@@ -175,13 +177,19 @@ private fun SavedPostListCard(
     onRemove: () -> Unit,
     onAddToTravelPath: () -> Unit
 ) {
+    val displayTitle = item.post.title.ifBlank { item.post.location }
+    val displayLocation = listOf(item.post.location, item.post.country)
+        .filter { it.isNotBlank() }
+        .distinct()
+        .joinToString(" · ")
     Column(
         modifier = Modifier.fillMaxWidth().background(CardBg, RoundedCornerShape(12.dp)).border(1.dp, StoneBorder, RoundedCornerShape(12.dp)).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         AsyncImage(model = item.post.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(10.dp)).clickable { onView() })
-        Text(item.post.location, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
-        Text("${item.post.author} · ${item.post.country}", color = StoneMuted, fontSize = 11.sp)
+        Text(displayTitle, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
+        Text(displayLocation, color = StoneMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.post.author, color = StoneMuted, fontSize = 11.sp)
         Text(item.savedAt, color = RedPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             item.post.tags.take(3).forEach { AssistChip(onClick = {}, label = { Text("#$it") }) }
@@ -205,12 +213,14 @@ private fun SavedPostGridCard(
     onView: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val displayTitle = item.post.title.ifBlank { item.post.location }
     Column(
         modifier = Modifier.fillMaxWidth().background(CardBg, RoundedCornerShape(10.dp)).border(1.dp, StoneBorder, RoundedCornerShape(10.dp)).padding(8.dp)
     ) {
         AsyncImage(model = item.post.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp)).clickable { onView() })
         Spacer(Modifier.height(6.dp))
-        Text(item.post.location, fontSize = 13.sp, color = Stone800, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(displayTitle, fontSize = 13.sp, color = Stone800, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.post.location, fontSize = 10.sp, color = StoneMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(item.savedAt, fontSize = 10.sp, color = StoneMuted, maxLines = 1)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {

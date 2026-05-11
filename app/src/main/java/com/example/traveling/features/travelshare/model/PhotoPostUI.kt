@@ -28,7 +28,10 @@ data class PhotoPostUi(
     val locationPrecision: String = "exact",
     val title: String = "",
     val city: String = "",
-    val createdAtMillis: Long? = null
+    val createdAtMillis: Long? = null,
+    val visibility: String = "public",
+    val groupName: String? = null,
+    val authorId: String = ""
 )
 
 data class PhotoPostCommentUi(
@@ -60,7 +63,9 @@ data class PhotoPostDetailUi(
     val tags: List<String>,
     val howToGetThere: String,
     val commentsList: List<PhotoPostCommentUi>,
-    val locationPrecision: String
+    val locationPrecision: String,
+    val title: String = "",
+    val authorId: String = ""
 )
 
 fun PhotoPostDocument.toPhotoPostUi(
@@ -91,7 +96,10 @@ fun PhotoPostDocument.toPhotoPostUi(
         locationPrecision = locationPrecision,
         title = title,
         city = city.orEmpty(),
-        createdAtMillis = createdAt?.toDate()?.time
+        createdAtMillis = createdAt?.toDate()?.time,
+        visibility = visibility,
+        groupName = groupName,
+        authorId = authorId
     )
 }
 
@@ -121,7 +129,9 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
         tags = tags,
         howToGetThere = "Ouvrir l'itinéraire avec Google Maps depuis cette fiche.",
         commentsList = comments.map { it.toPhotoPostCommentUi() },
-        locationPrecision = locationPrecision
+        locationPrecision = locationPrecision,
+        title = title,
+        authorId = authorId
     )
 }
 

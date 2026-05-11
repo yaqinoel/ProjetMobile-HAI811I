@@ -127,7 +127,6 @@ class PhotoPostRepository(
         onError: (Exception) -> Unit
     ): ListenerRegistration {
         return db.collection(FirestoreCollections.PHOTO_POSTS)
-            .whereEqualTo("status", "published")
             .whereEqualTo("visibility", "public")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -136,10 +135,88 @@ class PhotoPostRepository(
                 }
                 val posts = snapshot?.documents
                     ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.filter { it.status == "published" }
                     ?.sortedByNewest()
                     ?: emptyList()
                 onChanged(posts)
             }
+    }
+
+    fun observeVisiblePublishedPosts(
+        userId: String?,
+        onChanged: (List<PhotoPostDocument>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        if (userId.isNullOrBlank()) {
+            return observePublicPublishedPosts(onChanged, onError)
+        }
+
+        var publicPosts: List<PhotoPostDocument> = emptyList()
+        var publicLoaded = false
+        var joinedGroupsLoaded = false
+        var currentGroupIds: Set<String> = emptySet()
+        val groupPostsByGroupId = mutableMapOf<String, List<PhotoPostDocument>>()
+        val groupListeners = mutableListOf<ListenerRegistration>()
+
+        fun emit() {
+            if (!publicLoaded || !joinedGroupsLoaded) return
+            if (!groupPostsByGroupId.keys.containsAll(currentGroupIds)) return
+
+            val posts = (publicPosts + groupPostsByGroupId.values.flatten())
+                .distinctBy { it.postId }
+                .sortedByNewest()
+            onChanged(posts)
+        }
+
+        val publicListener = observePublicPublishedPosts(
+            onChanged = { posts ->
+                publicPosts = posts
+                publicLoaded = true
+                emit()
+            },
+            onError = onError
+        )
+
+        val joinedGroupsListener = db.collection(FirestoreCollections.USERS)
+            .document(userId)
+            .collection(FirestoreCollections.JOINED_GROUPS)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
+                groupListeners.forEach { it.remove() }
+                groupListeners.clear()
+                groupPostsByGroupId.clear()
+
+                val groupIds = snapshot?.documents?.map { it.id }.orEmpty()
+                currentGroupIds = groupIds.toSet()
+                joinedGroupsLoaded = true
+                if (groupIds.isEmpty()) {
+                    emit()
+                    return@addSnapshotListener
+                }
+
+                groupIds.forEach { groupId ->
+                    val listener = observeGroupPublishedPosts(
+                        groupId = groupId,
+                        onChanged = { posts ->
+                            groupPostsByGroupId[groupId] = posts
+                            emit()
+                        },
+                        onError = onError
+                    )
+                    groupListeners.add(listener)
+                }
+            }
+
+        return ListenerRegistration {
+            publicListener.remove()
+            joinedGroupsListener.remove()
+            groupListeners.forEach { it.remove() }
+            groupListeners.clear()
+        }
     }
 
     fun observeMyPublishedPosts(
@@ -163,14 +240,33 @@ class PhotoPostRepository(
             }
     }
 
+    fun observePublicPublishedPostsByAuthor(
+        authorId: String,
+        onChanged: (List<PhotoPostDocument>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        return db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("authorId", authorId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+                val posts = snapshot?.documents
+                    ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.filter { it.status == "published" && it.visibility == "public" }
+                    ?.sortedByNewest()
+                    ?: emptyList()
+                onChanged(posts)
+            }
+    }
+
     fun observeGroupPublishedPosts(
         groupId: String,
         onChanged: (List<PhotoPostDocument>) -> Unit,
         onError: (Exception) -> Unit
     ): ListenerRegistration {
         return db.collection(FirestoreCollections.PHOTO_POSTS)
-            .whereEqualTo("status", "published")
-            .whereEqualTo("visibility", "group")
             .whereEqualTo("groupId", groupId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -179,6 +275,7 @@ class PhotoPostRepository(
                 }
                 val posts = snapshot?.documents
                     ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.filter { it.status == "published" && it.visibility == "group" }
                     ?.sortedByNewest()
                     ?: emptyList()
                 onChanged(posts)

@@ -16,11 +16,13 @@ import com.example.traveling.features.passerelle.RegisterScreen
 import com.example.traveling.features.profile.LikedPostsScreen
 import com.example.traveling.features.profile.LikedRoutesScreen
 import com.example.traveling.features.profile.ImageMigrationScreen
+import com.example.traveling.features.profile.FollowingManagementScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
 import com.example.traveling.features.profile.SavedRoutesScreen
 import com.example.traveling.features.travelshare.GroupDetailScreen
 import com.example.traveling.features.travelshare.GroupsScreen
+import com.example.traveling.features.travelshare.AuthorProfileScreen
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
 import com.example.traveling.features.travelshare.notifications.NotificationsScreen
@@ -138,6 +140,12 @@ fun AppNavigation() {
                 onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
+        composable("following") {
+            FollowingManagementScreen(
+                onBack = { navController.popBackStack() },
+                onOpenAuthorProfile = { userId -> navController.navigate("author_profile/$userId") }
+            )
+        }
         composable("liked_routes") {
             LikedRoutesScreen(
                 onBack = { navController.popBackStack() },
@@ -165,6 +173,25 @@ fun AppNavigation() {
         }
 
         composable(
+            route = "author_profile/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            AuthorProfileScreen(
+                authorId = userId,
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId ->
+                    val detailRoute = if (auth.currentUser?.isAnonymous == true) {
+                        "photo_detail_anonymous/$photoId"
+                    } else {
+                        "photo_detail/$photoId"
+                    }
+                    navController.navigate(detailRoute)
+                }
+            )
+        }
+
+        composable(
             route = "photo_detail/{photoId}",
             arguments = listOf(navArgument("photoId") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -174,7 +201,8 @@ fun AppNavigation() {
                 isAnonymous = false,
                 onBack = { navController.popBackStack() },
                 onNavigateLogin = { navController.navigate("login") },
-                onNavigateRegister = { navController.navigate("register") }
+                onNavigateRegister = { navController.navigate("register") },
+                onAuthorClick = { userId -> navController.navigate("author_profile/$userId") }
             )
         }
 
@@ -198,7 +226,10 @@ fun AppNavigation() {
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
-                }
+                },
+                onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
+                onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
+                onNavigateToFollowing = { navController.navigate("following") }
             )
         }
 
@@ -219,7 +250,10 @@ fun AppNavigation() {
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail_anonymous/$photoId")
-                }
+                },
+                onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
+                onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
+                onNavigateToFollowing = { navController.navigate("login") }
             )
         }
 
@@ -239,7 +273,8 @@ fun AppNavigation() {
                 onNavigateRegister = {
                     auth.signOut()
                     navController.navigate("register")
-                }
+                },
+                onAuthorClick = { userId -> navController.navigate("author_profile/$userId") }
             )
         }
 

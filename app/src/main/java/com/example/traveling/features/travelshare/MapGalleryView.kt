@@ -7,12 +7,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,8 +34,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import coil.request.ImageRequest
-import androidx.compose.ui.platform.LocalContext
-import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.ui.theme.*
 
@@ -54,7 +53,6 @@ fun MapView(
     onSelectPhoto: (String) -> Unit
 ) {
     var selectedPin by remember { mutableStateOf<String?>(null) }
-    val snackbarHostState = remember { SnackbarHostState() }
     val selectedPhoto = photos.find { it.id == selectedPin }
 
     val coroutineScope = rememberCoroutineScope()
@@ -192,8 +190,6 @@ fun MapView(
             }
         }
 
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
-
         // 底部滑动详情页 (Bottom Sheet)
         AnimatedVisibility(
             visible = selectedPhoto != null,
@@ -202,75 +198,102 @@ fun MapView(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             selectedPhoto?.let { photo ->
+                val displayTitle = photo.title.ifBlank { photo.location }
+                val displayLocation = listOf(photo.location, photo.country)
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .joinToString(" · ")
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.6f)
-                        .background(Color(0xFFFFFBF5), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                        .shadow(16.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .shadow(14.dp, RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(CardBg)
+                        .clickable { onSelectPhoto(photo.id) }
                 ) {
-                    Column {
-                        Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp), contentAlignment = Alignment.Center) {
-                            Box(modifier = Modifier.size(40.dp, 4.dp).background(Color(0xFFE5E7EB), CircleShape))
-                        }
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                            ) {
+                                AsyncImage(
+                                    model = photo.imageUrl,
+                                    contentDescription = displayTitle,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
 
-                        Box(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(160.dp).clip(RoundedCornerShape(16.dp))) {
-                            AsyncImage(model = photo.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    displayTitle,
+                                    color = StoneText,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (photo.visibility == "group" && !photo.groupName.isNullOrBlank()) {
+                                    Spacer(Modifier.height(5.dp))
+                                    Text(
+                                        photo.groupName.orEmpty(),
+                                        color = Color(0xFFD97706),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .widthIn(max = 120.dp)
+                                            .background(Color(0xFFFFF7ED), RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.LocationOn, null, tint = RedPrimary, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        displayLocation.ifBlank { "Lieu inconnu" },
+                                        color = StoneMuted,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    photo.description,
+                                    color = Stone500,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
                             IconButton(
                                 onClick = { selectedPin = null },
-                                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp).background(Color.Black.copy(0.4f), CircleShape)
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(Stone100, CircleShape)
                             ) {
-                                Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            }
-                            Column(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)) {
-                                Text(photo.location, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.LocationOn, null, tint = Color(0xFFFDE047), modifier = Modifier.size(12.dp))
-                                    Text("${photo.country} · ${photo.date}", color = Color.White.copy(0.8f), fontSize = 12.sp)
-                                }
+                                Icon(Icons.Default.Close, null, tint = Stone500, modifier = Modifier.size(16.dp))
                             }
                         }
 
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(photo.description, color = StoneText, fontSize = 14.sp, lineHeight = 20.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-
-                            Spacer(Modifier.height(16.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(
-                                    onClick = { onSelectPhoto(photo.id) },
-                                    modifier = Modifier.weight(1f).height(48.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
-                                ) {
-                                    Text("Voir les détails", fontWeight = FontWeight.Bold)
-                                }
-                                Button(
-                                    onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} ajouté à TravelPath.") } },
-                                    modifier = Modifier.weight(1f).height(48.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
-                                ) {
-                                    Icon(Icons.Outlined.Route, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("TravelPath", fontWeight = FontWeight.Bold)
-                                }
+                        Spacer(Modifier.height(12.dp))
+                        Row {
+                            Button(
+                                onClick = { onSelectPhoto(photo.id) },
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                            ) {
+                                Text("Voir les détails", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
-                            Spacer(Modifier.height(10.dp))
-                            AssistChip(
-                                onClick = {
-                                    val opened = openNavigationToPlace(
-                                        context = context,
-                                        placeName = photo.location,
-                                        latitude = photo.latitude,
-                                        longitude = photo.longitude
-                                    )
-                                    if (!opened) {
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Aucune application de carte disponible.")
-                                        }
-                                    }
-                                },
-                                label = { Text("Ouvrir la navigation Google Maps") },
-                                leadingIcon = { Icon(Icons.Default.NearMe, null, modifier = Modifier.size(16.dp)) }
-                            )
                         }
                     }
                 }

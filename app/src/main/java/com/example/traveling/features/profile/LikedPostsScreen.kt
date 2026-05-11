@@ -71,6 +71,7 @@ fun LikedPostsScreen(
     val filtered = remember(posts, query, selectedFilter) {
         posts.filter { post ->
             val matchesQuery = query.isBlank() ||
+                post.title.contains(query, true) ||
                 post.location.contains(query, true) ||
                 post.description.contains(query, true) ||
                 post.author.contains(query, true) ||
@@ -179,14 +180,23 @@ private fun LikedPostListCard(
     onToggleSave: () -> Unit,
     onRoute: () -> Unit
 ) {
+    val displayTitle = post.title.ifBlank { post.location }
+    val bodyText = post.description.takeIf { it.isNotBlank() && it != displayTitle }
+    val displayLocation = listOf(post.location, post.country)
+        .filter { it.isNotBlank() }
+        .distinct()
+        .joinToString(" · ")
     Column(
         modifier = Modifier.fillMaxWidth().background(CardBg, RoundedCornerShape(12.dp)).border(1.dp, StoneBorder, RoundedCornerShape(12.dp)).clickable { onOpen() }.padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         AsyncImage(model = post.imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(10.dp)))
-        Text(post.location, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
-        Text(post.description, maxLines = 2, overflow = TextOverflow.Ellipsis, color = StoneMuted, fontSize = 12.sp)
-        Text("${post.author} · ${post.country}", color = StoneMuted, fontSize = 11.sp)
+        Text(displayTitle, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
+        Text(displayLocation, color = StoneMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (bodyText != null) {
+            Text(bodyText, maxLines = 2, overflow = TextOverflow.Ellipsis, color = StoneMuted, fontSize = 12.sp)
+        }
+        Text(post.author, color = StoneMuted, fontSize = 11.sp)
         Text(post.date, color = StoneMuted, fontSize = 11.sp)
         Text("${post.likes} likes", color = StoneMuted, fontSize = 11.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -206,6 +216,7 @@ private fun LikedPostGridCard(
     onOpen: () -> Unit,
     onUnlike: () -> Unit
 ) {
+    val displayTitle = post.title.ifBlank { post.location }
     Column(
         modifier = Modifier.fillMaxWidth().background(CardBg, RoundedCornerShape(10.dp)).border(1.dp, StoneBorder, RoundedCornerShape(10.dp)).padding(8.dp)
     ) {
@@ -216,7 +227,8 @@ private fun LikedPostGridCard(
             modifier = Modifier.fillMaxWidth().height(120.dp).clip(RoundedCornerShape(8.dp)).clickable { onOpen() }
         )
         Spacer(Modifier.height(6.dp))
-        Text(post.location, fontSize = 13.sp, color = Stone800, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(displayTitle, fontSize = 13.sp, color = Stone800, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(post.location, fontSize = 10.sp, color = StoneMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("${post.likes}", fontSize = 11.sp, color = StoneMuted)
             IconButton(onClick = onUnlike, modifier = Modifier.size(24.dp)) {

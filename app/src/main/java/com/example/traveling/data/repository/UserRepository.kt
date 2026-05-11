@@ -72,6 +72,10 @@ class UserRepository(
         return snapshot.toObject(User::class.java)
     }
 
+    suspend fun getUsers(userIds: List<String>): List<User> {
+        return userIds.distinct().mapNotNull { getUser(it) }
+    }
+
     fun observeUser(
         userId: String,
         onChanged: (User?) -> Unit,
