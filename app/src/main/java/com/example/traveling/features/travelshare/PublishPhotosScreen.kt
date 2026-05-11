@@ -1,8 +1,15 @@
 package com.example.traveling.features.travelshare
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +48,7 @@ import com.example.traveling.features.travelshare.model.SelectedLocationUi
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Locale
 
 private const val MAX_SELECTED_PHOTOS = 14
@@ -64,7 +72,11 @@ fun PublishPhotosScreen(
     var description by remember { mutableStateOf("") }
     var tagInput by remember { mutableStateOf("") }
     var selectedTags by remember { mutableStateOf(emptyList<String>()) }
-    var voiceNoteAdded by remember { mutableStateOf(false) }
+    var voiceNoteUri by remember { mutableStateOf<String?>(null) }
+    var isRecordingVoice by remember { mutableStateOf(false) }
+    var isPlayingVoice by remember { mutableStateOf(false) }
+    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isLinkedToPath by remember { mutableStateOf(false) }
     var showMapPicker by remember { mutableStateOf(false) }
     var publishPreview by remember { mutableStateOf(false) }
@@ -74,6 +86,109 @@ fun PublishPhotosScreen(
     val publishState by publishViewModel.uiState.collectAsState()
     val aiAnnotationState by publishViewModel.aiAnnotationState.collectAsState()
     val joinedGroups by publishViewModel.joinedGroups.collectAsState()
+
+    fun stopVoicePlayback() {
+        mediaPlayer?.runCatchingStopAndRelease()
+        mediaPlayer = null
+        isPlayingVoice = false
+    }
+
+    fun stopVoiceRecording() {
+        val recorder = mediaRecorder ?: return
+        val stopped = runCatching { recorder.stop() }.isSuccess
+        recorder.release()
+        mediaRecorder = null
+        isRecordingVoice = false
+        if (!stopped) {
+            voiceNoteUri = null
+            coroutineScope.launch { snackbarHostState.showSnackbar("Enregistrement trop court.") }
+        }
+    }
+
+    fun startVoiceRecording() {
+        stopVoicePlayback()
+        val outputFile = File(context.cacheDir, "travelshare_voice_${System.currentTimeMillis()}.m4a")
+        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+        runCatching {
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioSamplingRate(44100)
+            recorder.setAudioEncodingBitRate(128000)
+            recorder.setOutputFile(outputFile.absolutePath)
+            recorder.prepare()
+            recorder.start()
+        }.onSuccess {
+            mediaRecorder = recorder
+            voiceNoteUri = Uri.fromFile(outputFile).toString()
+            isRecordingVoice = true
+        }.onFailure {
+            recorder.release()
+            coroutineScope.launch { snackbarHostState.showSnackbar("Impossible de démarrer l'enregistrement.") }
+        }
+    }
+
+    val recordPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startVoiceRecording()
+        } else {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Permission micro refusée.") }
+        }
+    }
+
+    fun requestOrStartVoiceRecording() {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) {
+            startVoiceRecording()
+        } else {
+            recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun toggleVoicePlayback() {
+        val uri = voiceNoteUri ?: return
+        if (isPlayingVoice) {
+            stopVoicePlayback()
+            return
+        }
+        stopVoiceRecording()
+        val player = MediaPlayer()
+        runCatching {
+            player.setDataSource(context, Uri.parse(uri))
+            player.setOnCompletionListener {
+                it.release()
+                if (mediaPlayer === it) {
+                    mediaPlayer = null
+                    isPlayingVoice = false
+                }
+            }
+            player.prepare()
+            player.start()
+        }.onSuccess {
+            mediaPlayer = player
+            isPlayingVoice = true
+        }.onFailure {
+            player.release()
+            coroutineScope.launch { snackbarHostState.showSnackbar("Lecture audio impossible.") }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaRecorder?.runCatchingStopAndRelease()
+            mediaPlayer?.runCatchingStopAndRelease()
+        }
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTED_PHOTOS)
@@ -190,6 +305,7 @@ fun PublishPhotosScreen(
                     selectedPhotos.isNotEmpty() &&
                     selectedLocation != null &&
                     (visibility != "group" || selectedGroup != null) &&
+                    !isRecordingVoice &&
                     publishState !is PublishUiState.Uploading
             ) {
                 val uploading = publishState is PublishUiState.Uploading
@@ -320,14 +436,25 @@ fun PublishPhotosScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { voiceNoteAdded = !voiceNoteAdded }) {
-                        Box(modifier = Modifier.size(28.dp).background(Color(0xFFFEF2F2), CircleShape), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Mic, "Audio", tint = RedPrimary, modifier = Modifier.size(16.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    VoiceNoteRecorder(
+                        hasVoiceNote = voiceNoteUri != null,
+                        isRecording = isRecordingVoice,
+                        isPlaying = isPlayingVoice,
+                        onRecord = { requestOrStartVoiceRecording() },
+                        onStopRecording = { stopVoiceRecording() },
+                        onPlayPause = { toggleVoicePlayback() },
+                        onDelete = {
+                            stopVoicePlayback()
+                            stopVoiceRecording()
+                            voiceNoteUri?.let { uri ->
+                                Uri.parse(uri).path?.let { path ->
+                                    runCatching { File(path).delete() }
+                                }
+                            }
+                            voiceNoteUri = null
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (voiceNoteAdded) "Audio ajouté" else "Note vocale", color = RedPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable(enabled = aiAnnotationState !is AiAnnotationUiState.Loading) {
@@ -634,14 +761,17 @@ fun PublishPhotosScreen(
                     } ?: "Non défini"
                 )
                 InfoLine("Photos", "${selectedPhotos.size}")
+                InfoLine("Note vocale", if (voiceNoteUri != null) "Ajoutée" else "Aucune")
                 InfoLine("Tags", selectedTags.ifEmpty { listOf("Voyage") }.joinToString(", ") { "#$it" })
                 InfoLine("TravelPath", if (isLinkedToPath) "Étape TravelPath" else "Non lié")
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
+                        if (isRecordingVoice) stopVoiceRecording()
                         publishPreview = false
                         publishViewModel.publish(
                             selectedPhotoUris = selectedPhotos,
+                            voiceNoteUri = voiceNoteUri,
                             title = title,
                             description = description.ifBlank { title },
                             selectedLocation = selectedLocation ?: return@Button,
@@ -670,6 +800,74 @@ fun PublishPhotosScreen(
 }
 
 // --- Helper Composables (from TravelPathScreen) ---
+@Composable
+private fun VoiceNoteRecorder(
+    hasVoiceNote: Boolean,
+    isRecording: Boolean,
+    isPlaying: Boolean,
+    onRecord: () -> Unit,
+    onStopRecording: () -> Unit,
+    onPlayPause: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = if (isRecording) RedPrimary else Color(0xFFFEF2F2),
+        border = BorderStroke(1.dp, if (isRecording) RedPrimary else Color(0xFFFECACA))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .background(if (isRecording) Color.White.copy(alpha = 0.18f) else Color.White, CircleShape)
+                    .clickable {
+                        when {
+                            isRecording -> onStopRecording()
+                            hasVoiceNote -> onPlayPause()
+                            else -> onRecord()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                val icon = when {
+                    isRecording -> Icons.Default.Stop
+                    hasVoiceNote && isPlaying -> Icons.Default.Pause
+                    hasVoiceNote -> Icons.Default.PlayArrow
+                    else -> Icons.Outlined.Mic
+                }
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (isRecording) Color.White else RedPrimary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Text(
+                when {
+                    isRecording -> "Enregistrement..."
+                    hasVoiceNote -> if (isPlaying) "Lecture vocale" else "Note vocale"
+                    else -> "Note vocale"
+                },
+                color = if (isRecording) Color.White else RedPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (hasVoiceNote && !isRecording) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Supprimer la note vocale",
+                    tint = RedPrimary,
+                    modifier = Modifier.size(16.dp).clickable(onClick = onDelete)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TagsEditor(
@@ -836,6 +1034,18 @@ private fun WeatherToggle(
             Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) selectedColor else StoneMuted)
         }
     }
+}
+
+private fun MediaRecorder.runCatchingStopAndRelease() {
+    runCatching { stop() }
+    release()
+}
+
+private fun MediaPlayer.runCatchingStopAndRelease() {
+    runCatching {
+        if (isPlaying) stop()
+    }
+    release()
 }
 
 @Preview(showBackground = true)

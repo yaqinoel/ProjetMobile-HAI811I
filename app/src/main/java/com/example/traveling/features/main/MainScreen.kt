@@ -38,6 +38,7 @@ enum class MainTab(
 @Composable
 fun MainScreen(
     isAnonymous: Boolean = false,
+    initialSimilarPostId: String? = null,
     onLogout: () -> Unit = {},
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
@@ -79,6 +80,7 @@ fun MainScreen(
             when (selectedTab) {
                 MainTab.PHOTOS -> GalleryScreen(
                     isAnonymous = isAnonymous,
+                    initialSimilarPostId = initialSimilarPostId,
                     onOpenNotifications = onNavigateToNotifications,
                     onPhotoClick = onNavigateToPhotoDetail,
                     onAuthorClick = onNavigateToAuthorProfile,

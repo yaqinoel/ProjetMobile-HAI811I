@@ -1,5 +1,7 @@
 package com.example.traveling.features.travelshare
 
+import android.media.MediaPlayer
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -48,6 +50,7 @@ fun PhotoPostDetailScreen(
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
+    onFindSimilarPhotos: (String) -> Unit = {},
     viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,6 +88,7 @@ fun PhotoPostDetailScreen(
                 onNavigateLogin = onNavigateLogin,
                 onNavigateRegister = onNavigateRegister,
                 onAuthorClick = onAuthorClick,
+                onFindSimilarPhotos = onFindSimilarPhotos,
                 viewModel = viewModel
             )
         }
@@ -102,6 +106,7 @@ private fun PhotoPostDetailContent(
     onNavigateLogin: () -> Unit,
     onNavigateRegister: () -> Unit,
     onAuthorClick: (String) -> Unit,
+    onFindSimilarPhotos: (String) -> Unit,
     viewModel: PhotoPostDetailViewModel
 ) {
     val context = LocalContext.current
@@ -109,10 +114,52 @@ private fun PhotoPostDetailContent(
     var newComment by remember { mutableStateOf("") }
     var showActionsMenu by remember { mutableStateOf(false) }
     var showReportSheet by remember { mutableStateOf(false) }
+    var voicePlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var isVoicePlaying by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val displayTitle = photo.title.ifBlank { photo.location }
     val bodyText = photo.description.takeIf { it.isNotBlank() && it != displayTitle }
+
+    fun stopVoicePlayback() {
+        voicePlayer?.runCatchingStopAndRelease()
+        voicePlayer = null
+        isVoicePlaying = false
+    }
+
+    fun toggleVoicePlayback() {
+        val voiceUrl = photo.voiceNoteUrl?.takeIf { it.isNotBlank() } ?: return
+        if (isVoicePlaying) {
+            stopVoicePlayback()
+            return
+        }
+
+        val player = MediaPlayer()
+        runCatching {
+            player.setDataSource(context, Uri.parse(voiceUrl))
+            player.setOnCompletionListener {
+                it.release()
+                if (voicePlayer === it) {
+                    voicePlayer = null
+                    isVoicePlaying = false
+                }
+            }
+            player.prepare()
+            player.start()
+        }.onSuccess {
+            voicePlayer = player
+            isVoicePlaying = true
+        }.onFailure {
+            player.release()
+            coroutineScope.launch { snackbarHostState.showSnackbar("Lecture de la note vocale impossible.") }
+        }
+    }
+
+    DisposableEffect(photo.voiceNoteUrl) {
+        onDispose {
+            stopVoicePlayback()
+        }
+    }
 
     Scaffold(
         containerColor = PageBg,
@@ -203,7 +250,7 @@ private fun PhotoPostDetailContent(
                                 leadingIcon = { Icon(Icons.Outlined.Collections, null, tint = Stone600) },
                                 onClick = {
                                     showActionsMenu = false
-                                    coroutineScope.launch { snackbarHostState.showSnackbar("Photos similaires activées.") }
+                                    onFindSimilarPhotos(photo.id)
                                 }
                             )
                         }
@@ -399,6 +446,14 @@ private fun PhotoPostDetailContent(
                     }
                 }
 
+                if (!photo.voiceNoteUrl.isNullOrBlank()) {
+                    Spacer(Modifier.height(16.dp))
+                    VoiceNotePlaybackCard(
+                        isPlaying = isVoicePlaying,
+                        onTogglePlayback = { toggleVoicePlayback() }
+                    )
+                }
+
                 Spacer(Modifier.height(24.dp))
 
                 // ─── 4. 详细行程卡片 (Info Card) ───
@@ -478,7 +533,7 @@ private fun PhotoPostDetailContent(
                                 leadingIcon = { Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp)) }
                             )
                             AssistChip(
-                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("Filtre photos similaires activé.") } },
+                                onClick = { onFindSimilarPhotos(photo.id) },
                                 label = { Text("Photos similaires") },
                                 leadingIcon = { Icon(Icons.Outlined.Collections, null, modifier = Modifier.size(16.dp)) }
                             )
@@ -554,6 +609,55 @@ private fun PhotoPostDetailContent(
             }
         }
     }
+}
+
+@Composable
+private fun VoiceNotePlaybackCard(
+    isPlaying: Boolean,
+    onTogglePlayback: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFFFEF2F2),
+        border = BorderStroke(1.dp, Color(0xFFFECACA)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(RedPrimary, CircleShape)
+                    .clickable(onClick = onTogglePlayback),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Note vocale", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text(
+                    if (isPlaying) "Lecture en cours" else "Écouter la description audio",
+                    fontSize = 12.sp,
+                    color = Stone500
+                )
+            }
+        }
+    }
+}
+
+private fun MediaPlayer.runCatchingStopAndRelease() {
+    runCatching {
+        if (isPlaying) stop()
+    }
+    release()
 }
 
 // ─── 辅助组件：信息行 (用于黄色交通卡片内部) ───

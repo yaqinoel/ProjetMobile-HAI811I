@@ -27,6 +27,7 @@ data class PublishPhotoPostInput(
     val authorName: String,
     val authorAvatarUrl: String?,
     val localImageUris: List<Uri>,
+    val localVoiceNoteUri: Uri?,
     val title: String,
     val description: String,
     val locationName: String,
@@ -66,6 +67,13 @@ class PhotoPostRepository(
                 postId = postId,
                 uris = input.localImageUris
             )
+            val voiceNoteUrl = input.localVoiceNoteUri?.let { uri ->
+                uploadVoiceNote(
+                    authorId = input.authorId,
+                    postId = postId,
+                    uri = uri
+                )
+            }
 
             val now = Timestamp.now()
             val post = PhotoPostDocument(
@@ -76,6 +84,7 @@ class PhotoPostRepository(
                 title = input.title,
                 description = input.description,
                 imageUrls = uploadedUrls,
+                voiceNoteUrl = voiceNoteUrl,
                 locationName = input.locationName,
                 locationAddress = input.locationAddress,
                 googlePlaceId = input.googlePlaceId,
@@ -683,6 +692,17 @@ class PhotoPostRepository(
                 ref.downloadUrl.awaitResult().toString()
             }
         }.awaitAll()
+    }
+
+    private suspend fun uploadVoiceNote(
+        authorId: String,
+        postId: String,
+        uri: Uri
+    ): String {
+        val ref = storage.reference
+            .child("travelshare/posts/$authorId/$postId/voice_note.m4a")
+        ref.putFile(uri).awaitResult()
+        return ref.downloadUrl.awaitResult().toString()
     }
 }
 

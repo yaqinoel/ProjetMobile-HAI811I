@@ -66,6 +66,7 @@ data class PhotoPostDetailUi(
     val howToGetThere: String,
     val commentsList: List<PhotoPostCommentUi>,
     val locationPrecision: String,
+    val voiceNoteUrl: String? = null,
     val title: String = "",
     val authorId: String = "",
     val authorAvatarUrl: String? = null
@@ -133,6 +134,7 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
         commentsCount = commentCount,
         tags = tags,
         howToGetThere = "Ouvrir l'itinéraire avec Google Maps depuis cette fiche.",
+        voiceNoteUrl = voiceNoteUrl,
         commentsList = comments.map { it.toPhotoPostCommentUi() },
         locationPrecision = locationPrecision,
         title = title,

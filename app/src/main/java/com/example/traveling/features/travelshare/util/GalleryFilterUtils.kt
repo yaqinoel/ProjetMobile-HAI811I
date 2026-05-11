@@ -17,7 +17,7 @@ fun filterGalleryPosts(
     val filtered = posts.filter { post ->
         matchesQuery(post, query) &&
             matchesPlaceType(post, filter.placeType) &&
-            matchesPeriod(post, filter.period)
+            matchesPeriod(post, filter)
     }
 
     return when (filter.discoveryMode) {
@@ -67,9 +67,19 @@ private fun matchesPlaceType(post: PhotoPostUi, placeType: String): Boolean {
     return placeType == "all" || post.placeType.equals(placeType, ignoreCase = true)
 }
 
-private fun matchesPeriod(post: PhotoPostUi, period: String): Boolean {
-    if (period == "all") return true
+private fun matchesPeriod(post: PhotoPostUi, filter: GalleryFilter): Boolean {
+    val start = filter.dateRangeStartMillis
+    val end = filter.dateRangeEndMillis
+    val period = filter.period
+    if (start == null && end == null && (period == "all" || period == "custom")) return true
+
     val createdAt = post.createdAtMillis ?: return false
+    if (start != null || end != null) {
+        val min = start ?: Long.MIN_VALUE
+        val max = end?.let { endOfDayMillis(it) } ?: Long.MAX_VALUE
+        return createdAt in min..max
+    }
+
     val now = System.currentTimeMillis()
     val millisPerDay = 24L * 60L * 60L * 1000L
 
@@ -84,6 +94,16 @@ private fun matchesPeriod(post: PhotoPostUi, period: String): Boolean {
         }
         else -> true
     }
+}
+
+private fun endOfDayMillis(timeMillis: Long): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = timeMillis
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }.timeInMillis
 }
 
 private fun filterNearby(
@@ -114,7 +134,10 @@ private fun filterSimilar(
             .filterNot { it.id == source.id }
             .map { it to similarityScore(source, it) }
             .filter { (_, score) -> score > 0 }
-            .sortedByDescending { (_, score) -> score }
+            .sortedWith(
+                compareByDescending<Pair<PhotoPostUi, Int>> { (_, score) -> score }
+                    .thenByDescending { (post, _) -> post.createdAtMillis ?: 0L }
+            )
             .map { (post, _) -> post }
     }
 
@@ -133,14 +156,15 @@ private fun filterSimilar(
 }
 
 private fun similarityScore(source: PhotoPostUi, candidate: PhotoPostUi): Int {
-    val sourceTags = source.tags.map { it.lowercase() }.toSet()
-    val candidateTags = candidate.tags.map { it.lowercase() }.toSet()
+    val sourceTags = source.tags.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+    val candidateTags = candidate.tags.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
     val sharedTags = sourceTags.intersect(candidateTags).size
 
-    var score = sharedTags * 2
-    if (source.placeType.equals(candidate.placeType, ignoreCase = true)) score += 3
-    if (source.city.isNotBlank() && source.city.equals(candidate.city, ignoreCase = true)) score += 1
+    var score = sharedTags * 3
+    if (source.placeType.isNotBlank() && source.placeType.equals(candidate.placeType, ignoreCase = true)) score += 2
+    if (source.city.isNotBlank() && source.city.equals(candidate.city, ignoreCase = true)) score += 2
     if (source.country.isNotBlank() && source.country.equals(candidate.country, ignoreCase = true)) score += 1
+    if (score > 0 && source.authorId.isNotBlank() && source.authorId == candidate.authorId) score += 1
     return score
 }
 

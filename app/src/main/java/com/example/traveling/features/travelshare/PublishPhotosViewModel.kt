@@ -84,6 +84,7 @@ class PublishPhotosViewModel(
 
     fun publish(
         selectedPhotoUris: List<String>,
+        voiceNoteUri: String?,
         title: String,
         description: String,
         selectedLocation: SelectedLocationUi,
@@ -124,6 +125,7 @@ class PublishPhotosViewModel(
                 authorName = authorName,
                 authorAvatarUrl = userDoc?.avatarUrl,
                 localImageUris = selectedPhotoUris.map(Uri::parse),
+                localVoiceNoteUri = voiceNoteUri?.let(Uri::parse),
                 title = title,
                 description = description,
                 locationName = selectedLocation.name,

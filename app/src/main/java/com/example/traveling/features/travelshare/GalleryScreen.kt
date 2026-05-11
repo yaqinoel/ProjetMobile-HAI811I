@@ -22,10 +22,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +57,18 @@ import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.features.travelshare.util.filterGalleryPosts
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.rememberCameraPositionState
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 private data class PhotoFilterOption(val id: String, val label: String)
@@ -74,7 +88,8 @@ private val PHOTO_PERIODS = listOf(
     PhotoFilterOption("week", "Cette semaine"),
     PhotoFilterOption("month", "Ce mois"),
     PhotoFilterOption("3months", "3 derniers mois"),
-    PhotoFilterOption("year", "Cette année")
+    PhotoFilterOption("year", "Cette année"),
+    PhotoFilterOption("custom", "Plage")
 )
 
 private val PHOTO_RADIUS = listOf(
@@ -87,6 +102,7 @@ private val PHOTO_RADIUS = listOf(
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
+    initialSimilarPostId: String? = null,
     onOpenNotifications: () -> Unit = {},
     onPhotoClick: (String) -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
@@ -111,11 +127,20 @@ fun GalleryScreen(
 
     var viewMode by rememberSaveable { mutableStateOf("list") } // "list", "grid", "map"
     var shuffledPhotos by remember { mutableStateOf<List<PhotoPostUi>?>(null) }
+    var similarToPostId by rememberSaveable { mutableStateOf(initialSimilarPostId.orEmpty()) }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("all") }
     var selectedPeriod by remember { mutableStateOf("all") }
-    var selectedDiscovery by remember { mutableStateOf("all") }
+    var selectedDiscovery by remember { mutableStateOf(if (initialSimilarPostId.isNullOrBlank()) "all" else "similar") }
+    var dateRangeStartMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var dateRangeEndMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showDateRangePicker by remember { mutableStateOf(false) }
+    var nearbyLocationName by rememberSaveable { mutableStateOf("") }
+    var nearbyLatitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var nearbyLongitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var nearbyRadiusKm by rememberSaveable { mutableStateOf(10f) }
+    var showNearbyPicker by remember { mutableStateOf(false) }
     var isVoiceSearchActive by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -170,19 +195,76 @@ fun GalleryScreen(
         shuffledPhotos = null
     }
 
-    val photos = shuffledPhotos ?: remotePosts.sortedByDescending { it.createdAtMillis ?: 0L }
-    val nearbyCenter = remember(remotePosts, searchQuery, selectedDiscovery) {
-        if (selectedDiscovery == "nearby") findNearbyCenter(remotePosts, searchQuery) else null
+    LaunchedEffect(initialSimilarPostId) {
+        if (!initialSimilarPostId.isNullOrBlank() && initialSimilarPostId != similarToPostId) {
+            similarToPostId = initialSimilarPostId
+            selectedDiscovery = "similar"
+            selectedType = "all"
+            selectedPeriod = "all"
+            dateRangeStartMillis = null
+            dateRangeEndMillis = null
+            searchQuery = ""
+            showFilters = false
+            shuffledPhotos = null
+        }
     }
-    val effectiveQuery = if (selectedDiscovery == "nearby" && nearbyCenter != null) "" else searchQuery
-    val galleryFilter = remember(effectiveQuery, selectedType, selectedPeriod, selectedDiscovery, nearbyCenter) {
+
+    val photos = shuffledPhotos ?: remotePosts.sortedByDescending { it.createdAtMillis ?: 0L }
+    val activeSimilarPostId = similarToPostId.takeIf { it.isNotBlank() }
+    val effectiveDiscovery = if (activeSimilarPostId != null) "similar" else selectedDiscovery
+    val similarSourcePhoto = remember(photos, activeSimilarPostId) {
+        activeSimilarPostId?.let { sourceId -> photos.find { it.id == sourceId } }
+    }
+    val nearbyLat = nearbyLatitude
+    val nearbyLng = nearbyLongitude
+    val nearbyCenter = if (effectiveDiscovery == "nearby" && nearbyLat != null && nearbyLng != null) {
+        nearbyLat to nearbyLng
+    } else {
+        null
+    }
+    val effectiveQuery = searchQuery
+    val dateRangeLabel = remember(dateRangeStartMillis, dateRangeEndMillis) {
+        formatDateRangeLabel(dateRangeStartMillis, dateRangeEndMillis)
+    }
+    val hasActiveFilters = selectedType != "all" ||
+        selectedPeriod != "all" ||
+        dateRangeStartMillis != null ||
+        dateRangeEndMillis != null ||
+        effectiveDiscovery != "all"
+    val clearFilters = {
+        selectedType = "all"
+        selectedPeriod = "all"
+        dateRangeStartMillis = null
+        dateRangeEndMillis = null
+        selectedDiscovery = "all"
+        similarToPostId = ""
+        nearbyLocationName = ""
+        nearbyLatitude = null
+        nearbyLongitude = null
+        nearbyRadiusKm = 10f
+    }
+    val galleryFilter = remember(
+        effectiveQuery,
+        selectedType,
+        selectedPeriod,
+        dateRangeStartMillis,
+        dateRangeEndMillis,
+        effectiveDiscovery,
+        nearbyCenter,
+        nearbyRadiusKm,
+        activeSimilarPostId
+    ) {
         GalleryFilter(
             query = effectiveQuery,
             placeType = selectedType,
             period = selectedPeriod,
-            discoveryMode = selectedDiscovery,
+            dateRangeStartMillis = dateRangeStartMillis,
+            dateRangeEndMillis = dateRangeEndMillis,
+            discoveryMode = effectiveDiscovery,
             centerLatitude = nearbyCenter?.first,
-            centerLongitude = nearbyCenter?.second
+            centerLongitude = nearbyCenter?.second,
+            radiusKm = nearbyRadiusKm.toDouble(),
+            similarToPostId = activeSimilarPostId
         )
     }
     val filteredPhotos = remember(photos, galleryFilter) {
@@ -197,7 +279,12 @@ fun GalleryScreen(
                 showFilters = showFilters,
                 selectedType = selectedType,
                 selectedPeriod = selectedPeriod,
-                selectedDiscovery = selectedDiscovery,
+                selectedDiscovery = effectiveDiscovery,
+                dateRangeLabel = dateRangeLabel,
+                nearbyLocationName = nearbyLocationName,
+                nearbyRadiusKm = nearbyRadiusKm,
+                hasNearbyCenter = nearbyCenter != null,
+                hasActiveFilters = hasActiveFilters,
                 resultCount = filteredPhotos.size,
                 isVoiceSearchActive = isVoiceSearchActive,
                 onOpenNotifications = onOpenNotifications,
@@ -205,12 +292,47 @@ fun GalleryScreen(
                 onSearchQueryChanged = { searchQuery = it },
                 onToggleFilters = { showFilters = !showFilters },
                 onTypeSelected = { selectedType = it },
-                onPeriodSelected = { selectedPeriod = it },
-                onDiscoverySelected = { selectedDiscovery = it },
+                onPeriodSelected = {
+                    selectedPeriod = it
+                    if (it == "custom") {
+                        showDateRangePicker = true
+                    } else {
+                        dateRangeStartMillis = null
+                        dateRangeEndMillis = null
+                    }
+                },
+                onDiscoverySelected = {
+                    selectedDiscovery = it
+                    if (it != "similar") similarToPostId = ""
+                },
+                onOpenDateRangePicker = { showDateRangePicker = true },
+                onClearDateRange = {
+                    selectedPeriod = "all"
+                    dateRangeStartMillis = null
+                    dateRangeEndMillis = null
+                },
+                onOpenNearbyPicker = { showNearbyPicker = true },
+                onRadiusChanged = { nearbyRadiusKm = it },
+                onClearNearbyLocation = {
+                    nearbyLocationName = ""
+                    nearbyLatitude = null
+                    nearbyLongitude = null
+                },
+                onClearFilters = clearFilters,
                 onToggleVoiceSearch = startVoiceSearch,
                 isAnonymous = isAnonymous,
                 onShuffle = { shuffledPhotos = photos.shuffled() }
             )
+
+            if (activeSimilarPostId != null) {
+                SimilarSearchBanner(
+                    sourcePhoto = similarSourcePhoto,
+                    onClear = {
+                        similarToPostId = ""
+                        selectedDiscovery = "all"
+                    }
+                )
+            }
 
             Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
                 if (galleryState is GalleryUiState.Loading) {
@@ -252,7 +374,7 @@ fun GalleryScreen(
                                     }
                                 }
                             },
-                            showStories = searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all" && selectedDiscovery == "all",
+                            showStories = searchQuery.isBlank() && selectedType == "all" && selectedPeriod == "all" && effectiveDiscovery == "all",
                             shortcuts = shortcuts,
                             isAnonymous = isAnonymous,
                             onPhotoClick = onPhotoClick,
@@ -266,6 +388,36 @@ fun GalleryScreen(
             }
         }
         SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+
+        if (showDateRangePicker) {
+            GalleryDateRangeDialog(
+                initialStartMillis = dateRangeStartMillis,
+                initialEndMillis = dateRangeEndMillis,
+                onDismiss = { showDateRangePicker = false },
+                onConfirm = { startMillis, endMillis ->
+                    dateRangeStartMillis = startMillis
+                    dateRangeEndMillis = endMillis
+                    selectedPeriod = "custom"
+                    showDateRangePicker = false
+                }
+            )
+        }
+
+        if (showNearbyPicker) {
+            NearbyMapPickerOverlay(
+                initialLatitude = nearbyLatitude,
+                initialLongitude = nearbyLongitude,
+                onDismiss = { showNearbyPicker = false },
+                onConfirm = { latLng ->
+                    nearbyLocationName = formatCoordinateLabel(latLng.latitude, latLng.longitude)
+                    nearbyLatitude = latLng.latitude
+                    nearbyLongitude = latLng.longitude
+                    selectedDiscovery = "nearby"
+                    similarToPostId = ""
+                    showNearbyPicker = false
+                }
+            )
+        }
     }
 }
 
@@ -278,6 +430,11 @@ private fun HeaderBar(
     selectedType: String,
     selectedPeriod: String,
     selectedDiscovery: String,
+    dateRangeLabel: String?,
+    nearbyLocationName: String,
+    nearbyRadiusKm: Float,
+    hasNearbyCenter: Boolean,
+    hasActiveFilters: Boolean,
     resultCount: Int,
     isVoiceSearchActive: Boolean,
     onOpenNotifications: () -> Unit,
@@ -287,10 +444,19 @@ private fun HeaderBar(
     onTypeSelected: (String) -> Unit,
     onPeriodSelected: (String) -> Unit,
     onDiscoverySelected: (String) -> Unit,
+    onOpenDateRangePicker: () -> Unit,
+    onClearDateRange: () -> Unit,
+    onOpenNearbyPicker: () -> Unit,
+    onRadiusChanged: (Float) -> Unit,
+    onClearNearbyLocation: () -> Unit,
+    onClearFilters: () -> Unit,
     onToggleVoiceSearch: () -> Unit,
     isAnonymous: Boolean,
     onShuffle: () -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val filtersMaxHeight = (configuration.screenHeightDp * 0.42f).dp
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = CardBg,
@@ -382,7 +548,13 @@ private fun HeaderBar(
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-                Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(
+                    modifier = Modifier
+                        .padding(top = 14.dp)
+                        .heightIn(max = filtersMaxHeight)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
                     FilterRow(
                         title = "Type de lieu",
                         options = PHOTO_PLACE_TYPES,
@@ -395,12 +567,30 @@ private fun HeaderBar(
                         selected = selectedPeriod,
                         onSelected = onPeriodSelected
                     )
+                    if (selectedPeriod == "custom" || dateRangeLabel != null) {
+                        DateRangeFilterCard(
+                            label = dateRangeLabel,
+                            onOpenPicker = onOpenDateRangePicker,
+                            onClear = onClearDateRange
+                        )
+                    }
                     FilterRow(
                         title = "Mode de découverte",
                         options = PHOTO_RADIUS,
                         selected = selectedDiscovery,
                         onSelected = onDiscoverySelected
                     )
+                    if (selectedDiscovery == "nearby") {
+                        NearbyFilterCard(
+                            locationName = nearbyLocationName,
+                            radiusKm = nearbyRadiusKm,
+                            hasCenter = hasNearbyCenter,
+                            onChooseLocation = onOpenNearbyPicker,
+                            onRadiusChanged = onRadiusChanged,
+                            onClearLocation = onClearNearbyLocation
+                        )
+                    }
+                    Spacer(Modifier.height(2.dp))
                 }
             }
 
@@ -410,9 +600,423 @@ private fun HeaderBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("$resultCount photo${if (resultCount > 1) "s" else ""}", fontSize = 11.sp, color = StoneMuted, fontWeight = FontWeight.Medium)
-                if (selectedType != "all" || selectedPeriod != "all" || selectedDiscovery != "all") {
-                    Text("Filtres actifs", fontSize = 11.sp, color = RedPrimary, fontWeight = FontWeight.SemiBold)
+                if (hasActiveFilters) {
+                    Text(
+                        "Réinitialiser",
+                        fontSize = 11.sp,
+                        color = RedPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { onClearFilters() }
+                    )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DateRangeFilterCard(
+    label: String?,
+    onOpenPicker: () -> Unit,
+    onClear: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(1.dp, StoneBorder)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(Icons.Default.DateRange, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(18.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Plage de dates", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                Text(label ?: "Choisissez une date de début et de fin", fontSize = 11.sp, color = StoneMuted)
+            }
+            TextButton(onClick = onOpenPicker, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                Text(if (label == null) "Choisir" else "Modifier", fontSize = 12.sp)
+            }
+            if (label != null) {
+                IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted, modifier = Modifier.size(15.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NearbyFilterCard(
+    locationName: String,
+    radiusKm: Float,
+    hasCenter: Boolean,
+    onChooseLocation: () -> Unit,
+    onRadiusChanged: (Float) -> Unit,
+    onClearLocation: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = Stone100,
+        border = androidx.compose.foundation.BorderStroke(1.dp, StoneBorder.copy(alpha = 0.7f))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Default.TravelExplore, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(18.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Centre de recherche", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                    Text(
+                        if (hasCenter) locationName.ifBlank { "Point sélectionné" } else "Déplacez la carte pour choisir un point",
+                        fontSize = 11.sp,
+                        color = if (hasCenter) StoneMuted else Color(0xFFB45309),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                TextButton(onClick = onChooseLocation, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)) {
+                    Text(if (hasCenter) "Modifier" else "Choisir", fontSize = 12.sp)
+                }
+                if (hasCenter) {
+                    IconButton(onClick = onClearLocation, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted, modifier = Modifier.size(15.dp))
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("1", fontSize = 10.sp, color = StoneMuted)
+                Slider(
+                    value = radiusKm,
+                    onValueChange = { onRadiusChanged(it.roundToInt().coerceIn(1, 50).toFloat()) },
+                    valueRange = 1f..50f,
+                    steps = 48,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = RedPrimary,
+                        activeTrackColor = RedPrimary,
+                        inactiveTrackColor = Color.White
+                    )
+                )
+                Text("50 km", fontSize = 10.sp, color = StoneMuted)
+                Text(
+                    "${radiusKm.roundToInt()} km",
+                    fontSize = 12.sp,
+                    color = RedPrimary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(48.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryDateRangeDialog(
+    initialStartMillis: Long?,
+    initialEndMillis: Long?,
+    onDismiss: () -> Unit,
+    onConfirm: (Long?, Long?) -> Unit
+) {
+    val today = remember { DateParts.today() }
+    val defaultStart = remember { today.minusDays(30) }
+    val initialStart = remember(initialStartMillis) { initialStartMillis?.toDateParts() ?: defaultStart }
+    val initialEnd = remember(initialEndMillis) { initialEndMillis?.toDateParts() ?: today }
+
+    var startYear by remember { mutableStateOf(initialStart.year) }
+    var startMonth by remember { mutableStateOf(initialStart.month) }
+    var startDay by remember { mutableStateOf(initialStart.day) }
+    var endYear by remember { mutableStateOf(initialEnd.year) }
+    var endMonth by remember { mutableStateOf(initialEnd.month) }
+    var endDay by remember { mutableStateOf(initialEnd.day) }
+
+    LaunchedEffect(startYear, startMonth) {
+        startDay = startDay.coerceAtMost(daysInMonth(startYear, startMonth))
+    }
+    LaunchedEffect(endYear, endMonth) {
+        endDay = endDay.coerceAtMost(daysInMonth(endYear, endMonth))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = CardBg,
+        shape = RoundedCornerShape(16.dp),
+        title = {
+            Text("Plage de dates", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = StoneText)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                DateWheelSection(
+                    title = "Début",
+                    year = startYear,
+                    month = startMonth,
+                    day = startDay,
+                    onYearChange = { startYear = it },
+                    onMonthChange = { startMonth = it },
+                    onDayChange = { startDay = it }
+                )
+                DateWheelSection(
+                    title = "Fin",
+                    year = endYear,
+                    month = endMonth,
+                    day = endDay,
+                    onYearChange = { endYear = it },
+                    onMonthChange = { endMonth = it },
+                    onDayChange = { endDay = it }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val start = DateParts(startYear, startMonth, startDay).toStartMillis()
+                    val end = DateParts(endYear, endMonth, endDay).toStartMillis()
+                    if (start <= end) {
+                        onConfirm(start, end)
+                    } else {
+                        onConfirm(end, start)
+                    }
+                }
+            ) {
+                Text("Appliquer")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuler") }
+        }
+    )
+}
+
+@Composable
+private fun DateWheelSection(
+    title: String,
+    year: Int,
+    month: Int,
+    day: Int,
+    onYearChange: (Int) -> Unit,
+    onMonthChange: (Int) -> Unit,
+    onDayChange: (Int) -> Unit
+) {
+    val yearRange = remember { (2020..2030).toList() }
+    val monthRange = remember { (1..12).toList() }
+    val dayRange = remember(year, month) { (1..daysInMonth(year, month)).toList() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = StoneMuted)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            WheelNumberPicker(
+                label = "Année",
+                values = yearRange,
+                selected = year,
+                onSelected = onYearChange,
+                modifier = Modifier.weight(1.25f)
+            )
+            WheelNumberPicker(
+                label = "Mois",
+                values = monthRange,
+                selected = month,
+                onSelected = onMonthChange,
+                formatter = { "%02d".format(it) },
+                modifier = Modifier.weight(1f)
+            )
+            WheelNumberPicker(
+                label = "Jour",
+                values = dayRange,
+                selected = day.coerceAtMost(dayRange.last()),
+                onSelected = onDayChange,
+                formatter = { "%02d".format(it) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WheelNumberPicker(
+    label: String,
+    values: List<Int>,
+    selected: Int,
+    onSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    formatter: (Int) -> String = { it.toString() }
+) {
+    val selectedIndex = values.indexOf(selected).coerceAtLeast(0)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+
+    LaunchedEffect(selectedIndex) {
+        listState.animateScrollToItem(selectedIndex)
+    }
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, fontSize = 10.sp, color = StoneMuted)
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(112.dp)
+                .background(Stone100, RoundedCornerShape(10.dp))
+                .padding(vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            items(values) { value ->
+                val isSelected = value == selected
+                Text(
+                    text = formatter(value),
+                    fontSize = if (isSelected) 16.sp else 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) RedPrimary else StoneMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelected(value) }
+                        .background(if (isSelected) Color.White else Color.Transparent, RoundedCornerShape(8.dp))
+                        .padding(vertical = 7.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NearbyMapPickerOverlay(
+    initialLatitude: Double?,
+    initialLongitude: Double?,
+    onDismiss: () -> Unit,
+    onConfirm: (LatLng) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val initialTarget = remember(initialLatitude, initialLongitude) {
+        LatLng(initialLatitude ?: 43.6108, initialLongitude ?: 3.8767)
+    }
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(initialTarget, 13f)
+    }
+    val mapUiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = true,
+            scrollGesturesEnabled = true,
+            zoomGesturesEnabled = true,
+            rotationGesturesEnabled = false,
+            tiltGesturesEnabled = false,
+            mapToolbarEnabled = false
+        )
+    }
+    val mapProperties = remember { MapProperties(isBuildingEnabled = true) }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.25f))) {
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            uiSettings = mapUiSettings,
+            properties = mapProperties,
+            onMapClick = { latLng ->
+                coroutineScope.launch {
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLng(latLng))
+                }
+            }
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .offset(y = (-18).dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.LocationOn, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(42.dp))
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth().statusBarsPadding(),
+            color = CardBg.copy(alpha = 0.96f)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Fermer", tint = StoneText)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Choisir le centre", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                    Text("Déplacez la carte ou touchez un point", fontSize = 11.sp, color = StoneMuted)
+                }
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            color = CardBg,
+            shadowElevation = 8.dp
+        ) {
+            val target = cameraPositionState.position.target
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Point sélectionné", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                Text(formatCoordinateLabel(target.latitude, target.longitude), fontSize = 12.sp, color = StoneMuted)
+                Button(
+                    onClick = { onConfirm(cameraPositionState.position.target) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                ) {
+                    Text("Utiliser ce point")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimilarSearchBanner(
+    sourcePhoto: PhotoPostUi?,
+    onClear: () -> Unit
+) {
+    val sourceLabel = sourcePhoto
+        ?.title
+        ?.takeIf { it.isNotBlank() }
+        ?: sourcePhoto?.location
+        ?: "cette photo"
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFFFFF7ED),
+        shadowElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0xFFFFEDD5), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Outlined.Collections, contentDescription = null, tint = Color(0xFFC2410C), modifier = Modifier.size(17.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Recherche par similarité", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text(
+                    "Photos proches de $sourceLabel",
+                    fontSize = 11.sp,
+                    color = StoneMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "Annuler", tint = StoneMuted, modifier = Modifier.size(16.dp))
             }
         }
     }
@@ -760,23 +1364,72 @@ private fun EmptyPhotoResults() {
     }
 }
 
-private fun findNearbyCenter(posts: List<PhotoPostUi>, query: String): Pair<Double, Double>? {
-    val normalizedQuery = query.trim()
-    if (normalizedQuery.isBlank()) return null
-
-    return posts.firstOrNull { post ->
-        post.latitude != null &&
-            post.longitude != null &&
-            (
-                post.location.contains(normalizedQuery, ignoreCase = true) ||
-                    post.city.contains(normalizedQuery, ignoreCase = true) ||
-                    post.country.contains(normalizedQuery, ignoreCase = true)
-                )
-    }?.let { post ->
-        val lat = post.latitude
-        val lng = post.longitude
-        if (lat != null && lng != null) lat to lng else null
+private fun formatDateRangeLabel(startMillis: Long?, endMillis: Long?): String? {
+    if (startMillis == null && endMillis == null) return null
+    val formatter = SimpleDateFormat("dd MMM yyyy", Locale.FRANCE)
+    val start = startMillis?.let { formatter.format(Date(it)) }
+    val end = endMillis?.let { formatter.format(Date(it)) }
+    return when {
+        start != null && end != null -> "$start - $end"
+        start != null -> "Depuis $start"
+        end != null -> "Jusqu'au $end"
+        else -> null
     }
+}
+
+private fun formatCoordinateLabel(latitude: Double, longitude: Double): String {
+    return "%.5f, %.5f".format(Locale.US, latitude, longitude)
+}
+
+private data class DateParts(
+    val year: Int,
+    val month: Int,
+    val day: Int
+) {
+    fun toStartMillis(): Long {
+        return Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, day.coerceAtMost(daysInMonth(year, month)))
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+
+    fun minusDays(days: Int): DateParts {
+        return Calendar.getInstance().apply {
+            set(Calendar.YEAR, year)
+            set(Calendar.MONTH, month - 1)
+            set(Calendar.DAY_OF_MONTH, day)
+            add(Calendar.DAY_OF_MONTH, -days)
+        }.toDateParts()
+    }
+
+    companion object {
+        fun today(): DateParts = Calendar.getInstance().toDateParts()
+    }
+}
+
+private fun Long.toDateParts(): DateParts {
+    return Calendar.getInstance().apply { timeInMillis = this@toDateParts }.toDateParts()
+}
+
+private fun Calendar.toDateParts(): DateParts {
+    return DateParts(
+        year = get(Calendar.YEAR),
+        month = get(Calendar.MONTH) + 1,
+        day = get(Calendar.DAY_OF_MONTH)
+    )
+}
+
+private fun daysInMonth(year: Int, month: Int): Int {
+    return Calendar.getInstance().apply {
+        set(Calendar.YEAR, year)
+        set(Calendar.MONTH, month - 1)
+        set(Calendar.DAY_OF_MONTH, 1)
+    }.getActualMaximum(Calendar.DAY_OF_MONTH)
 }
 
 @Preview(showBackground = true, name = "Mode Connecté (已登录状态)")

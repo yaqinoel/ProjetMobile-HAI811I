@@ -11,6 +11,7 @@ data class PhotoPostDocument(
     val title: String = "",
     val description: String = "",
     val imageUrls: List<String> = emptyList(),
+    val voiceNoteUrl: String? = null,
     val locationName: String = "",
     val locationAddress: String? = null,
     val googlePlaceId: String? = null,
