@@ -237,6 +237,21 @@ fun MapView(
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
+                                if (photo.visibility == "group" && !photo.groupName.isNullOrBlank()) {
+                                    Spacer(Modifier.height(5.dp))
+                                    Text(
+                                        photo.groupName.orEmpty(),
+                                        color = Color(0xFFD97706),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .widthIn(max = 120.dp)
+                                            .background(Color(0xFFFFF7ED), RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
                                 Spacer(Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.LocationOn, null, tint = RedPrimary, modifier = Modifier.size(14.dp))

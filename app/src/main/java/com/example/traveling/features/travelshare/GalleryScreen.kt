@@ -100,7 +100,7 @@ fun GalleryScreen(
     val galleryState by galleryViewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        galleryViewModel.observePublicPosts()
+        galleryViewModel.observeVisiblePosts()
     }
 
     val remotePosts = when (val state = galleryState) {
@@ -123,7 +123,7 @@ fun GalleryScreen(
         shuffledPhotos = null
     }
 
-    val photos = shuffledPhotos ?: remotePosts
+    val photos = shuffledPhotos ?: remotePosts.sortedByDescending { it.createdAtMillis ?: 0L }
     val nearbyCenter = remember(remotePosts, searchQuery, selectedDiscovery) {
         if (selectedDiscovery == "nearby") findNearbyCenter(remotePosts, searchQuery) else null
     }
@@ -512,6 +512,21 @@ private fun PhotoListView(
                                 Text("${photo.location}, ${photo.country}", fontSize = 11.sp, color = StoneMuted, maxLines = 1)
                             }
                         }
+                        if (photo.visibility == "group" && !photo.groupName.isNullOrBlank()) {
+                            Text(
+                                text = photo.groupName.orEmpty(),
+                                fontSize = 10.sp,
+                                color = Color(0xFFD97706),
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .widthIn(max = 92.dp)
+                                    .background(Color(0xFFFFF7ED), RoundedCornerShape(10.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                        }
                         IconButton(onClick = { onNavigate(photo.id) }, modifier = Modifier.size(32.dp).background(RedLight, RoundedCornerShape(8.dp))) {
                             Icon(Icons.Outlined.Navigation, contentDescription = "Naviguer", tint = RedPrimary, modifier = Modifier.size(14.dp))
                         }
@@ -590,6 +605,22 @@ private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> U
                 // 右上角点赞按钮
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp).background(Color.Black.copy(alpha = 0.3f), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = "Like", tint = if (photo.isLiked) Color.Red else Color.White, modifier = Modifier.size(14.dp))
+                }
+                if (photo.visibility == "group" && !photo.groupName.isNullOrBlank()) {
+                    Text(
+                        text = photo.groupName.orEmpty(),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .widthIn(max = 96.dp)
+                            .background(Color(0xFFD97706).copy(alpha = 0.86f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
                 }
 
                 // 左下角文字信息

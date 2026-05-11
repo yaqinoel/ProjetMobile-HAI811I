@@ -56,6 +56,8 @@ private fun searchableText(post: PhotoPostUi): String {
         append(post.author).append(' ')
         append(post.description).append(' ')
         append(post.placeType).append(' ')
+        append(post.visibility).append(' ')
+        append(post.groupName.orEmpty()).append(' ')
         post.tags.forEach { append(it).append(' ') }
     }
 }

@@ -28,7 +28,9 @@ data class PhotoPostUi(
     val locationPrecision: String = "exact",
     val title: String = "",
     val city: String = "",
-    val createdAtMillis: Long? = null
+    val createdAtMillis: Long? = null,
+    val visibility: String = "public",
+    val groupName: String? = null
 )
 
 data class PhotoPostCommentUi(
@@ -91,7 +93,9 @@ fun PhotoPostDocument.toPhotoPostUi(
         locationPrecision = locationPrecision,
         title = title,
         city = city.orEmpty(),
-        createdAtMillis = createdAt?.toDate()?.time
+        createdAtMillis = createdAt?.toDate()?.time,
+        visibility = visibility,
+        groupName = groupName
     )
 }
 

@@ -30,11 +30,12 @@ class GalleryViewModel(
     private var listener: ListenerRegistration? = null
     private var latestDocs: List<PhotoPostDocument> = emptyList()
 
-    fun observePublicPosts() {
+    fun observeVisiblePosts() {
         listener?.remove()
         _uiState.value = GalleryUiState.Loading
 
-        listener = repository.observePublicPublishedPosts(
+        listener = repository.observeVisiblePublishedPosts(
+            userId = auth.currentUser?.uid,
             onChanged = { documents ->
                 latestDocs = documents
                 emitUiFromDocuments(documents)
