@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -107,7 +108,7 @@ fun GalleryScreen(
         else -> emptyList()
     }
 
-    var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
+    var viewMode by rememberSaveable { mutableStateOf("list") } // "list", "grid", "map"
     var shuffledPhotos by remember { mutableStateOf<List<PhotoPostUi>?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
