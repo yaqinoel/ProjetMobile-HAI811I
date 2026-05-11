@@ -30,7 +30,8 @@ data class PhotoPostUi(
     val city: String = "",
     val createdAtMillis: Long? = null,
     val visibility: String = "public",
-    val groupName: String? = null
+    val groupName: String? = null,
+    val authorId: String = ""
 )
 
 data class PhotoPostCommentUi(
@@ -95,7 +96,8 @@ fun PhotoPostDocument.toPhotoPostUi(
         city = city.orEmpty(),
         createdAtMillis = createdAt?.toDate()?.time,
         visibility = visibility,
-        groupName = groupName
+        groupName = groupName,
+        authorId = authorId
     )
 }
 

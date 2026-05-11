@@ -195,11 +195,32 @@ class NotificationRepository(
                     if (receiverId == post.authorId) return@forEach
 
                     val settings = getNotificationSettings(receiverId) ?: NotificationSettingsDocument()
+                    val matchAuthor = settings.followedUserIds.contains(post.authorId)
                     val matchedTag = post.tags.firstOrNull { tag ->
                         settings.followedTags.any { it.equals(tag, ignoreCase = true) }
                     }
                     val matchPlaceType = settings.followedPlaceTypes.any {
                         it.equals(post.placeType, ignoreCase = true)
+                    }
+
+                    if (matchAuthor && settings.notifyFromFollowedUsers) {
+                        val ref = db.collection(FirestoreCollections.NOTIFICATIONS).document()
+                        batch.set(
+                            ref,
+                            NotificationDocument(
+                                notificationId = ref.id,
+                                receiverId = receiverId,
+                                type = "user_publish",
+                                title = post.authorName.ifBlank { "Voyageur suivi" },
+                                message = "a publié une nouvelle photo : ${post.title.ifBlank { post.locationName }}",
+                                relatedPostId = post.postId,
+                                relatedGroupId = null,
+                                relatedUserId = post.authorId,
+                                relatedPlaceId = null,
+                                isRead = false,
+                                createdAt = Timestamp.now()
+                            )
+                        )
                     }
 
                     if (matchedTag != null && settings.notifyByTags) {

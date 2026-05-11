@@ -231,6 +231,27 @@ class PhotoPostRepository(
             }
     }
 
+    fun observePublicPublishedPostsByAuthor(
+        authorId: String,
+        onChanged: (List<PhotoPostDocument>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        return db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("authorId", authorId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+                val posts = snapshot?.documents
+                    ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.filter { it.status == "published" && it.visibility == "public" }
+                    ?.sortedByNewest()
+                    ?: emptyList()
+                onChanged(posts)
+            }
+    }
+
     fun observeGroupPublishedPosts(
         groupId: String,
         onChanged: (List<PhotoPostDocument>) -> Unit,

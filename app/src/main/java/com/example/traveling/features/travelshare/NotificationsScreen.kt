@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -58,7 +60,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
@@ -91,6 +95,15 @@ private val FILTER_TABS = listOf(
     FilterTab("groups", "Groupes"),
     FilterTab("places", "Lieux"),
     FilterTab("tags", "Tags")
+)
+
+private val FOLLOWABLE_PLACE_TYPES = listOf(
+    "nature" to "Nature",
+    "museum" to "Musée",
+    "street" to "Rue",
+    "shop" to "Magasin",
+    "monument" to "Monument",
+    "architecture" to "Architecture"
 )
 
 @Composable
@@ -314,44 +327,179 @@ private fun NotificationSettingsPanel(
     settings: NotificationSettingsDocument,
     onUpdate: (NotificationSettingsDocument) -> Unit
 ) {
+    var tagInput by remember { mutableStateOf("") }
+
+    fun addFollowedTag() {
+        val tag = tagInput.trim().removePrefix("#")
+        if (tag.isBlank()) return
+        val exists = settings.followedTags.any { it.equals(tag, ignoreCase = true) }
+        if (!exists) {
+            onUpdate(settings.copy(followedTags = settings.followedTags + tag))
+        }
+        tagInput = ""
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Alertes suivies", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
+        Text("Gérer les suivis", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
-        Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            settings.followedTags.take(3).forEach { tag -> FollowChip(Icons.Default.Tag, "#$tag") }
-            settings.followedPlaceTypes.take(3).forEach { place -> FollowChip(Icons.Default.LocationOn, place) }
-            settings.followedGroupIds.take(2).forEach { group -> FollowChip(Icons.Default.Group, group) }
-            settings.followedUserIds.take(2).forEach { user -> FollowChip(Icons.Default.Person, user) }
+        FollowInputRow(
+            value = tagInput,
+            placeholder = "Ajouter un tag, ex. plage",
+            icon = Icons.Default.Tag,
+            onValueChange = { tagInput = it },
+            onAdd = { addFollowedTag() }
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Types de lieu suivis", fontSize = 11.sp, color = Stone500, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FOLLOWABLE_PLACE_TYPES.forEach { (id, label) ->
+                    val selected = settings.followedPlaceTypes.any { it.equals(id, ignoreCase = true) }
+                    SelectableFollowChip(
+                        label = label,
+                        selected = selected,
+                        icon = Icons.Default.LocationOn,
+                        onClick = {
+                            val next = if (selected) {
+                                settings.followedPlaceTypes.filterNot { it.equals(id, ignoreCase = true) }
+                            } else {
+                                settings.followedPlaceTypes + id
+                            }
+                            onUpdate(settings.copy(followedPlaceTypes = next))
+                        }
+                    )
+                }
+            }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Suivis actifs", fontSize = 11.sp, color = Stone500, fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                settings.followedTags.forEach { tag ->
+                    RemovableFollowChip(
+                        icon = Icons.Default.Tag,
+                        label = "#$tag",
+                        onRemove = { onUpdate(settings.copy(followedTags = settings.followedTags - tag)) }
+                    )
+                }
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            NotificationToggleCard(
+                "Auteurs",
+                "Nouveaux posts suivis",
+                Icons.Default.Person,
+                settings.notifyFromFollowedUsers,
+                Modifier.fillMaxWidth(),
+                onCheckedChange = { onUpdate(settings.copy(notifyFromFollowedUsers = it)) }
+            )
             NotificationToggleCard(
                 "Groupes",
                 "Publications de groupes",
                 Icons.Default.Group,
                 settings.notifyFromGroups,
-                Modifier.weight(1f),
+                Modifier.fillMaxWidth(),
                 onCheckedChange = { onUpdate(settings.copy(notifyFromGroups = it)) }
             )
             NotificationToggleCard(
-                "Lieux & tags",
-                "Publications correspondantes",
-                Icons.Default.NotificationsActive,
-                settings.notifyByTags || settings.notifyByPlaces,
-                Modifier.weight(1f),
-                onCheckedChange = {
-                    onUpdate(settings.copy(notifyByTags = it, notifyByPlaces = it))
-                }
+                "Tags",
+                "Tags suivis",
+                Icons.Default.Tag,
+                settings.notifyByTags,
+                Modifier.fillMaxWidth(),
+                onCheckedChange = { onUpdate(settings.copy(notifyByTags = it)) }
+            )
+            NotificationToggleCard(
+                "Lieux",
+                "Types de lieu suivis",
+                Icons.Default.LocationOn,
+                settings.notifyByPlaces,
+                Modifier.fillMaxWidth(),
+                onCheckedChange = { onUpdate(settings.copy(notifyByPlaces = it)) }
             )
         }
     }
 }
 
 @Composable
-private fun FollowChip(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String) {
+private fun FollowInputRow(
+    value: String,
+    placeholder: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onValueChange: (String) -> Unit,
+    onAdd: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .height(40.dp)
+                .background(CardBg, RoundedCornerShape(10.dp))
+                .border(1.dp, StoneBorder, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = Stone400, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                cursorBrush = SolidColor(RedPrimary),
+                textStyle = TextStyle(color = Stone800, fontSize = 13.sp),
+                modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    if (value.isBlank()) {
+                        Text(placeholder, color = Stone400, fontSize = 13.sp)
+                    }
+                    inner()
+                }
+            )
+        }
+        Box(
+            modifier = Modifier
+                .height(40.dp)
+                .background(RedPrimary, RoundedCornerShape(10.dp))
+                .clickable { onAdd() }
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Ajouter", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun SelectableFollowChip(
+    label: String,
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) RedPrimary else Color(0xFFFEF2F2),
+        border = BorderStroke(1.dp, if (selected) RedPrimary else Color(0xFFFEE2E2))
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = if (selected) Color.White else RedPrimary, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, color = if (selected) Color.White else RedPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun RemovableFollowChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onRemove: () -> Unit
+) {
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = Color(0xFFFEF2F2),
@@ -361,6 +509,8 @@ private fun FollowChip(icon: androidx.compose.ui.graphics.vector.ImageVector, la
             Icon(icon, null, tint = RedPrimary, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
             Text(label, color = RedPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.Default.Close, null, tint = RedPrimary, modifier = Modifier.size(12.dp).clickable { onRemove() })
         }
     }
 }
@@ -380,7 +530,13 @@ private fun NotificationToggleCard(
         color = CardBg,
         border = BorderStroke(1.dp, StoneBorder)
     ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onCheckedChange(!checked) }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(modifier = Modifier.size(32.dp).background(Color(0xFFFEF2F2), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = RedPrimary, modifier = Modifier.size(16.dp))
             }

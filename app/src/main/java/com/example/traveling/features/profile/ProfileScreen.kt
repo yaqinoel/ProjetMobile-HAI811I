@@ -64,7 +64,8 @@ fun ProfileScreen(
     onOpenLikedPosts: () -> Unit = {},
     onOpenSavedPosts: () -> Unit = {},
     onOpenLikedRoutes: () -> Unit = {},
-    onOpenSavedRoutes: () -> Unit = {}
+    onOpenSavedRoutes: () -> Unit = {},
+    onOpenFollowing: () -> Unit = {}
 ) {
     if (isAnonymous) {
         AnonymousProfileView(
@@ -112,6 +113,7 @@ fun ProfileScreen(
             is ProfileUiState.Success -> {
                 AuthenticatedProfileView(
                     user = state.user,
+                    followedUserCount = state.followedUserCount,
                     onLogout = onLogout,
                     onOpenNotifications = onOpenNotifications,
                     onOpenGroups = onOpenGroups,
@@ -119,7 +121,8 @@ fun ProfileScreen(
                     onOpenLikedPosts = onOpenLikedPosts,
                     onOpenSavedPosts = onOpenSavedPosts,
                     onOpenLikedRoutes = onOpenLikedRoutes,
-                    onOpenSavedRoutes = onOpenSavedRoutes
+                    onOpenSavedRoutes = onOpenSavedRoutes,
+                    onOpenFollowing = onOpenFollowing
                 )
             }
         }
@@ -248,6 +251,7 @@ private fun AnonymousProfileAction(
 @Composable
 private fun AuthenticatedProfileView(
     user: User,
+    followedUserCount: Int,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenGroups: () -> Unit,
@@ -255,7 +259,8 @@ private fun AuthenticatedProfileView(
     onOpenLikedPosts: () -> Unit,
     onOpenSavedPosts: () -> Unit,
     onOpenLikedRoutes: () -> Unit,
-    onOpenSavedRoutes: () -> Unit
+    onOpenSavedRoutes: () -> Unit,
+    onOpenFollowing: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -273,7 +278,8 @@ private fun AuthenticatedProfileView(
     val stats = listOf(
         ProfileStat("Photos", user.postCount.toString(), Icons.Default.PhotoCamera, action = onOpenMyPhotos),
         ProfileStat("Favoris", user.likedCount.toString(), Icons.Default.Favorite, action = onOpenLikedPosts),
-        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts)
+        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts),
+        ProfileStat("Suivis", followedUserCount.toString(), Icons.Default.Person, action = onOpenFollowing)
     )
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
@@ -416,6 +422,7 @@ fun ProfileScreenPreview() {
             savedCount = 18,
             groupCount = 3
         ),
+        followedUserCount = 5,
         onLogout = {},
         onOpenNotifications = {},
         onOpenGroups = {},
@@ -423,7 +430,8 @@ fun ProfileScreenPreview() {
         onOpenLikedPosts = {},
         onOpenSavedPosts = {},
         onOpenLikedRoutes = {},
-        onOpenSavedRoutes = {}
+        onOpenSavedRoutes = {},
+        onOpenFollowing = {}
     )
 }
 

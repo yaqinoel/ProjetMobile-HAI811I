@@ -49,7 +49,10 @@ fun MainScreen(
     onNavigateToLikedRoutes: () -> Unit = {},
     onNavigateToSavedRoutes: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
-    onNavigateToPhotoDetail: (String) -> Unit = {}
+    onNavigateToPhotoDetail: (String) -> Unit = {},
+    onNavigateToAuthorProfile: (String) -> Unit = {},
+    onNavigateToGroupDetail: (String) -> Unit = {},
+    onNavigateToFollowing: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -76,7 +79,9 @@ fun MainScreen(
                 MainTab.PHOTOS -> GalleryScreen(
                     isAnonymous = isAnonymous,
                     onOpenNotifications = onNavigateToNotifications,
-                    onPhotoClick = onNavigateToPhotoDetail // 👈 2. 把它传给 GalleryScreen
+                    onPhotoClick = onNavigateToPhotoDetail,
+                    onAuthorClick = onNavigateToAuthorProfile,
+                    onGroupClick = onNavigateToGroupDetail
                 )
                 MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
                 MainTab.PROFIL -> ProfileScreen(
@@ -90,7 +95,8 @@ fun MainScreen(
                     onOpenLikedPosts = onNavigateToLikedPosts,
                     onOpenSavedPosts = onNavigateToSavedPosts,
                     onOpenLikedRoutes = onNavigateToLikedRoutes,
-                    onOpenSavedRoutes = onNavigateToSavedRoutes
+                    onOpenSavedRoutes = onNavigateToSavedRoutes,
+                    onOpenFollowing = onNavigateToFollowing
                 )
             }
         }
