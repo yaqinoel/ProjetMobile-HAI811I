@@ -61,6 +61,17 @@ class GalleryViewModel(
         }
     }
 
+    fun reportPost(postId: String, reason: String = "Signalement depuis la galerie") {
+        val reporterId = auth.currentUser?.uid
+        viewModelScope.launch {
+            repository.reportPost(
+                postId = postId,
+                reporterId = reporterId,
+                reason = reason
+            )
+        }
+    }
+
     private fun emitUiFromDocuments(documents: List<PhotoPostDocument>) {
         val uid = auth.currentUser?.uid
         if (uid == null) {

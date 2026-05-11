@@ -25,7 +25,10 @@ data class PhotoPostUi(
     val period: String,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val locationPrecision: String = "exact"
+    val locationPrecision: String = "exact",
+    val title: String = "",
+    val city: String = "",
+    val createdAtMillis: Long? = null
 )
 
 data class PhotoPostCommentUi(
@@ -85,7 +88,10 @@ fun PhotoPostDocument.toPhotoPostUi(
         period = periodLabel ?: "all",
         latitude = visibleLat,
         longitude = visibleLng,
-        locationPrecision = locationPrecision
+        locationPrecision = locationPrecision,
+        title = title,
+        city = city.orEmpty(),
+        createdAtMillis = createdAt?.toDate()?.time
     )
 }
 

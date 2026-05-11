@@ -43,7 +43,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.core.utils.openNavigationToPlace
+import com.example.traveling.features.travelshare.model.GalleryFilter
 import com.example.traveling.features.travelshare.model.PhotoPostUi
+import com.example.traveling.features.travelshare.util.filterGalleryPosts
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -76,7 +78,6 @@ private val PHOTO_RADIUS = listOf(
     PhotoFilterOption("similar", "Photos similaires")
 )
 
-// ─── 模拟数据 ───
 val STORIES = listOf(
     Story("1", "Xiaofang", "X", Color(0xFFB91C1C), true),
     Story("2", "Zhiyuan", "Z", Color(0xFF7C3AED), true),
@@ -84,13 +85,6 @@ val STORIES = listOf(
     Story("4", "Minghui", "M", Color(0xFF0D9488), false),
     Story("5", "Yuxuan", "Y", Color(0xFF2563EB), false),
     Story("6", "Zixuan", "Z", Color(0xFFDC2626), true),
-)
-
-val INITIAL_PHOTOS = listOf(
-    PhotoPostUi("1", "https://images.unsplash.com/photo-1558507564-c573429b9ceb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Grande Muraille", "Pékin, Chine", "15 mars 2026", "Li Xiaofang", "L", Color(0xFFB91C1C), 1234, false, false, "La Grande Muraille s'étend sur des milliers de kilomètres, majestueuse. Au lever du soleil, la lumière dorée illumine les remparts.", 42, listOf("Grande Muraille", "Lever du soleil", "Monument"), "monument", "3months"),
-    PhotoPostUi("2", "https://images.unsplash.com/photo-1603120527222-33f28c2ce89e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Cité Interdite", "Pékin, Chine", "10 mars 2026", "Wang Wanqing", "W", Color(0xFFD97706), 2567, true, true, "Les murs rouges et les tuiles dorées de la Cité Interdite portent 600 ans d'histoire.", 89, listOf("Cité Interdite", "Architecture", "Impérial"), "architecture", "3months"),
-    PhotoPostUi("3", "https://images.unsplash.com/photo-1773318901379-aac92fdf5611?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Paysages de Guilin", "Guangxi, Chine", "28 fév 2026", "Zhang Zhiyuan", "Z", Color(0xFF7C3AED), 891, false, false, "Les paysages de Guilin sont les plus beaux du monde.", 35, listOf("Guilin", "Paysage", "Nature"), "nature", "3months"),
-    PhotoPostUi("4", "https://images.unsplash.com/photo-1770035242840-4e25de3298ee?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800", "Zhangjiajie", "Hunan, Chine", "15 fév 2026", "Chen Minghui", "C", Color(0xFF0D9488), 756, false, false, "Zhangjiajie ressemble à un paradis. Lieu de tournage d'Avatar !", 28, listOf("Zhangjiajie", "Nuages", "Nature"), "nature", "3months")
 )
 
 // ─── 核心 UI ───
@@ -114,7 +108,7 @@ fun GalleryScreen(
     }
 
     var viewMode by remember { mutableStateOf("list") } // "list", "grid", "map"
-    var photos by remember { mutableStateOf(INITIAL_PHOTOS) }
+    var shuffledPhotos by remember { mutableStateOf<List<PhotoPostUi>?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showFilters by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("all") }
@@ -124,29 +118,27 @@ fun GalleryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(galleryState) {
-        if (galleryState is GalleryUiState.Success) {
-            photos = remotePosts
-        }
+    LaunchedEffect(remotePosts) {
+        shuffledPhotos = null
     }
 
-    val filteredPhotos = remember(photos, searchQuery, selectedType, selectedPeriod, selectedDiscovery) {
-        photos.filter { photo ->
-            val query = searchQuery.trim()
-            val matchesQuery = query.isBlank() ||
-                photo.location.contains(query, ignoreCase = true) ||
-                photo.country.contains(query, ignoreCase = true) ||
-                photo.author.contains(query, ignoreCase = true) ||
-                photo.description.contains(query, ignoreCase = true) ||
-                photo.tags.any { it.contains(query, ignoreCase = true) }
-            val matchesType = selectedType == "all" || photo.placeType == selectedType
-            val matchesPeriod = selectedPeriod == "all" || photo.period == selectedPeriod
-            val matchesDiscovery = selectedDiscovery == "all" ||
-                selectedDiscovery == "nearby" ||
-                (selectedDiscovery == "similar" && (photo.tags.any { it.equals("Nature", ignoreCase = true) } || photo.placeType == selectedType))
-
-            matchesQuery && matchesType && matchesPeriod && matchesDiscovery
-        }
+    val photos = shuffledPhotos ?: remotePosts
+    val nearbyCenter = remember(remotePosts, searchQuery, selectedDiscovery) {
+        if (selectedDiscovery == "nearby") findNearbyCenter(remotePosts, searchQuery) else null
+    }
+    val effectiveQuery = if (selectedDiscovery == "nearby" && nearbyCenter != null) "" else searchQuery
+    val galleryFilter = remember(effectiveQuery, selectedType, selectedPeriod, selectedDiscovery, nearbyCenter) {
+        GalleryFilter(
+            query = effectiveQuery,
+            placeType = selectedType,
+            period = selectedPeriod,
+            discoveryMode = selectedDiscovery,
+            centerLatitude = nearbyCenter?.first,
+            centerLongitude = nearbyCenter?.second
+        )
+    }
+    val filteredPhotos = remember(photos, galleryFilter) {
+        filterGalleryPosts(photos, galleryFilter)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
@@ -168,18 +160,21 @@ fun GalleryScreen(
                 onPeriodSelected = { selectedPeriod = it },
                 onDiscoverySelected = { selectedDiscovery = it },
                 onToggleVoiceSearch = {
-                    val nextVoiceState = !isVoiceSearchActive
-                    isVoiceSearchActive = nextVoiceState
-                    if (nextVoiceState) {
-                        searchQuery = "Grande Muraille"
+                    isVoiceSearchActive = !isVoiceSearchActive
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Recherche vocale à connecter plus tard.")
                     }
                 },
                 isAnonymous = isAnonymous,
-                onShuffle = { photos = photos.shuffled() }
+                onShuffle = { shuffledPhotos = photos.shuffled() }
             )
 
             Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
-                if (galleryState is GalleryUiState.Error) {
+                if (galleryState is GalleryUiState.Loading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = RedPrimary)
+                    }
+                } else if (galleryState is GalleryUiState.Error) {
                     val message = (galleryState as GalleryUiState.Error).message
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(message, color = StoneMuted, fontSize = 13.sp)
@@ -191,16 +186,19 @@ fun GalleryScreen(
                         "list" -> PhotoListView(
                             photos = filteredPhotos,
                             onLike = { photoId ->
-                                val target = photos.find { it.id == photoId } ?: return@PhotoListView
+                                val target = filteredPhotos.find { it.id == photoId } ?: return@PhotoListView
                                 galleryViewModel.toggleLike(photoId, target.isLiked)
                             },
                             onSave = { photoId ->
-                                val target = photos.find { it.id == photoId } ?: return@PhotoListView
+                                val target = filteredPhotos.find { it.id == photoId } ?: return@PhotoListView
                                 galleryViewModel.toggleSave(photoId, target.isSaved)
                             },
-                            onReport = { coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") } },
+                            onReport = { photoId ->
+                                galleryViewModel.reportPost(photoId)
+                                coroutineScope.launch { snackbarHostState.showSnackbar("Signalement enregistré.") }
+                            },
                             onNavigate = { photoId ->
-                                val target = photos.find { it.id == photoId }
+                                val target = filteredPhotos.find { it.id == photoId }
                                 if (target != null) {
                                     val opened = openNavigationToPlace(
                                         context = context,
@@ -621,6 +619,25 @@ private fun EmptyPhotoResults() {
         Text("Aucune photo trouvée", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = StoneText)
         Spacer(Modifier.height(4.dp))
         Text("Essayez un autre lieu, auteur, tag ou filtre.", fontSize = 13.sp, color = StoneMuted)
+    }
+}
+
+private fun findNearbyCenter(posts: List<PhotoPostUi>, query: String): Pair<Double, Double>? {
+    val normalizedQuery = query.trim()
+    if (normalizedQuery.isBlank()) return null
+
+    return posts.firstOrNull { post ->
+        post.latitude != null &&
+            post.longitude != null &&
+            (
+                post.location.contains(normalizedQuery, ignoreCase = true) ||
+                    post.city.contains(normalizedQuery, ignoreCase = true) ||
+                    post.country.contains(normalizedQuery, ignoreCase = true)
+                )
+    }?.let { post ->
+        val lat = post.latitude
+        val lng = post.longitude
+        if (lat != null && lng != null) lat to lng else null
     }
 }
 
