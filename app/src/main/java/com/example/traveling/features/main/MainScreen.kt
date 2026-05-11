@@ -97,7 +97,8 @@ fun MainScreen(
                     onOpenSavedPosts = onNavigateToSavedPosts,
                     onOpenLikedRoutes = onNavigateToLikedRoutes,
                     onOpenSavedRoutes = onNavigateToSavedRoutes,
-                    onOpenImageMigration = onNavigateToImageMigration
+                    onOpenImageMigration = onNavigateToImageMigration,
+                    onOpenFollowing = onNavigateToFollowing
                 )
             }
         }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -42,7 +41,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,6 +60,7 @@ import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.UserRepository
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.features.travelshare.model.toPhotoPostUi
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.PageBg
 import com.example.traveling.ui.theme.RedDark
 import com.example.traveling.ui.theme.RedPrimary
@@ -324,15 +323,13 @@ fun AuthorProfileScreen(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                Modifier.size(72.dp).background(
-                                    Brush.linearGradient(listOf(RedPrimary, RedDark)),
-                                    CircleShape
-                                ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(displayName.firstOrNull()?.uppercase() ?: "V", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                            }
+                            UserAvatar(
+                                avatarUrl = user?.avatarUrl,
+                                fallbackText = displayName.firstOrNull()?.uppercase() ?: "V",
+                                backgroundColor = RedPrimary,
+                                modifier = Modifier.size(72.dp),
+                                textSize = 28.sp
+                            )
                             Spacer(Modifier.width(16.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(displayName, color = Stone800, fontSize = 19.sp, fontWeight = FontWeight.Bold)

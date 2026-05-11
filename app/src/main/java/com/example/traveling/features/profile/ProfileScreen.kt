@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.traveling.data.model.User
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 
 
@@ -65,7 +66,8 @@ fun ProfileScreen(
     onOpenSavedPosts: () -> Unit = {},
     onOpenLikedRoutes: () -> Unit = {},
     onOpenSavedRoutes: () -> Unit = {},
-    onOpenImageMigration: () -> Unit = {}
+    onOpenImageMigration: () -> Unit = {},
+    onOpenFollowing: () -> Unit = {}
 ) {
     if (isAnonymous) {
         AnonymousProfileView(
@@ -113,6 +115,7 @@ fun ProfileScreen(
             is ProfileUiState.Success -> {
                 AuthenticatedProfileView(
                     user = state.user,
+                    followedUserCount = state.followedUserCount,
                     onLogout = onLogout,
                     onOpenNotifications = onOpenNotifications,
                     onOpenGroups = onOpenGroups,
@@ -121,7 +124,8 @@ fun ProfileScreen(
                     onOpenSavedPosts = onOpenSavedPosts,
                     onOpenLikedRoutes = onOpenLikedRoutes,
                     onOpenSavedRoutes = onOpenSavedRoutes,
-                    onOpenImageMigration = onOpenImageMigration
+                    onOpenImageMigration = onOpenImageMigration,
+                    onOpenFollowing = onOpenFollowing
                 )
             }
         }
@@ -250,6 +254,7 @@ private fun AnonymousProfileAction(
 @Composable
 private fun AuthenticatedProfileView(
     user: User,
+    followedUserCount: Int,
     onLogout: () -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenGroups: () -> Unit,
@@ -258,18 +263,16 @@ private fun AuthenticatedProfileView(
     onOpenSavedPosts: () -> Unit,
     onOpenLikedRoutes: () -> Unit,
     onOpenSavedRoutes: () -> Unit,
-    onOpenImageMigration: () -> Unit
+    onOpenImageMigration: () -> Unit,
+    onOpenFollowing: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
     val menuItems = listOf(
         ProfileMenuItem("Mes groupes", "Créer, rejoindre et gérer vos groupes", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
-        ProfileMenuItem("Mes publications", "Modifier ou supprimer vos posts", Icons.Default.PhotoLibrary, Color(0xFFEA580C), action = onOpenMyPhotos),
-        ProfileMenuItem("Posts aimés", "Photos que vous avez aimées", Icons.Default.Favorite, Color(0xFFDC2626), action = onOpenLikedPosts),
-        ProfileMenuItem("Posts enregistrés", "Photos sauvegardées pour plus tard", Icons.Default.Bookmark, Color(0xFFD97706), action = onOpenSavedPosts),
+        ProfileMenuItem("Notifications", "Préférences et alertes", Icons.Default.Notifications, Color(0xFF10B981), action = onOpenNotifications),
         ProfileMenuItem("Itinéraires aimés", "Routes que vous avez aimées", Icons.Default.FavoriteBorder, Color(0xFFE11D48), action = onOpenLikedRoutes),
         ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes),
-        ProfileMenuItem("Notifications", "5 nouvelles", Icons.Default.Notifications, Color(0xFF10B981), badge = 5, action = onOpenNotifications),
         ProfileMenuItem("Migration images", "Remplacer les anciennes URLs par Firebase Storage", Icons.Default.CloudUpload, Color(0xFF2563EB), action = onOpenImageMigration),
         ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
     )
@@ -277,7 +280,8 @@ private fun AuthenticatedProfileView(
     val stats = listOf(
         ProfileStat("Photos", user.postCount.toString(), Icons.Default.PhotoCamera, action = onOpenMyPhotos),
         ProfileStat("Favoris", user.likedCount.toString(), Icons.Default.Favorite, action = onOpenLikedPosts),
-        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts)
+        ProfileStat("Enregistrés", user.savedCount.toString(), Icons.Default.Bookmark, action = onOpenSavedPosts),
+        ProfileStat("Suivis", followedUserCount.toString(), Icons.Default.Person, action = onOpenFollowing)
     )
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
@@ -307,17 +311,16 @@ private fun AuthenticatedProfileView(
                 // 用户信息
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // 头像
-                    Box(
+                    UserAvatar(
+                        avatarUrl = user.avatarUrl,
+                        fallbackText = user.displayName.firstOrNull()?.uppercase() ?: "V",
+                        backgroundColor = Color(0xFFD97706),
                         modifier = Modifier
                             .size(80.dp)
                             .shadow(8.dp, CircleShape)
-                            .background(Brush.linearGradient(listOf(Color(0xFFFBBF24), Color(0xFFD97706))), CircleShape)
                             .border(3.dp, Color(0x80FCD34D), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val avatarInitial = user.displayName.firstOrNull()?.uppercase() ?: "V"
-                        Text(avatarInitial, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                    }
+                        textSize = 32.sp
+                    )
                     Spacer(Modifier.width(16.dp))
                     // 资料
                     Column {
@@ -327,11 +330,6 @@ private fun AuthenticatedProfileView(
                             user.homeCity?.takeIf { it.isNotBlank() }
                         ).joinToString(" · ").ifBlank { "Voyageur" }
                         Text(subtitle, color = Color.White.copy(0.6f), fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
-                            Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFFBBF24), modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Voyageur Or", color = Color(0xFFFDE047), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        }
                     }
                 }
             }
@@ -420,6 +418,7 @@ fun ProfileScreenPreview() {
             savedCount = 18,
             groupCount = 3
         ),
+        followedUserCount = 5,
         onLogout = {},
         onOpenNotifications = {},
         onOpenGroups = {},
@@ -428,7 +427,8 @@ fun ProfileScreenPreview() {
         onOpenSavedPosts = {},
         onOpenLikedRoutes = {},
         onOpenSavedRoutes = {},
-        onOpenImageMigration = {}
+        onOpenImageMigration = {},
+        onOpenFollowing = {}
     )
 }
 

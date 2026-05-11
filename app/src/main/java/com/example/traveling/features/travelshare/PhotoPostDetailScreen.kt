@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 // 导入数据模型
 import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -152,9 +153,13 @@ private fun PhotoPostDetailContent(
                                 onAuthorClick(photo.authorId)
                             }
                         ) {
-                            Box(modifier = Modifier.size(32.dp).background(photo.authorColor, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(photo.authorAvatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                            UserAvatar(
+                                avatarUrl = photo.authorAvatarUrl,
+                                fallbackText = photo.authorAvatar,
+                                backgroundColor = photo.authorColor,
+                                modifier = Modifier.size(32.dp),
+                                textSize = 12.sp
+                            )
                             Column {
                                 Text(photo.author, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                                 Text(photo.date, fontSize = 10.sp, color = Stone400)
@@ -491,9 +496,13 @@ private fun PhotoPostDetailContent(
                     // 👈 动态遍历 viewModel 传过来的评论列表
                     photo.commentsList.forEach { comment ->
                         Row(verticalAlignment = Alignment.Top) {
-                            Box(modifier = Modifier.size(32.dp).background(comment.color, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(comment.avatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
+                            UserAvatar(
+                                avatarUrl = comment.avatarUrl,
+                                fallbackText = comment.avatar,
+                                backgroundColor = comment.color,
+                                modifier = Modifier.size(32.dp),
+                                textSize = 12.sp
+                            )
                             Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

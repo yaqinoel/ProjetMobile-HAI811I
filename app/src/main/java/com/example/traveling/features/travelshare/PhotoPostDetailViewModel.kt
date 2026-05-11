@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.traveling.data.model.PhotoCommentDocument
 import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.repository.PhotoPostRepository
+import com.example.traveling.data.repository.UserRepository
 import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
 import com.example.traveling.features.travelshare.model.toPhotoPostDetailUi
 import com.google.firebase.auth.FirebaseAuth
@@ -22,6 +23,7 @@ sealed class PhotoPostDetailUiState {
 
 class PhotoPostDetailViewModel(
     private val repository: PhotoPostRepository = PhotoPostRepository(),
+    private val userRepository: UserRepository = UserRepository(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) : ViewModel() {
 
@@ -89,12 +91,16 @@ class PhotoPostDetailViewModel(
         if (content.isBlank()) return
 
         viewModelScope.launch {
+            val userDoc = runCatching { userRepository.getUser(user.uid) }.getOrNull()
             val comment = PhotoCommentDocument(
                 commentId = "",
                 postId = postId,
                 authorId = user.uid,
-                authorName = user.displayName ?: user.email?.substringBefore("@") ?: "Voyageur",
-                authorAvatarUrl = null,
+                authorName = userDoc?.displayName?.takeIf { it.isNotBlank() }
+                    ?: user.displayName
+                    ?: user.email?.substringBefore("@")
+                    ?: "Voyageur",
+                authorAvatarUrl = userDoc?.avatarUrl,
                 content = content.trim(),
                 status = "visible"
             )

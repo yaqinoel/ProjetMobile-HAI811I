@@ -47,6 +47,7 @@ import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.travelshare.model.GalleryFilter
 import com.example.traveling.features.travelshare.model.PhotoPostUi
 import com.example.traveling.features.travelshare.util.filterGalleryPosts
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -457,9 +458,13 @@ private fun FollowedShortcutsRow(
                     )
                     Box(modifier = Modifier.size(48.dp).background(borderBrush, CircleShape).padding(2.dp)) {
                         Box(modifier = Modifier.fillMaxSize().background(CardBg, CircleShape).padding(2.dp)) {
-                            Box(modifier = Modifier.fillMaxSize().background(shortcut.color, CircleShape), contentAlignment = Alignment.Center) {
-                                Text(shortcut.initial, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
+                            UserAvatar(
+                                avatarUrl = shortcut.avatarUrl,
+                                fallbackText = shortcut.initial,
+                                backgroundColor = shortcut.color,
+                                modifier = Modifier.fillMaxSize(),
+                                textSize = 13.sp
+                            )
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -508,15 +513,15 @@ fun PhotoListView(
                 Column {
                     // 卡片头部 (作者、位置)
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                        UserAvatar(
+                            avatarUrl = photo.authorAvatarUrl,
+                            fallbackText = photo.authorAvatar,
+                            backgroundColor = photo.authorColor,
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(photo.authorColor, CircleShape)
                                 .clickable(enabled = photo.authorId.isNotBlank()) { onAuthorClick(photo.authorId) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(photo.authorAvatar, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
+                            textSize = 12.sp
+                        )
                         Spacer(Modifier.width(10.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(photo.author, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = StoneText)

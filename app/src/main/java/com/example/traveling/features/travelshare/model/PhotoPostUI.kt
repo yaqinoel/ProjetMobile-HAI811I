@@ -31,7 +31,8 @@ data class PhotoPostUi(
     val createdAtMillis: Long? = null,
     val visibility: String = "public",
     val groupName: String? = null,
-    val authorId: String = ""
+    val authorId: String = "",
+    val authorAvatarUrl: String? = null
 )
 
 data class PhotoPostCommentUi(
@@ -41,7 +42,8 @@ data class PhotoPostCommentUi(
     val color: Color,
     val text: String,
     val date: String,
-    val likes: Int
+    val likes: Int,
+    val avatarUrl: String? = null
 )
 
 data class PhotoPostDetailUi(
@@ -65,7 +67,8 @@ data class PhotoPostDetailUi(
     val commentsList: List<PhotoPostCommentUi>,
     val locationPrecision: String,
     val title: String = "",
-    val authorId: String = ""
+    val authorId: String = "",
+    val authorAvatarUrl: String? = null
 )
 
 fun PhotoPostDocument.toPhotoPostUi(
@@ -82,6 +85,7 @@ fun PhotoPostDocument.toPhotoPostUi(
         date = createdAt?.toDate()?.let { DISPLAY_DATE_FORMAT.format(it) } ?: periodLabel.orEmpty(),
         author = authorName.ifBlank { "Voyageur" },
         authorAvatar = authorName.firstOrNull()?.uppercaseChar()?.toString() ?: "V",
+        authorAvatarUrl = authorAvatarUrl,
         authorColor = avatarColorFor(authorId.ifBlank { authorName }),
         likes = likeCount,
         isLiked = isLiked,
@@ -120,6 +124,7 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
         date = createdAt?.toDate()?.let { DISPLAY_DATE_FORMAT.format(it) } ?: periodLabel.orEmpty(),
         author = authorName.ifBlank { "Voyageur" },
         authorAvatar = authorName.firstOrNull()?.uppercaseChar()?.toString() ?: "V",
+        authorAvatarUrl = authorAvatarUrl,
         authorColor = avatarColorFor(authorId.ifBlank { authorName }),
         likes = likeCount,
         isLiked = isLiked,
@@ -140,6 +145,7 @@ fun PhotoCommentDocument.toPhotoPostCommentUi(): PhotoPostCommentUi {
         id = commentId,
         author = authorName.ifBlank { "Voyageur" },
         avatar = authorName.firstOrNull()?.uppercaseChar()?.toString() ?: "V",
+        avatarUrl = authorAvatarUrl,
         color = avatarColorFor(authorId.ifBlank { authorName }),
         text = content,
         date = createdAt?.toDate()?.let { DISPLAY_DATE_FORMAT.format(it) } ?: "",

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,7 +29,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +39,7 @@ import com.example.traveling.data.model.NotificationSettingsDocument
 import com.example.traveling.data.model.User
 import com.example.traveling.data.repository.NotificationRepository
 import com.example.traveling.data.repository.UserRepository
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.ProfileCardBg
 import com.example.traveling.ui.theme.ProfilePageBg
 import com.example.traveling.ui.theme.RedPrimary
@@ -141,6 +140,7 @@ fun FollowingManagementScreen(
                             FollowedUserRow(
                                 displayName = user.displayName.ifBlank { "Voyageur" },
                                 subtitle = user.homeCity?.takeIf { it.isNotBlank() } ?: user.email,
+                                avatarUrl = user.avatarUrl,
                                 onOpen = { onOpenAuthorProfile(user.userId) },
                                 onRemove = { viewModel.unfollowUser(user.userId) }
                             )
@@ -149,6 +149,7 @@ fun FollowingManagementScreen(
                             FollowedUserRow(
                                 displayName = userId,
                                 subtitle = "Profil non chargé",
+                                avatarUrl = null,
                                 onOpen = { onOpenAuthorProfile(userId) },
                                 onRemove = { viewModel.unfollowUser(userId) }
                             )
@@ -175,6 +176,7 @@ private fun SectionTitle(title: String) {
 private fun FollowedUserRow(
     displayName: String,
     subtitle: String,
+    avatarUrl: String?,
     onOpen: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -186,9 +188,12 @@ private fun FollowedUserRow(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(42.dp).background(RedPrimary, CircleShape), contentAlignment = Alignment.Center) {
-            Text(displayName.firstOrNull()?.uppercase() ?: "V", color = Color.White, fontWeight = FontWeight.Bold)
-        }
+        UserAvatar(
+            avatarUrl = avatarUrl,
+            fallbackText = displayName.firstOrNull()?.uppercase() ?: "V",
+            backgroundColor = RedPrimary,
+            modifier = Modifier.size(42.dp)
+        )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(displayName, color = Stone800, fontSize = 14.sp, fontWeight = FontWeight.Bold)

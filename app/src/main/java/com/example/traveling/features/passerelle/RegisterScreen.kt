@@ -1,11 +1,15 @@
 package com.example.traveling.features.passerelle
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -19,9 +23,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -35,7 +41,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import coil.compose.AsyncImage
 import com.example.traveling.data.repository.UserRepository
+import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -55,10 +63,17 @@ fun RegisterScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
+    var selectedAvatarUri by remember { mutableStateOf<Uri?>(null) }
     var passwordVisible by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedAvatarUri = uri
+    }
 
     Column(
         modifier = Modifier
@@ -110,6 +125,46 @@ fun RegisterScreen(
 
             // --- 表单区域 ---
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(86.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .border(2.dp, Color(0xFFFECACA), CircleShape)
+                            .clickable(enabled = !isLoading) { avatarPicker.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val avatarUri = selectedAvatarUri
+                        if (avatarUri != null) {
+                            AsyncImage(
+                                model = avatarUri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            UserAvatar(
+                                avatarUrl = null,
+                                fallbackText = name.firstOrNull()?.uppercase() ?: "V",
+                                backgroundColor = Red700,
+                                modifier = Modifier.fillMaxSize(),
+                                textSize = 28.sp
+                            )
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { avatarPicker.launch("image/*") },
+                        enabled = !isLoading,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(if (selectedAvatarUri == null) "Choisir un avatar" else "Changer l'avatar")
+                    }
+                }
 
                 // Nom 输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -126,6 +181,24 @@ fun RegisterScreen(
                             unfocusedBorderColor = Stone200, focusedBorderColor = Color(0xFFF87171)
                         ),
                         modifier = Modifier.fillMaxWidth().height(52.dp)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Signature", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
+                    OutlinedTextField(
+                        value = bio,
+                        onValueChange = { bio = it.take(120) },
+                        placeholder = { Text("Quelques mots sur vous", color = Color(0xFFD6D3D1)) },
+                        singleLine = false,
+                        minLines = 2,
+                        maxLines = 3,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color.White, focusedContainerColor = Color.White,
+                            unfocusedBorderColor = Stone200, focusedBorderColor = Color(0xFFF87171)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
 
@@ -220,10 +293,15 @@ fun RegisterScreen(
                                             // 3. Initialiser users/{uid} dans Firestore
                                             coroutineScope.launch {
                                                 try {
+                                                    val avatarUrl = selectedAvatarUri?.let { uri ->
+                                                        userRepository.uploadUserAvatar(uid, uri)
+                                                    }
                                                     userRepository.createUserDocumentIfMissing(
                                                         userId = uid,
                                                         displayName = name,
-                                                        email = email
+                                                        email = email,
+                                                        avatarUrl = avatarUrl,
+                                                        bio = bio.trim()
                                                     )
                                                     isLoading = false
                                                     Toast.makeText(context, "Compte créé avec succès !", Toast.LENGTH_SHORT).show()

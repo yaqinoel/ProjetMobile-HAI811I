@@ -31,7 +31,8 @@ data class TravelShareShortcutUi(
     val label: String,
     val initial: String,
     val type: String,
-    val color: androidx.compose.ui.graphics.Color
+    val color: androidx.compose.ui.graphics.Color,
+    val avatarUrl: String? = null
 )
 
 class GalleryViewModel(
@@ -237,7 +238,8 @@ class GalleryViewModel(
                 label = name,
                 initial = name.firstOrNull()?.uppercase() ?: "V",
                 type = "user",
-                color = shortcutColor(user.userId.ifBlank { name })
+                color = shortcutColor(user.userId.ifBlank { name }),
+                avatarUrl = user.avatarUrl
             )
         }
         val groupShortcuts = joinedGroups.map { group ->

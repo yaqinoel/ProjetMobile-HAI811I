@@ -1,5 +1,6 @@
 package com.example.traveling.data.repository
 
+import android.net.Uri
 import com.example.traveling.data.model.FirestoreCollections
 import com.example.traveling.data.model.NotificationSettingsDocument
 import com.example.traveling.data.model.User
@@ -8,25 +9,38 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class UserRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
 
     suspend fun createUserDocumentIfMissing(
         userId: String,
         displayName: String,
-        email: String
+        email: String,
+        avatarUrl: String? = null,
+        bio: String = ""
     ) {
         val userRef = db.collection(FirestoreCollections.USERS).document(userId)
         val existing = userRef.get().awaitResult()
 
         if (existing.exists()) {
-            updateLastLoginAt(userId)
+            val updates = mutableMapOf<String, Any>(
+                "lastLoginAt" to FieldValue.serverTimestamp()
+            )
+            if (!avatarUrl.isNullOrBlank()) updates["avatarUrl"] = avatarUrl
+            if (bio.isNotBlank()) updates["bio"] = bio
+            if (updates.size > 1) {
+                userRef.update(updates).awaitResult()
+            } else {
+                updateLastLoginAt(userId)
+            }
             return
         }
 
@@ -36,8 +50,8 @@ class UserRepository(
             "userId" to userId,
             "displayName" to displayName,
             "email" to email,
-            "avatarUrl" to null,
-            "bio" to "",
+            "avatarUrl" to avatarUrl,
+            "bio" to bio,
             "homeCity" to "",
             "createdAt" to FieldValue.serverTimestamp(),
             "lastLoginAt" to FieldValue.serverTimestamp(),
@@ -55,6 +69,12 @@ class UserRepository(
         batch.set(notifRef, NotificationSettingsDocument())
 
         batch.commit().awaitResult()
+    }
+
+    suspend fun uploadUserAvatar(userId: String, localUri: Uri): String {
+        val ref = storage.reference.child("users/$userId/avatar.jpg")
+        ref.putFile(localUri).awaitResult()
+        return ref.downloadUrl.awaitResult().toString()
     }
 
     suspend fun updateLastLoginAt(userId: String) {
