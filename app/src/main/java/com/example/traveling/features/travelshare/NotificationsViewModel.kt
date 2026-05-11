@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.notifications
+package com.example.traveling.features.travelshare
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
