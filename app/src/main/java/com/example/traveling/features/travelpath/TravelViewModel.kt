@@ -96,6 +96,9 @@ class TravelViewModel : ViewModel() {
     val formDuration = MutableStateFlow(5f)
     val formEffort = MutableStateFlow(3f)
     val formFavoritePlaces = MutableStateFlow(listOf<String>())
+    val formAvoidRain = MutableStateFlow(false)
+    val formAvoidHeat = MutableStateFlow(false)
+    val formAvoidCold = MutableStateFlow(false)
 
     // ── Validation destination ──
     private val _destinationNotFound = MutableStateFlow(false)
@@ -126,9 +129,19 @@ class TravelViewModel : ViewModel() {
     // ── Données de filtrage sauvegardées ──
     private var savedFavoritePlaces: List<String> = emptyList()
     private var savedActivities: Set<String> = emptySet()
+    private var savedAvoidRain: Boolean = false
+    private var savedAvoidHeat: Boolean = false
+    private var savedAvoidCold: Boolean = false
 
     // ── Attractions par route ──
     private var routeAttractionsMap: Map<String, List<Attraction>> = emptyMap()
+
+    enum class RegenerationAdjustment {
+        INDOOR,
+        CHEAPER,
+        LESS_WALKING,
+        SURPRISE
+    }
 
     init {
         loadDestinations()
@@ -149,7 +162,10 @@ class TravelViewModel : ViewModel() {
         activities: Set<String> = emptySet(),
         durationHours: Int = 8,
         effort: Int = 3,
-        favoritePlaces: List<String> = emptyList()
+        favoritePlaces: List<String> = emptyList(),
+        avoidRain: Boolean = false,
+        avoidHeat: Boolean = false,
+        avoidCold: Boolean = false
     ) {
         val dest = _destinations.value.find {
             it.name.equals(destinationName, ignoreCase = true)
@@ -158,17 +174,23 @@ class TravelViewModel : ViewModel() {
         _selectedDestination.value = dest
         savedFavoritePlaces = favoritePlaces
         savedActivities = activities
+        savedAvoidRain = avoidRain
+        savedAvoidHeat = avoidHeat
+        savedAvoidCold = avoidCold
 
         viewModelScope.launch {
             _isLoading.value = true
             repository.getAttractionsByDestination(dest.id).collect { allAttractions ->
                 _attractions.value = allAttractions
+                val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
+                _weather.value = currentWeather
 
                 // ── Filtrage strict → relaxé ──
-                val filtered = filterAttractions(allAttractions, budget, activities, effort)
+                val filtered = filterAttractions(allAttractions, budget, activities, effort, currentWeather)
+                val weatherAdjustedAll = applyWeatherPreferences(allAttractions, currentWeather)
 
                 // Générer les 3 routes avec des sous-ensembles différents
-                _routes.value = generateRoutes(filtered, allAttractions, dest, budget, durationHours)
+                _routes.value = generateRoutes(filtered, weatherAdjustedAll, dest, budget, durationHours)
 
                 // Précharger les stops de la première route
                 if (_routes.value.isNotEmpty()) {
@@ -201,7 +223,8 @@ class TravelViewModel : ViewModel() {
         all: List<Attraction>,
         budget: Int,
         activities: Set<String>,
-        effort: Int
+        effort: Int,
+        weather: WeatherInfo?
     ): List<Attraction> {
         // Déterminer les types d'attractions recherchés
         val wantedTypes = activities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
@@ -237,7 +260,43 @@ class TravelViewModel : ViewModel() {
             result = favorites + others
         }
 
-        return result.sortedByDescending { it.rating }
+        return applyWeatherPreferences(result, weather).sortedByDescending { weatherScore(it, weather) }
+    }
+
+    private fun applyWeatherPreferences(
+        attractions: List<Attraction>,
+        weather: WeatherInfo?
+    ): List<Attraction> {
+        if (weather == null || !shouldPreferShelter(weather)) return attractions
+
+        val sheltered = attractions.filter { it.weatherType == "indoor" || it.weatherType == "both" }
+        return if (sheltered.size >= 3) {
+            sheltered.sortedByDescending { weatherScore(it, weather) }
+        } else {
+            attractions.sortedByDescending { weatherScore(it, weather) }
+        }
+    }
+
+    private fun shouldPreferShelter(weather: WeatherInfo): Boolean {
+        return (savedAvoidRain && isRainy(weather.weatherCode)) ||
+            (savedAvoidHeat && weather.temperature >= 28.0) ||
+            (savedAvoidCold && weather.temperature <= 5.0)
+    }
+
+    private fun weatherScore(attr: Attraction, weather: WeatherInfo?): Double {
+        if (weather == null || !shouldPreferShelter(weather)) return attr.rating
+
+        val shelterBonus = when (attr.weatherType) {
+            "indoor" -> 2.0
+            "both" -> 1.0
+            else -> -2.0
+        }
+        val durationPenalty = if (attr.weatherType == "outdoor" && attr.duration > 120) 0.8 else 0.0
+        return attr.rating + shelterBonus - durationPenalty
+    }
+
+    private fun isRainy(code: Int): Boolean {
+        return code in 51..67 || code in 80..82 || code in 95..99
     }
 
     private fun generateRoutes(
@@ -445,6 +504,7 @@ class TravelViewModel : ViewModel() {
                 cost = attr.cost,
                 description = attr.description,
                 imageUrl = attr.imageUrl,
+                imageUrls = attr.imageUrls.ifEmpty { listOf(attr.imageUrl).filter { it.isNotBlank() } },
                 rating = attr.rating.toFloat(),
                 openHours = attr.openHours,
                 lat = attr.lat,
@@ -604,13 +664,38 @@ class TravelViewModel : ViewModel() {
         return false
     }
 
-    /** Re-generate the current route with shuffled attractions */
-    fun regenerateCurrentRoute() {
-        val routeId = _selectedRoute.value?.id ?: return
-        val attractions = routeAttractionsMap[routeId] ?: return
+    /** Re-generate the current route with a concrete adjustment. */
+    fun regenerateCurrentRoute(adjustment: RegenerationAdjustment = RegenerationAdjustment.SURPRISE) {
+        val route = _selectedRoute.value ?: return
+        val routeId = route.id
+        val currentAttractions = routeAttractionsMap[routeId] ?: return
         viewModelScope.launch {
             _isLoading.value = true
-            _routeStops.value = generateStops(attractions.shuffled())
+            val targetCount = currentAttractions.size.coerceAtLeast(1)
+            val candidatePool = _attractions.value.ifEmpty { currentAttractions }
+            val adjusted = when (adjustment) {
+                RegenerationAdjustment.INDOOR -> candidatePool.sortedByDescending {
+                    when (it.weatherType) {
+                        "indoor" -> 3
+                        "both" -> 2
+                        else -> 1
+                    }
+                }
+                RegenerationAdjustment.CHEAPER -> candidatePool.sortedWith(
+                    compareBy<Attraction> { it.cost }.thenByDescending { it.rating }
+                )
+                RegenerationAdjustment.LESS_WALKING -> candidatePool.sortedBy { it.effortLevel }
+                RegenerationAdjustment.SURPRISE -> candidatePool.shuffled()
+            }.distinctBy { it.id }.take(targetCount).ifEmpty { currentAttractions.shuffled() }
+            val adjustedStops = generateStops(adjusted)
+            routeAttractionsMap = routeAttractionsMap + (routeId to adjusted)
+            _routeStops.value = adjustedStops
+            _selectedRoute.value = route.copy(
+                budget = adjusted.sumOf { it.cost },
+                stops = adjusted.size,
+                imageUrl = adjusted.firstOrNull()?.imageUrl ?: route.imageUrl,
+                highlights = adjusted.take(3).map { it.name }
+            )
             _isLoading.value = false
         }
     }
@@ -622,14 +707,14 @@ class TravelViewModel : ViewModel() {
         val stops = _routeStops.value
 
         val text = buildString {
-            appendLine("🗺️ Mon itinéraire ${route?.name ?: ""} — ${dest?.name ?: route?.destName ?: ""}")
+            appendLine("Mon itinéraire ${route?.name ?: ""} - ${dest?.name ?: route?.destName ?: ""}")
             appendLine("Budget : ${route?.budget ?: 0} € | Durée : ${route?.duration ?: ""}")
             appendLine()
             stops.forEachIndexed { i, s ->
-                appendLine("${i + 1}. ${s.arrivalTime} — ${s.name} (${s.type})")
+                appendLine("${i + 1}. ${s.arrivalTime} - ${s.name} (${s.type})")
             }
             appendLine()
-            appendLine("Généré par Voyageur du Monde 🌍")
+            appendLine("Généré par TravelPath")
         }
 
         return Intent(Intent.ACTION_SEND).apply {
@@ -649,6 +734,15 @@ class TravelViewModel : ViewModel() {
         if (stops.isEmpty()) return
         val key = "${_selectedDestination.value?.name ?: route.destName.ifBlank { "dest" }}_${route.id}"
         localStorage?.cacheRoute(key, route, stops)
+    }
+
+    suspend fun cacheCurrentRouteLite(): Boolean {
+        val route = _selectedRoute.value ?: return false
+        val stops = _routeStops.value
+        if (stops.isEmpty()) return false
+        val key = "${_selectedDestination.value?.name ?: route.destName.ifBlank { "dest" }}_${route.id}"
+        localStorage?.cacheRouteLite(key, route, stops) ?: return false
+        return true
     }
 
     // ═══════════════════════════════════════════════════

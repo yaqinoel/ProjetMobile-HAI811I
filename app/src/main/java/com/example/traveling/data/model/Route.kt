@@ -29,6 +29,7 @@ data class RouteStop(
     val cost: Int,
     val description: String,
     val imageUrl: String,
+    val imageUrls: List<String> = emptyList(),
     val rating: Float,
     val openHours: String,
     val lat: Double = 0.0,
@@ -57,7 +58,7 @@ object TravelPathData {
         Activity("nature", "Nature", "🌳"),
         Activity("leisure", "Loisirs", "🎮"),
         Activity("shopping", "Shopping", "🛍️"),
-        Activity("nightlife", "Vie nocturne", "🌃"),
+        Activity("nightlife", "Vie nocturne", "🌙"),
         Activity("sport", "Sport", "⚽"),
         Activity("photo", "Photo", "📸"),
     )

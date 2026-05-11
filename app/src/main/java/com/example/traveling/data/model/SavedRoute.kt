@@ -44,6 +44,7 @@ data class SavedRouteStopEntry(
     val cost: Int = 0,
     val description: String = "",
     val imageUrl: String = "",
+    val imageUrls: List<String> = emptyList(),
     val rating: Double = 0.0,
     val openHours: String = "",
     val lat: Double = 0.0,

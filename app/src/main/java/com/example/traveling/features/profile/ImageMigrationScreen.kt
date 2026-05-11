@@ -1,42 +1,73 @@
 package com.example.traveling.features.profile
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.data.repository.FirestoreSeeder
 import com.example.traveling.data.repository.ImageMigrationHelper
-import com.example.traveling.ui.theme.*
+import com.example.traveling.ui.theme.CardBg
+import com.example.traveling.ui.theme.ProfileCardBg
+import com.example.traveling.ui.theme.ProfilePageBg
+import com.example.traveling.ui.theme.RedPrimary
+import com.example.traveling.ui.theme.Stone400
+import com.example.traveling.ui.theme.Stone800
+import com.example.traveling.ui.theme.StoneBorder
+import com.example.traveling.ui.theme.StoneMuted
+import com.example.traveling.ui.theme.StoneText
 import kotlinx.coroutines.launch
 
 /**
- * One-time admin screen to trigger image migration.
- * Navigate here from ProfileScreen settings, run migration, then remove from nav.
+ * One-time admin screen to upload destination and attraction images to Storage.
  */
 @Composable
 fun ImageMigrationScreen(onBack: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var isRunning by remember { mutableStateOf(false) }
-    var logs by remember { mutableStateOf(listOf<String>()) }
+    var seedDone by remember { mutableStateOf(false) }
+    var progress by remember { mutableIntStateOf(0) }
+    var total by remember { mutableIntStateOf(0) }
+    var currentItem by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf<ImageMigrationHelper.MigrationResult?>(null) }
     val scrollState = rememberScrollState()
-
-    // Auto-scroll to bottom when new logs arrive
-    LaunchedEffect(logs.size) {
-        scrollState.animateScrollTo(scrollState.maxValue)
-    }
 
     Scaffold(
         containerColor = ProfilePageBg,
@@ -52,7 +83,12 @@ fun ImageMigrationScreen(onBack: () -> Unit = {}) {
                     IconButton(onClick = onBack, enabled = !isRunning) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Stone800)
                     }
-                    Text("Migration des images", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = StoneText)
+                    Text(
+                        text = "Migration des images",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = StoneText
+                    )
                 }
             }
         }
@@ -61,122 +97,153 @@ fun ImageMigrationScreen(onBack: () -> Unit = {}) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(scrollState)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Info card
-            Surface(
-                color = CardBg,
+            Card(
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                tonalElevation = 2.dp
+                colors = CardDefaults.cardColors(containerColor = CardBg)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("⚠️ Outil d'administration", fontWeight = FontWeight.Bold, color = StoneText)
-                    Spacer(Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Outil d'administration", fontWeight = FontWeight.Bold, color = StoneText)
                     Text(
-                        "Ce script va :\n" +
-                        "1. Re-seed les données Firestore\n" +
-                        "2. Télécharger les images depuis Pexels\n" +
-                        "3. Les uploader dans Firebase Storage\n" +
-                        "4. Mettre à jour les URLs dans Firestore\n\n" +
-                        "⏱ Cela peut prendre 2-5 minutes.",
-                        fontSize = 13.sp, color = StoneMuted, lineHeight = 20.sp
+                        text = "Ce script recree les donnees Firestore, cherche de vraies photos sur Wikimedia Commons, upload les fichiers sous travelpath dans Firebase Storage, puis remplace les imageUrl et imageUrls par les URLs Storage.",
+                        fontSize = 13.sp,
+                        color = StoneMuted,
+                        lineHeight = 20.sp
                     )
                 }
             }
 
-            // Action buttons
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Re-seed Firestore
-                Button(
-                    onClick = {
-                        logs = logs + "🔄 Re-seeding Firestore data..."
-                        FirestoreSeeder.seedAll(clearFirst = true)
-                        logs = logs + "✅ Firestore re-seeded"
-                    },
-                    enabled = !isRunning,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("1. Re-seed DB", fontSize = 12.sp)
-                }
-
-                // Migrate images
-                Button(
-                    onClick = {
-                        isRunning = true
-                        scope.launch {
-                            try {
-                                ImageMigrationHelper.migrateAll { msg ->
-                                    logs = logs + msg
-                                }
-                            } catch (e: Exception) {
-                                logs = logs + "💥 Erreur fatale: ${e.message}"
-                            } finally {
-                                isRunning = false
-                            }
-                        }
-                    },
-                    enabled = !isRunning,
-                    colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (isRunning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(Modifier.width(8.dp))
-                    } else {
-                        Icon(Icons.Default.CloudUpload, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text("2. Migrer Images", fontSize = 12.sp)
-                }
-            }
-
-            // Progress indicator
-            if (isRunning) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = RedPrimary,
-                    trackColor = StoneBorder
-                )
-            }
-
-            // Log console
-            Surface(
-                color = Color(0xFF1E1E1E),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBg)
             ) {
                 Column(
-                    modifier = Modifier
-                        .verticalScroll(scrollState)
-                        .padding(12.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (logs.isEmpty()) {
-                        Text("Console de migration...", color = Color(0xFF6B6B6B), fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace)
+                    Text("Etape 1", fontWeight = FontWeight.Bold, color = StoneText)
+                    Text("Reinitialise les destinations et attractions dans Firestore.", fontSize = 13.sp, color = StoneMuted)
+                    Button(
+                        onClick = {
+                            FirestoreSeeder.seedAll(clearFirst = true)
+                            seedDone = true
+                            result = null
+                            progress = 0
+                            total = 0
+                            currentItem = ""
+                        },
+                        enabled = !isRunning,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                    ) {
+                        Icon(Icons.Default.Refresh, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (seedDone) "Seed relance" else "Lancer le seed")
                     }
-                    logs.forEach { line ->
-                        Text(
-                            text = line,
-                            color = when {
-                                line.contains("✅") -> Color(0xFF4ADE80)
-                                line.contains("❌") || line.contains("💥") -> Color(0xFFF87171)
-                                line.contains("🚀") || line.contains("🏁") -> Color(0xFF60A5FA)
-                                else -> Color(0xFFD4D4D4)
-                            },
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace,
-                            lineHeight = 16.sp
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBg)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Etape 2", fontWeight = FontWeight.Bold, color = StoneText)
+                    Text("Upload une image pour chaque destination et trois images pour chaque attraction.", fontSize = 13.sp, color = StoneMuted)
+
+                    if (isRunning) {
+                        LinearProgressIndicator(
+                            progress = { if (total > 0) progress.toFloat() / total else 0f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp),
+                            color = RedPrimary,
+                            trackColor = StoneBorder
                         )
+                        Text("$progress / $total - $currentItem", fontSize = 12.sp, color = Stone400)
+                    }
+
+                    Button(
+                        onClick = {
+                            isRunning = true
+                            result = null
+                            scope.launch {
+                                try {
+                                    val migrationResult = ImageMigrationHelper.migrateAll { current, targetTotal, name ->
+                                        progress = current
+                                        total = targetTotal
+                                        currentItem = name
+                                    }
+                                    result = migrationResult
+                                } catch (e: Exception) {
+                                    result = ImageMigrationHelper.MigrationResult(
+                                        total = total,
+                                        success = 0,
+                                        failed = 1,
+                                        errors = listOf(e.message ?: "Migration failed")
+                                    )
+                                } finally {
+                                    isRunning = false
+                                }
+                            }
+                        },
+                        enabled = !isRunning,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
+                    ) {
+                        if (isRunning) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.CloudUpload, null, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (isRunning) "Migration..." else "Migrer les images")
+                    }
+                }
+            }
+
+            result?.let { migration ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (migration.failed == 0) {
+                            Color(0xFFE8F7EF)
+                        } else {
+                            Color(0xFFFFECEC)
+                        }
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Resultat", fontWeight = FontWeight.Bold, color = StoneText)
+                        Text("Total: ${migration.total}", fontSize = 13.sp, color = StoneMuted)
+                        Text("Reussis: ${migration.success}", fontSize = 13.sp, color = Color(0xFF047857))
+                        Text("Echecs: ${migration.failed}", fontSize = 13.sp, color = Color(0xFFB91C1C))
+
+                        migration.errors.take(8).forEach { error ->
+                            Text(error, fontSize = 11.sp, color = Color(0xFFB91C1C), lineHeight = 15.sp)
+                        }
                     }
                 }
             }

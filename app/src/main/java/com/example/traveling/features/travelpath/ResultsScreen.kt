@@ -36,7 +36,11 @@ internal fun ResultsScreen(
             .background(PageBg)
     ) {
         // ── Header ──
-        Surface(color = CardBg.copy(alpha = 0.9f), shadowElevation = 2.dp) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = CardBg.copy(alpha = 0.9f),
+            shadowElevation = 2.dp
+        ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,

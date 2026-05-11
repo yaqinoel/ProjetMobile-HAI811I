@@ -190,11 +190,10 @@ private fun StopExpandedDetail(stop: RouteStop) {
         border = BorderStroke(1.dp, StoneBorder)
     ) {
         Column {
-            val galleryImages = listOf(
-                stop.imageUrl,
-                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400",
-                "https://images.unsplash.com/photo-1544985361-b420d7a77043?w=400"
-            ).distinct()
+            val galleryImages = stop.imageUrls
+                .ifEmpty { listOf(stop.imageUrl) }
+                .filter { it.isNotBlank() }
+                .distinct()
 
             LazyRow(
                 modifier = Modifier.fillMaxWidth().height(128.dp),

@@ -68,6 +68,7 @@ class SavedRoutesRepository {
                     distance = s.distance, walkTime = s.walkTime,
                     cost = s.cost, description = s.description,
                     imageUrl = s.imageUrl, rating = s.rating.toDouble(),
+                    imageUrls = s.imageUrls,
                     openHours = s.openHours, lat = s.lat, lng = s.lng,
                     polylineToNext = s.polylineToNext ?: ""
                 )
@@ -145,7 +146,9 @@ class SavedRoutesRepository {
                 arrivalTime = s.arrivalTime, duration = s.duration,
                 distance = s.distance, walkTime = s.walkTime,
                 cost = s.cost, description = s.description,
-                imageUrl = s.imageUrl, rating = s.rating.toFloat(),
+                imageUrl = s.imageUrl,
+                imageUrls = s.imageUrls.ifEmpty { listOf(s.imageUrl).filter { it.isNotBlank() } },
+                rating = s.rating.toFloat(),
                 openHours = s.openHours, lat = s.lat, lng = s.lng,
                 polylineToNext = s.polylineToNext.ifBlank { null }
             )

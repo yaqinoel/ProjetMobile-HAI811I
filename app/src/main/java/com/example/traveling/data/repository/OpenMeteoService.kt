@@ -12,6 +12,7 @@ import java.net.URL
  */
 data class WeatherInfo(
     val temperature: Double,
+    val weatherCode: Int,
     val description: String,
     val emoji: String,
     val advice: String
@@ -40,7 +41,7 @@ class OpenMeteoService {
                 val weatherCode = current.getInt("weather_code")
 
                 val (desc, emoji, advice) = interpretWeatherCode(weatherCode, temp)
-                return@withContext WeatherInfo(temp, desc, emoji, advice)
+                return@withContext WeatherInfo(temp, weatherCode, desc, emoji, advice)
             }
         } catch (e: Exception) {
             e.printStackTrace()

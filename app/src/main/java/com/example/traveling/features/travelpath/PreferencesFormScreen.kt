@@ -32,7 +32,7 @@ internal fun PreferencesForm(
     val quickCities by travelViewModel.quickCities.collectAsState()
     val citiesList = quickCities.ifEmpty { TravelPathData.defaultQuickCities }
 
-    // ── Form state backed by ViewModel (persists across navigation) ──
+    // -- Form state backed by ViewModel (persists across navigation) --
     var destination by remember { mutableStateOf(travelViewModel.formDestination.value.ifEmpty { initialDestination ?: "" }) }
     var selectedActivities by remember { mutableStateOf(travelViewModel.formActivities.value) }
     var budget by remember { mutableFloatStateOf(travelViewModel.formBudget.value) }
@@ -40,9 +40,9 @@ internal fun PreferencesForm(
     var effort by remember { mutableFloatStateOf(travelViewModel.formEffort.value) }
     var favoritePlaces by remember { mutableStateOf(travelViewModel.formFavoritePlaces.value) }
     var newPlace by remember { mutableStateOf("") }
-    var coldTolerance by remember { mutableStateOf(true) }
-    var heatTolerance by remember { mutableStateOf(true) }
-    var humidityTolerance by remember { mutableStateOf(false) }
+    var avoidRain by remember { mutableStateOf(travelViewModel.formAvoidRain.value) }
+    var avoidHeat by remember { mutableStateOf(travelViewModel.formAvoidHeat.value) }
+    var avoidCold by remember { mutableStateOf(travelViewModel.formAvoidCold.value) }
 
     // Sync form state back to ViewModel whenever values change
     LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
@@ -51,6 +51,9 @@ internal fun PreferencesForm(
     LaunchedEffect(duration) { travelViewModel.formDuration.value = duration }
     LaunchedEffect(effort) { travelViewModel.formEffort.value = effort }
     LaunchedEffect(favoritePlaces) { travelViewModel.formFavoritePlaces.value = favoritePlaces }
+    LaunchedEffect(avoidRain) { travelViewModel.formAvoidRain.value = avoidRain }
+    LaunchedEffect(avoidHeat) { travelViewModel.formAvoidHeat.value = avoidHeat }
+    LaunchedEffect(avoidCold) { travelViewModel.formAvoidCold.value = avoidCold }
 
     val destinationNotFound by travelViewModel.destinationNotFound.collectAsState()
 
@@ -69,18 +72,17 @@ internal fun PreferencesForm(
             .fillMaxSize()
             .background(PageBg)
     ) {
-        // ── Header ──
+        // -- Header --
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = CardBg.copy(alpha = 0.9f),
         ) {
             Column(
                 modifier = Modifier
-                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Text(
-                    "Planification d'Itinéraire",
+                    "Planification d'itinéraire",
                     fontSize = 20.sp, fontWeight = FontWeight.Bold,
                     color = StoneText, letterSpacing = 1.sp
                 )
@@ -100,7 +102,7 @@ internal fun PreferencesForm(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Destination ──
+            // -- Destination --
             SectionCard {
                 Text("Destination", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(8.dp))
@@ -145,9 +147,9 @@ internal fun PreferencesForm(
                 }
             }
 
-            // ── Activity Preferences ──
+            // -- Activity Preferences --
             SectionCard {
-                Text("Préférences d'Intérêts", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                Text("Préférences d'intérêts", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
                 val activities = TravelPathData.activities
                 for (row in activities.chunked(4)) {
@@ -193,9 +195,9 @@ internal fun PreferencesForm(
                 }
             }
 
-            // ── Favorite Places ──
+            // -- Favorite Places --
             SectionCard {
-                Text("Lieux à Visiter (Optionnel)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                Text("Lieux à visiter (optionnel)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -292,7 +294,7 @@ internal fun PreferencesForm(
                 }
             }
 
-            // ── Budget Slider ──
+            // -- Budget Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -300,7 +302,7 @@ internal fun PreferencesForm(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Limite de Budget", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
-                    Text("${budget.toInt()} €", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
+                    Text("${budget.toInt()} EUR", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
                 }
                 Spacer(Modifier.height(16.dp))
                 Slider(
@@ -314,19 +316,19 @@ internal fun PreferencesForm(
                     )
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("0 €", fontSize = 10.sp, color = StoneLighter)
-                    Text("2500 €", fontSize = 10.sp, color = StoneLighter)
+                    Text("0 EUR", fontSize = 10.sp, color = StoneLighter)
+                    Text("2500 EUR", fontSize = 10.sp, color = StoneLighter)
                 }
             }
 
-            // ── Duration Slider ──
+            // -- Duration Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Durée du Tour", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Text("Durée du tour", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Text("${duration.toInt()} heures", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedPrimary)
                 }
                 Spacer(Modifier.height(16.dp))
@@ -347,7 +349,7 @@ internal fun PreferencesForm(
                 }
             }
 
-            // ── Effort Slider ──
+            // -- Effort Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -392,45 +394,45 @@ internal fun PreferencesForm(
                 }
             }
 
-            // ── Weather Tolerance ──
+            // -- Weather Tolerance --
             SectionCard {
-                Text("Tolérance Météo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                Text("Meteo & Confort", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     WeatherToggle(
-                        label = "Froid",
-                        icon = Icons.Default.AcUnit,
-                        selected = coldTolerance,
-                        selectedColor = Color(0xFF3B82F6),
-                        selectedBg = Color(0xFFEFF6FF),
-                        onClick = { coldTolerance = !coldTolerance },
-                        modifier = Modifier.weight(1f)
-                    )
-                    WeatherToggle(
-                        label = "Chaleur",
-                        icon = Icons.Default.WbSunny,
-                        selected = heatTolerance,
-                        selectedColor = Color(0xFFF97316),
-                        selectedBg = Color(0xFFFFF7ED),
-                        onClick = { heatTolerance = !heatTolerance },
-                        modifier = Modifier.weight(1f)
-                    )
-                    WeatherToggle(
-                        label = "Humidité",
+                        label = "Eviter pluie",
                         icon = Icons.Default.WaterDrop,
-                        selected = humidityTolerance,
+                        selected = avoidRain,
                         selectedColor = Color(0xFF06B6D4),
                         selectedBg = Color(0xFFECFEFF),
-                        onClick = { humidityTolerance = !humidityTolerance },
+                        onClick = { avoidRain = !avoidRain },
+                        modifier = Modifier.weight(1f)
+                    )
+                    WeatherToggle(
+                        label = "Eviter chaud",
+                        icon = Icons.Default.WbSunny,
+                        selected = avoidHeat,
+                        selectedColor = Color(0xFFF97316),
+                        selectedBg = Color(0xFFFFF7ED),
+                        onClick = { avoidHeat = !avoidHeat },
+                        modifier = Modifier.weight(1f)
+                    )
+                    WeatherToggle(
+                        label = "Eviter froid",
+                        icon = Icons.Default.AcUnit,
+                        selected = avoidCold,
+                        selectedColor = Color(0xFF3B82F6),
+                        selectedBg = Color(0xFFEFF6FF),
+                        onClick = { avoidCold = !avoidCold },
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            // ── Generate Button ──
+            // -- Generate Button --
             Button(
                 onClick = {
                     travelViewModel.selectDestination(
@@ -439,7 +441,10 @@ internal fun PreferencesForm(
                         activities = selectedActivities,
                         durationHours = duration.toInt(),
                         effort = effort.toInt(),
-                        favoritePlaces = favoritePlaces
+                        favoritePlaces = favoritePlaces,
+                        avoidRain = avoidRain,
+                        avoidHeat = avoidHeat,
+                        avoidCold = avoidCold
                     )
                     onGenerate()
                 },
@@ -470,7 +475,7 @@ internal fun PreferencesForm(
                     ) {
                         Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(20.dp))
                         Text(
-                            "Générer Itinéraire Intelligent",
+                            "Générer un itinéraire intelligent",
                             fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                             color = Color.White, letterSpacing = 1.sp
                         )

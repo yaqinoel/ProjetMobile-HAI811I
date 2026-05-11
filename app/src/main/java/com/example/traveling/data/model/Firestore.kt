@@ -35,7 +35,8 @@ data class Attraction(
     val effortLevel: Int = 1,        // 体力消耗 1-5
     val weatherType: String = "both",// indoor / outdoor / both
     val bestTimeSlots: List<String> = emptyList(), // matin, apres-midi, soir
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val imageUrls: List<String> = emptyList()
 )
 
 /**
@@ -73,5 +74,6 @@ data class RouteStopEntry(
     val distanceFromPrev: String = "",
     val walkTimeFromPrev: String = "",
     val cost: Int = 0,
-    val imageUrl: String = ""
+    val imageUrl: String = "",
+    val imageUrls: List<String> = emptyList()
 )

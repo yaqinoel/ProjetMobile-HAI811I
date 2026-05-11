@@ -2,9 +2,16 @@ package com.example.traveling.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelRoute
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -14,8 +21,9 @@ import org.json.JSONObject
  */
 class LocalStorageRepository(context: Context) {
 
+    private val appContext = context.applicationContext
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("traveling_prefs", Context.MODE_PRIVATE)
+        appContext.getSharedPreferences("traveling_prefs", Context.MODE_PRIVATE)
 
     // ─── Like / Save ───
 
@@ -118,6 +126,38 @@ class LocalStorageRepository(context: Context) {
         prefs.edit().putStringSet("cached_route_keys", keys).apply()
     }
 
+    suspend fun cacheRouteLite(routeKey: String, route: TravelRoute, stops: List<RouteStop>) {
+        withContext(Dispatchers.IO) {
+            val mediaMap = mutableMapOf<String, String>()
+            val urls = buildList {
+                add(route.imageUrl)
+                stops.forEach { stop ->
+                    add(stop.imageUrl)
+                    addAll(stop.imageUrls)
+                }
+            }.filter { it.startsWith("http", ignoreCase = true) }.distinct()
+
+            urls.forEachIndexed { index, url ->
+                cacheCompressedMedia(url, "${routeKey}_$index")?.let { localPath ->
+                    mediaMap[url] = localPath
+                }
+            }
+
+            val offlineRoute = route.copy(imageUrl = mediaMap[route.imageUrl] ?: route.imageUrl)
+            val offlineStops = stops.map { stop ->
+                val offlineImageUrls = stop.imageUrls.map { mediaMap[it] ?: it }
+                stop.copy(
+                    imageUrl = mediaMap[stop.imageUrl] ?: stop.imageUrl,
+                    imageUrls = offlineImageUrls.ifEmpty {
+                        listOf(mediaMap[stop.imageUrl] ?: stop.imageUrl).filter { it.isNotBlank() }
+                    }
+                )
+            }
+
+            cacheRoute(routeKey, offlineRoute, offlineStops)
+        }
+    }
+
     fun getCachedRoute(routeKey: String): Pair<TravelRoute, List<RouteStop>>? {
         val raw = prefs.getString("cache_route_$routeKey", null) ?: return null
         return try {
@@ -170,6 +210,7 @@ class LocalStorageRepository(context: Context) {
         put("duration", s.duration); put("distance", s.distance)
         put("walkTime", s.walkTime); put("cost", s.cost)
         put("description", s.description); put("imageUrl", s.imageUrl)
+        put("imageUrls", JSONArray(s.imageUrls))
         put("rating", s.rating.toDouble()); put("openHours", s.openHours)
         put("lat", s.lat); put("lng", s.lng)
         put("polylineToNext", s.polylineToNext ?: "")
@@ -183,8 +224,44 @@ class LocalStorageRepository(context: Context) {
         duration = j.getString("duration"), distance = j.getString("distance"),
         walkTime = j.getString("walkTime"), cost = j.getInt("cost"),
         description = j.getString("description"), imageUrl = j.getString("imageUrl"),
+        imageUrls = j.optJSONArray("imageUrls")?.let { arr ->
+            (0 until arr.length()).map { arr.getString(it) }
+        } ?: listOf(j.getString("imageUrl")).filter { it.isNotBlank() },
         rating = j.getDouble("rating").toFloat(), openHours = j.getString("openHours"),
         lat = j.getDouble("lat"), lng = j.getDouble("lng"),
         polylineToNext = j.optString("polylineToNext", null)
     )
+
+    private fun cacheCompressedMedia(url: String, key: String): String? {
+        return runCatching {
+            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 12000
+                instanceFollowRedirects = true
+            }
+
+            connection.inputStream.use { input ->
+                val bitmap = BitmapFactory.decodeStream(input) ?: return null
+                val dir = File(appContext.cacheDir, "travelpath_media").apply { mkdirs() }
+                val file = File(dir, "${sanitizeFileName(key)}.jpg")
+                file.outputStream().use { output ->
+                    val scaled = scaleBitmap(bitmap, maxWidth = 720)
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 68, output)
+                    if (scaled !== bitmap) scaled.recycle()
+                    bitmap.recycle()
+                }
+                file.absolutePath
+            }
+        }.getOrNull()
+    }
+
+    private fun scaleBitmap(bitmap: Bitmap, maxWidth: Int): Bitmap {
+        if (bitmap.width <= maxWidth) return bitmap
+        val ratio = maxWidth.toFloat() / bitmap.width.toFloat()
+        val height = (bitmap.height * ratio).toInt().coerceAtLeast(1)
+        return Bitmap.createScaledBitmap(bitmap, maxWidth, height, true)
+    }
+
+    private fun sanitizeFileName(value: String): String =
+        value.replace(Regex("[^A-Za-z0-9_-]"), "_").take(80)
 }

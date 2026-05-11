@@ -48,6 +48,7 @@ fun MainScreen(
     onNavigateToSavedPosts: () -> Unit = {},
     onNavigateToLikedRoutes: () -> Unit = {},
     onNavigateToSavedRoutes: () -> Unit = {},
+    onNavigateToImageMigration: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
     onNavigateToPhotoDetail: (String) -> Unit = {}
 ) {
@@ -90,7 +91,8 @@ fun MainScreen(
                     onOpenLikedPosts = onNavigateToLikedPosts,
                     onOpenSavedPosts = onNavigateToSavedPosts,
                     onOpenLikedRoutes = onNavigateToLikedRoutes,
-                    onOpenSavedRoutes = onNavigateToSavedRoutes
+                    onOpenSavedRoutes = onNavigateToSavedRoutes,
+                    onOpenImageMigration = onNavigateToImageMigration
                 )
             }
         }
