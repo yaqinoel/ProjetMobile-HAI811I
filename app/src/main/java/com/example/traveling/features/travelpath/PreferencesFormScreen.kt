@@ -327,6 +327,7 @@ internal fun PreferencesForm(
                 if (travelShareSuggestions.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text("Inspirations TravelShare", fontSize = 11.sp, color = StoneLighter)
+                    Text("Photos publiques ajoutées à TravelPath", fontSize = 10.sp, color = StoneMuted)
                     Spacer(Modifier.height(6.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(travelShareSuggestions, key = { it.postId }) { post ->

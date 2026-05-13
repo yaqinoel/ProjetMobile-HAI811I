@@ -17,7 +17,7 @@ class TravelBridgeRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
-    fun observeTravelSharePhotosForDestination(city: String): Flow<List<PhotoPostDocument>> = callbackFlow {
+    fun observeLinkedTravelSharePhotosForDestination(city: String): Flow<List<PhotoPostDocument>> = callbackFlow {
         if (city.isBlank()) {
             trySend(emptyList())
             awaitClose { }
@@ -27,6 +27,7 @@ class TravelBridgeRepository(
         val listener = db.collection(FirestoreCollections.PHOTO_POSTS)
             .whereEqualTo("visibility", "public")
             .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
             .whereEqualTo("city", city)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(12)
@@ -61,7 +62,7 @@ class TravelBridgeRepository(
         }
     }
 
-    suspend fun findNearbyPublicPhotos(
+    suspend fun findNearbyLinkedTravelSharePhotos(
         lat: Double,
         lng: Double,
         radiusKm: Double
@@ -69,6 +70,7 @@ class TravelBridgeRepository(
         val posts = db.collection(FirestoreCollections.PHOTO_POSTS)
             .whereEqualTo("visibility", "public")
             .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
             .limit(100)
             .get()
             .await()

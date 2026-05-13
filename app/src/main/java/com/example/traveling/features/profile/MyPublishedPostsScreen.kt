@@ -181,7 +181,8 @@ fun MyPublishedPostsScreen(
                     title = updated.title,
                     description = updated.description,
                     visibility = updated.visibility,
-                    tags = parsedTags
+                    tags = parsedTags,
+                    isLinkedToTravelPath = updated.linkedToTravelPath
                 )
                 editingPostId = null
             }
@@ -276,6 +277,7 @@ private fun EditPublishedPostSheet(
     var description by remember(item.post.id) { mutableStateOf(item.description) }
     var visibility by remember(item.post.id) { mutableStateOf(item.visibility) }
     var tags by remember(item.post.id) { mutableStateOf(item.post.tags.joinToString(", ")) }
+    var linkedToTravelPath by remember(item.post.id) { mutableStateOf(item.linkedToTravelPath) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = CardBg) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -290,6 +292,14 @@ private fun EditPublishedPostSheet(
             }
 
             SearchInput(value = tags, placeholder = "Tags séparés par des virgules", onValueChange = { tags = it })
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Ajouter au TravelPath", color = Stone800, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Switch(checked = linkedToTravelPath, onCheckedChange = { linkedToTravelPath = it })
+            }
 
             Button(
                 onClick = {
@@ -299,6 +309,7 @@ private fun EditPublishedPostSheet(
                             title = title.ifBlank { item.title },
                             description = description,
                             visibility = visibility,
+                            linkedToTravelPath = linkedToTravelPath,
                             post = item.post.copy(tags = parsedTags.ifEmpty { item.post.tags }, description = description)
                         )
                     )

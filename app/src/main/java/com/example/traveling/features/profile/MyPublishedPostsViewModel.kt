@@ -69,7 +69,8 @@ class MyPublishedPostsViewModel(
         title: String,
         description: String,
         visibility: String,
-        tags: List<String>
+        tags: List<String>,
+        isLinkedToTravelPath: Boolean
     ) {
         viewModelScope.launch {
             repository.updatePost(
@@ -77,7 +78,8 @@ class MyPublishedPostsViewModel(
                 title = title,
                 description = description,
                 visibility = visibility.lowercase(),
-                tags = tags
+                tags = tags,
+                isLinkedToTravelPath = isLinkedToTravelPath
             ).onSuccess {
                 _events.emit("Publication modifiée")
             }.onFailure {

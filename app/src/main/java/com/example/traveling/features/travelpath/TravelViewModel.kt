@@ -374,7 +374,7 @@ class TravelViewModel : ViewModel() {
         travelShareSuggestionsJob?.cancel()
         travelShareSuggestionsJob = viewModelScope.launch {
             _isLoadingTravelShareSuggestions.value = true
-            travelBridgeRepository.observeTravelSharePhotosForDestination(cityName).collect { posts ->
+            travelBridgeRepository.observeLinkedTravelSharePhotosForDestination(cityName).collect { posts ->
                 _travelSharePhotoSuggestions.value = posts.sortedByDescending { rankTravelShareSuggestion(it) }
                 _isLoadingTravelShareSuggestions.value = false
             }

@@ -604,7 +604,8 @@ class PhotoPostRepository(
         title: String,
         description: String,
         visibility: String,
-        tags: List<String>
+        tags: List<String>,
+        isLinkedToTravelPath: Boolean
     ): Result<Unit> {
         return runCatching {
             db.collection(FirestoreCollections.PHOTO_POSTS)
@@ -615,6 +616,7 @@ class PhotoPostRepository(
                         "description" to description,
                         "visibility" to visibility,
                         "tags" to tags,
+                        "isLinkedToTravelPath" to isLinkedToTravelPath,
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
                 )
