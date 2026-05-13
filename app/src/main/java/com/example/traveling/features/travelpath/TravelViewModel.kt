@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.traveling.data.model.Attraction
 import com.example.traveling.data.model.Destination
+import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelRoute
@@ -14,13 +15,16 @@ import com.example.traveling.data.repository.OpenMeteoService
 import com.example.traveling.data.repository.PdfExportService
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.SavedRoutesRepository
+import com.example.traveling.data.repository.TravelBridgeRepository
 import com.example.traveling.data.repository.TravelRepository
 import com.example.traveling.data.repository.WeatherInfo
 import com.example.traveling.features.main.TravelPathSeed
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 import java.io.File
 
 class TravelViewModel : ViewModel() {
@@ -31,6 +35,7 @@ class TravelViewModel : ViewModel() {
     private var localStorage: LocalStorageRepository? = null
     private val savedRoutesRepo = SavedRoutesRepository()
     private val photoPostRepository = PhotoPostRepository()
+    private val travelBridgeRepository = TravelBridgeRepository()
 
     /** Must be called once from a Composable with LocalContext */
     fun initLocalStorage(context: Context) {
@@ -62,6 +67,11 @@ class TravelViewModel : ViewModel() {
     // ── Attractions suggérées pour le formulaire ──
     private val _suggestedAttractions = MutableStateFlow<List<Attraction>>(emptyList())
     val suggestedAttractions: StateFlow<List<Attraction>> = _suggestedAttractions.asStateFlow()
+    private val _travelSharePhotoSuggestions = MutableStateFlow<List<PhotoPostDocument>>(emptyList())
+    val travelSharePhotoSuggestions: StateFlow<List<PhotoPostDocument>> =
+        _travelSharePhotoSuggestions.asStateFlow()
+    private val _isLoadingTravelShareSuggestions = MutableStateFlow(false)
+    val isLoadingTravelShareSuggestions: StateFlow<Boolean> = _isLoadingTravelShareSuggestions.asStateFlow()
 
     // ── Destination & Route sélectionnées ──
     private val _selectedDestination = MutableStateFlow<Destination?>(null)
@@ -143,6 +153,9 @@ class TravelViewModel : ViewModel() {
 
     // ── Attractions par route ──
     private var routeAttractionsMap: Map<String, List<Attraction>> = emptyMap()
+    private var suggestedAttractionsJob: Job? = null
+    private var travelShareSuggestionsJob: Job? = null
+    private val selectedTravelSharePosts = MutableStateFlow<List<PhotoPostDocument>>(emptyList())
 
     enum class RegenerationAdjustment {
         INDOOR,
@@ -160,6 +173,7 @@ class TravelViewModel : ViewModel() {
 
         viewModelScope.launch {
             val post = photoPostRepository.getPostOnce(postId).getOrNull() ?: return@launch
+            addTravelSharePhotoCandidate(post)
             applyTravelShareSeed(
                 TravelPathSeed(
                     sourcePostId = post.postId,
@@ -171,6 +185,24 @@ class TravelViewModel : ViewModel() {
                     tags = post.tags
                 )
             )
+        }
+    }
+
+    fun addTravelSharePhotoCandidate(post: PhotoPostDocument) {
+        if (post.postId.isBlank()) return
+        if (post.visibility != "public" || post.status != "published") return
+        if (!post.hasUsableLocation()) return
+
+        val current = selectedTravelSharePosts.value
+        if (current.none { it.postId == post.postId }) {
+            selectedTravelSharePosts.value = current + post
+        }
+
+        val placeName = post.locationName.trim()
+        if (placeName.isNotBlank() &&
+            formFavoritePlaces.value.none { it.equals(placeName, ignoreCase = true) }
+        ) {
+            formFavoritePlaces.value = formFavoritePlaces.value + placeName
         }
     }
 
@@ -279,13 +311,20 @@ class TravelViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             repository.getAttractionsByDestination(dest.id).collect { allAttractions ->
-                _attractions.value = allAttractions
+                val travelShareCandidates = buildTravelShareAttractionCandidates(
+                    posts = selectedTravelSharePosts.value,
+                    officialAttractions = allAttractions,
+                    destination = dest
+                )
+                val mergedAttractions = allAttractions + travelShareCandidates
+
+                _attractions.value = mergedAttractions
                 val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
                 _weather.value = currentWeather
 
                 // ── Filtrage strict → relaxé ──
-                val filtered = filterAttractions(allAttractions, budget, activities, effort, currentWeather)
-                val weatherAdjustedAll = applyWeatherPreferences(allAttractions, currentWeather)
+                val filtered = filterAttractions(mergedAttractions, budget, activities, effort, currentWeather)
+                val weatherAdjustedAll = applyWeatherPreferences(mergedAttractions, currentWeather)
 
                 // Générer les 3 routes avec des sous-ensembles différents
                 _routes.value = generateRoutes(filtered, weatherAdjustedAll, dest, budget, durationHours)
@@ -302,19 +341,156 @@ class TravelViewModel : ViewModel() {
     }
 
     fun updateSuggestedAttractions(cityName: String) {
-        val dest = _destinations.value.find {
-            it.name.equals(cityName, ignoreCase = true)
-        }
+        updateOfficialAttractionSuggestions(cityName)
+        updateTravelSharePhotoSuggestions(cityName)
+    }
+
+    private fun updateOfficialAttractionSuggestions(cityName: String) {
+        val dest = _destinations.value.find { it.name.equals(cityName, ignoreCase = true) }
         if (dest == null) {
             _suggestedAttractions.value = emptyList()
+            suggestedAttractionsJob?.cancel()
+            suggestedAttractionsJob = null
             return
         }
 
-        viewModelScope.launch {
+        suggestedAttractionsJob?.cancel()
+        suggestedAttractionsJob = viewModelScope.launch {
             repository.getAttractionsByDestination(dest.id).collect { list ->
                 _suggestedAttractions.value = list.sortedByDescending { it.rating }.take(5)
             }
         }
+    }
+
+    private fun updateTravelSharePhotoSuggestions(cityName: String) {
+        if (cityName.isBlank()) {
+            _travelSharePhotoSuggestions.value = emptyList()
+            travelShareSuggestionsJob?.cancel()
+            travelShareSuggestionsJob = null
+            _isLoadingTravelShareSuggestions.value = false
+            return
+        }
+
+        travelShareSuggestionsJob?.cancel()
+        travelShareSuggestionsJob = viewModelScope.launch {
+            _isLoadingTravelShareSuggestions.value = true
+            travelBridgeRepository.observeTravelSharePhotosForDestination(cityName).collect { posts ->
+                _travelSharePhotoSuggestions.value = posts.sortedByDescending { rankTravelShareSuggestion(it) }
+                _isLoadingTravelShareSuggestions.value = false
+            }
+        }
+    }
+
+    private fun rankTravelShareSuggestion(post: PhotoPostDocument): Int {
+        var score = 0
+        val selectedActivities = formActivities.value
+        val seedTags = formTravelShareTags.value.map { it.lowercase() }
+        val postTags = post.tags.map { it.lowercase() }
+
+        if (postTags.any { seedTags.contains(it) }) score += 4
+        if (placeTypeMatchesSelectedActivities(post.placeType, selectedActivities)) score += 3
+        score += minOf(post.likeCount, 10)
+        score += ((post.createdAt?.seconds ?: 0L) / 86_400).toInt()
+        return score
+    }
+
+    private fun placeTypeMatchesSelectedActivities(placeType: String, activities: Set<String>): Boolean {
+        val value = placeType.lowercase()
+        if (activities.isEmpty()) return false
+        return when {
+            value.contains("nature") || value.contains("park") -> "nature" in activities
+            value.contains("museum") || value.contains("culture") || value.contains("monument") -> "culture" in activities
+            value.contains("food") || value.contains("restaurant") || value.contains("cafe") -> "food" in activities
+            value.contains("shop") || value.contains("market") -> "shopping" in activities
+            value.contains("street") || value.contains("photo") -> "photo" in activities || "culture" in activities
+            else -> false
+        }
+    }
+
+    private fun buildTravelShareAttractionCandidates(
+        posts: List<PhotoPostDocument>,
+        officialAttractions: List<Attraction>,
+        destination: Destination
+    ): List<Attraction> {
+        return posts
+            .filter { it.visibility == "public" && it.status == "published" }
+            .filter { it.hasUsableLocation() }
+            .filterNot { post ->
+                officialAttractions.any { attr -> isDuplicateTravelSharePlace(post, attr) }
+            }
+            .map { it.toAttractionCandidate(destination.id) }
+    }
+
+    private fun PhotoPostDocument.toAttractionCandidate(destinationId: String): Attraction {
+        val resolvedLat = displayLatitude ?: latitude ?: rawLatitude ?: 0.0
+        val resolvedLng = displayLongitude ?: longitude ?: rawLongitude ?: 0.0
+        return Attraction(
+            id = "photo_$postId",
+            destinationId = destinationId,
+            name = locationName.ifBlank { title.ifBlank { "Lieu TravelShare" } },
+            type = mapPlaceTypeToAttractionType(placeType, tags),
+            cost = 0,
+            duration = 45,
+            rating = 4.2 + minOf(likeCount, 50) / 100.0,
+            description = description.ifBlank { title },
+            imageUrl = imageUrls.firstOrNull().orEmpty(),
+            lat = resolvedLat,
+            lng = resolvedLng,
+            tags = (tags + "TravelShare").distinct(),
+            imageUrls = imageUrls
+        )
+    }
+
+    private fun mapPlaceTypeToAttractionType(placeType: String, tags: List<String>): String {
+        val terms = (listOf(placeType) + tags).joinToString(" ").lowercase()
+        return when {
+            terms.contains("museum") || terms.contains("musée") || terms.contains("culture") || terms.contains("cultural") -> "Culture"
+            terms.contains("monument") || terms.contains("architecture") || terms.contains("street") || terms.contains("rue") -> "Monument"
+            terms.contains("nature") || terms.contains("park") || terms.contains("parc") || terms.contains("beach") ||
+                terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> "Nature"
+            terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
+                terms.contains("cafe") || terms.contains("café") -> "Gastronomie"
+            terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
+            terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
+            else -> "Photo"
+        }
+    }
+
+    private fun isDuplicateTravelSharePlace(post: PhotoPostDocument, attraction: Attraction): Boolean {
+        val postLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
+        val postLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
+        if (postLat != null && postLng != null && attraction.lat != 0.0 && attraction.lng != 0.0) {
+            val distanceKm = haversine(postLat, postLng, attraction.lat, attraction.lng)
+            if (distanceKm <= 0.2) return true
+        }
+        return areNamesSimilar(post.locationName, attraction.name)
+    }
+
+    private fun areNamesSimilar(a: String, b: String): Boolean {
+        val left = normalizePlaceName(a)
+        val right = normalizePlaceName(b)
+        if (left.isBlank() || right.isBlank()) return false
+        if (left == right) return true
+        return left.contains(right) || right.contains(left)
+    }
+
+    private fun normalizePlaceName(input: String): String {
+        val ascii = Normalizer.normalize(input.lowercase(), Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+        return ascii
+            .replace("[^a-z0-9\\s]".toRegex(), " ")
+            .split("\\s+".toRegex())
+            .filter { token ->
+                token.isNotBlank() && token !in setOf("the", "le", "la", "les", "de", "des", "du", "d")
+            }
+            .joinToString(" ")
+            .trim()
+    }
+
+    private fun PhotoPostDocument.hasUsableLocation(): Boolean {
+        val lat = displayLatitude ?: latitude ?: rawLatitude
+        val lng = displayLongitude ?: longitude ?: rawLongitude
+        return lat != null && lng != null && locationName.isNotBlank()
     }
     //  FILTERING LOGIC
     private fun filterAttractions(

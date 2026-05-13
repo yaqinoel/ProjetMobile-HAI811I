@@ -14,9 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.TravelPathData
 import com.example.traveling.ui.theme.*
 
@@ -48,6 +52,7 @@ internal fun PreferencesForm(
     val vmActivities by travelViewModel.formActivities.collectAsState()
     val travelSharePlaceName by travelViewModel.formTravelSharePlaceName.collectAsState()
     val travelShareTags by travelViewModel.formTravelShareTags.collectAsState()
+    val travelShareSuggestions by travelViewModel.travelSharePhotoSuggestions.collectAsState()
 
     // Sync form state back to ViewModel whenever values change
     LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
@@ -319,6 +324,25 @@ internal fun PreferencesForm(
                     }
                 }
 
+                if (travelShareSuggestions.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Inspirations TravelShare", fontSize = 11.sp, color = StoneLighter)
+                    Spacer(Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(travelShareSuggestions, key = { it.postId }) { post ->
+                            val place = post.locationName.trim()
+                            val isAdded = favoritePlaces.any { it.equals(place, ignoreCase = true) }
+                            TravelShareSuggestionCard(
+                                post = post,
+                                isAdded = isAdded,
+                                onClick = {
+                                    travelViewModel.addTravelSharePhotoCandidate(post)
+                                }
+                            )
+                        }
+                    }
+                }
+
                 if (favoritePlaces.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     FlowRow(
@@ -541,6 +565,76 @@ internal fun PreferencesForm(
             }
 
             Spacer(Modifier.height(80.dp)) // Bottom padding for navigation bar
+        }
+    }
+}
+
+@Composable
+private fun TravelShareSuggestionCard(
+    post: PhotoPostDocument,
+    isAdded: Boolean,
+    onClick: () -> Unit
+) {
+    val title = post.title.ifBlank { post.locationName.ifBlank { "Photo TravelShare" } }
+    val place = post.locationName.ifBlank { post.city ?: post.country ?: "Lieu inconnu" }
+    val imageUrl = post.imageUrls.firstOrNull()
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = CardBg,
+        border = BorderStroke(1.dp, if (isAdded) Color(0xFFFECACA) else StoneBorder),
+        modifier = Modifier.width(160.dp)
+    ) {
+        Column {
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                        .background(Stone100),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Stone400)
+                }
+            }
+
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = StoneText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = place,
+                    fontSize = 11.sp,
+                    color = StoneMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (isAdded) "Ajouté" else "+ Ajouter",
+                    fontSize = 11.sp,
+                    color = if (isAdded) RedPrimary else StoneLighter,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
