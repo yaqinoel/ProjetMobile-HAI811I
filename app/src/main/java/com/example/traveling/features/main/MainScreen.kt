@@ -95,7 +95,8 @@ fun MainScreen(
                 )
                 MainTab.PARCOURS -> TravelPathScreen(
                     isAnonymous = isAnonymous,
-                    initialTravelSharePostId = initialTravelPathPostId
+                    initialTravelSharePostId = initialTravelPathPostId,
+                    onOpenPhotoDetail = onNavigateToPhotoDetail
                 )
                 MainTab.PROFIL -> ProfileScreen(
                     isAnonymous = isAnonymous,

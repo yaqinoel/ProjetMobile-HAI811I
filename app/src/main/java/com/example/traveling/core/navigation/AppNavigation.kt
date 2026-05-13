@@ -165,7 +165,8 @@ fun AppNavigation() {
             val routeId = backStackEntry.arguments?.getString("routeId") ?: ""
             CachedRouteDetailScreen(
                 routeId = routeId,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
         composable("image_migration") {

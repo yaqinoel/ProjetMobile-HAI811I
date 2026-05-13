@@ -8,6 +8,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.text.Normalizer
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -84,6 +85,74 @@ class TravelBridgeRepository(
 
             haversineKm(lat, lng, visibleLat, visibleLng) <= radiusKm
         }
+    }
+
+    suspend fun findPhotosForRouteStop(
+        stopName: String,
+        lat: Double?,
+        lng: Double?,
+        city: String?,
+        radiusKm: Double = 0.5
+    ): List<PhotoPostDocument> {
+        val posts = db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("visibility", "public")
+            .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
+            .limit(100)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+
+        return posts.filter { post ->
+            matchesRouteStop(post, stopName, lat, lng, city, radiusKm)
+        }.sortedByDescending { it.createdAt?.seconds ?: 0L }
+    }
+
+    private fun matchesRouteStop(
+        post: PhotoPostDocument,
+        stopName: String,
+        lat: Double?,
+        lng: Double?,
+        city: String?,
+        radiusKm: Double
+    ): Boolean {
+        if (!city.isNullOrBlank() && !post.city.equals(city, ignoreCase = true)) {
+            return false
+        }
+
+        val nameMatch = areNamesSimilar(post.locationName, stopName)
+
+        val visibleLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
+        val visibleLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
+        val distanceMatch = if (lat != null && lng != null && visibleLat != null && visibleLng != null) {
+            haversineKm(lat, lng, visibleLat, visibleLng) <= radiusKm
+        } else {
+            false
+        }
+
+        return nameMatch || distanceMatch
+    }
+
+    private fun areNamesSimilar(a: String, b: String): Boolean {
+        val left = normalizePlaceName(a)
+        val right = normalizePlaceName(b)
+        if (left.isBlank() || right.isBlank()) return false
+        if (left == right) return true
+        return left.contains(right) || right.contains(left)
+    }
+
+    private fun normalizePlaceName(input: String): String {
+        val ascii = Normalizer.normalize(input.lowercase(), Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+        return ascii
+            .replace("[^a-z0-9\\s]".toRegex(), " ")
+            .split("\\s+".toRegex())
+            .filter { token ->
+                token.isNotBlank() && token !in setOf("the", "le", "la", "les", "de", "des", "du", "d")
+            }
+            .joinToString(" ")
+            .trim()
     }
 
     private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {

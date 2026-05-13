@@ -10,6 +10,7 @@ fun TravelPathScreen(
     isAnonymous: Boolean = false,
     initialDestination: String? = null,
     initialTravelSharePostId: String? = null,
+    onOpenPhotoDetail: (String) -> Unit = {},
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val step by travelViewModel.currentStep.collectAsState()
@@ -29,7 +30,8 @@ fun TravelPathScreen(
                 onBack = {
                     travelViewModel.setCurrentRouteId(null)
                     travelViewModel.setStep("results")
-                }
+                },
+                onOpenPhotoDetail = onOpenPhotoDetail
             )
         }
         step == "loading" -> LoadingScreen()

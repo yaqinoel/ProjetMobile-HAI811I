@@ -19,9 +19,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.ui.theme.*
@@ -31,7 +33,9 @@ import com.example.traveling.ui.theme.*
 internal fun RouteTimeline(
     groups: List<Pair<TimeSlot, List<RouteStop>>>,
     expandedStopId: String?,
-    onToggleExpand: (String) -> Unit
+    onToggleExpand: (String) -> Unit,
+    stopTravelSharePhotos: Map<String, List<PhotoPostDocument>> = emptyMap(),
+    onOpenPhotoDetail: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
@@ -153,7 +157,11 @@ internal fun RouteTimeline(
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut()
                         ) {
-                            StopExpandedDetail(stop = stop)
+                            StopExpandedDetail(
+                                stop = stop,
+                                travelSharePhotos = stopTravelSharePhotos[stop.id].orEmpty(),
+                                onOpenPhotoDetail = onOpenPhotoDetail
+                            )
                         }
 
                         // Distance connector between stops
@@ -182,7 +190,11 @@ internal fun RouteTimeline(
 
 // Expanded detail card for a single stop (gallery + description + actions)
 @Composable
-private fun StopExpandedDetail(stop: RouteStop) {
+private fun StopExpandedDetail(
+    stop: RouteStop,
+    travelSharePhotos: List<PhotoPostDocument> = emptyList(),
+    onOpenPhotoDetail: (String) -> Unit = {}
+) {
     Surface(
         modifier = Modifier.padding(start = 52.dp, top = 4.dp, bottom = 8.dp),
         shape = RoundedCornerShape(12.dp),
@@ -257,6 +269,23 @@ private fun StopExpandedDetail(stop: RouteStop) {
                     }
                 }
 
+                if (travelSharePhotos.isNotEmpty()) {
+                    Text(
+                        "Photos partagées par les voyageurs",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = StoneText
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(travelSharePhotos, key = { it.postId }) { post ->
+                            TravelShareStopPhotoCard(
+                                post = post,
+                                onClick = { onOpenPhotoDetail(post.postId) }
+                            )
+                        }
+                    }
+                }
+
                 // Action buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
@@ -294,6 +323,67 @@ private fun StopExpandedDetail(stop: RouteStop) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TravelShareStopPhotoCard(
+    post: PhotoPostDocument,
+    onClick: () -> Unit
+) {
+    val title = post.title.ifBlank { post.locationName.ifBlank { "Photo TravelShare" } }
+    val imageUrl = post.imageUrls.firstOrNull().orEmpty()
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFF8F5F1),
+        border = BorderStroke(1.dp, StoneBorder),
+        modifier = Modifier.width(140.dp)
+    ) {
+        Column {
+            if (imageUrl.isNotBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                        .background(Stone100),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PhotoCamera, null, tint = Stone400)
+                }
+            }
+            Column(
+                modifier = Modifier.padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    title,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = StoneText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    post.authorName.ifBlank { "Voyageur" },
+                    fontSize = 10.sp,
+                    color = StoneMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

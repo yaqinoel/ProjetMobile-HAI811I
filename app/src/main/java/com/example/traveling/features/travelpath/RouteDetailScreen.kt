@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 fun RouteDetailScreen(
     routeId: String,
     onBack: () -> Unit,
+    onOpenPhotoDetail: (String) -> Unit = {},
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -44,6 +45,7 @@ fun RouteDetailScreen(
     val selectedRoute by travelViewModel.selectedRoute.collectAsState()
     val weather by travelViewModel.weather.collectAsState()
     val pdfExportPath by travelViewModel.pdfExportPath.collectAsState()
+    val stopTravelSharePhotos by travelViewModel.stopTravelSharePhotos.collectAsState()
 
     // Initialize local storage for SharedPreferences access
     LaunchedEffect(Unit) {
@@ -80,6 +82,12 @@ fun RouteDetailScreen(
         TimeSlot.APRES_MIDI to stops.filter { it.timeSlot == TimeSlot.APRES_MIDI },
         TimeSlot.SOIR to stops.filter { it.timeSlot == TimeSlot.SOIR }
     )
+
+    LaunchedEffect(stops) {
+        if (stops.isNotEmpty()) {
+            travelViewModel.loadTravelSharePhotosForStops(stops)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -126,7 +134,9 @@ fun RouteDetailScreen(
                 expandedStopId = expandedStopId,
                 onToggleExpand = { id ->
                     expandedStopId = if (expandedStopId == id) null else id
-                }
+                },
+                stopTravelSharePhotos = stopTravelSharePhotos,
+                onOpenPhotoDetail = onOpenPhotoDetail
             )
 
             Spacer(Modifier.height(16.dp))

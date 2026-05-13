@@ -24,6 +24,7 @@ import com.example.traveling.ui.theme.*
 fun CachedRouteDetailScreen(
     routeId: String,
     onBack: () -> Unit,
+    onOpenPhotoDetail: (String) -> Unit = {},
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -58,6 +59,7 @@ fun CachedRouteDetailScreen(
             RouteDetailScreen(
                 routeId = routeId,
                 onBack = onBack,
+                onOpenPhotoDetail = onOpenPhotoDetail,
                 travelViewModel = travelViewModel
             )
         }

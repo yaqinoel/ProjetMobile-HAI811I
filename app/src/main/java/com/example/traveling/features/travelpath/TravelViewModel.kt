@@ -63,6 +63,8 @@ class TravelViewModel : ViewModel() {
     // ── Stops pour RouteDetail ──
     private val _routeStops = MutableStateFlow<List<RouteStop>>(emptyList())
     val routeStops: StateFlow<List<RouteStop>> = _routeStops.asStateFlow()
+    private val _stopTravelSharePhotos = MutableStateFlow<Map<String, List<PhotoPostDocument>>>(emptyMap())
+    val stopTravelSharePhotos: StateFlow<Map<String, List<PhotoPostDocument>>> = _stopTravelSharePhotos.asStateFlow()
 
     // ── Attractions suggérées pour le formulaire ──
     private val _suggestedAttractions = MutableStateFlow<List<Attraction>>(emptyList())
@@ -155,6 +157,7 @@ class TravelViewModel : ViewModel() {
     private var routeAttractionsMap: Map<String, List<Attraction>> = emptyMap()
     private var suggestedAttractionsJob: Job? = null
     private var travelShareSuggestionsJob: Job? = null
+    private var stopPhotosJob: Job? = null
     private val selectedTravelSharePosts = MutableStateFlow<List<PhotoPostDocument>>(emptyList())
 
     enum class RegenerationAdjustment {
@@ -378,6 +381,57 @@ class TravelViewModel : ViewModel() {
                 _travelSharePhotoSuggestions.value = posts.sortedByDescending { rankTravelShareSuggestion(it) }
                 _isLoadingTravelShareSuggestions.value = false
             }
+        }
+    }
+
+    fun loadTravelSharePhotosForStops(stops: List<RouteStop>) {
+        if (stops.isEmpty()) {
+            _stopTravelSharePhotos.value = emptyMap()
+            stopPhotosJob?.cancel()
+            stopPhotosJob = null
+            return
+        }
+
+        val destinationName = _selectedDestination.value?.name
+        stopPhotosJob?.cancel()
+        stopPhotosJob = viewModelScope.launch {
+            val result = mutableMapOf<String, List<PhotoPostDocument>>()
+            val selectedPosts = selectedTravelSharePosts.value
+            stops.take(8).forEach { stop ->
+                val linkedPoolPhotos = runCatching {
+                    travelBridgeRepository.findPhotosForRouteStop(
+                        stopName = stop.name,
+                        lat = stop.lat.takeIf { it != 0.0 },
+                        lng = stop.lng.takeIf { it != 0.0 },
+                        city = destinationName,
+                        radiusKm = 0.5
+                    )
+                }.getOrDefault(emptyList())
+
+                val selectedMatches = selectedPosts.filter { post ->
+                    val postLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
+                    val postLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
+                    val byName = areNamesSimilar(post.locationName, stop.name)
+                    val byDistance = if (
+                        postLat != null && postLng != null &&
+                        stop.lat != 0.0 && stop.lng != 0.0
+                    ) {
+                        haversine(postLat, postLng, stop.lat, stop.lng) <= 0.5
+                    } else {
+                        false
+                    }
+                    byName || byDistance
+                }
+
+                val photos = (selectedMatches + linkedPoolPhotos)
+                    .distinctBy { it.postId }
+                    .sortedByDescending { it.createdAt?.seconds ?: 0L }
+
+                if (photos.isNotEmpty()) {
+                    result[stop.id] = photos.take(6)
+                }
+            }
+            _stopTravelSharePhotos.value = result
         }
     }
 
