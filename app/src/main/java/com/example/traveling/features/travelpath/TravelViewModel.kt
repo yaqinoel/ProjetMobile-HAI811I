@@ -12,9 +12,11 @@ import com.example.traveling.data.model.TravelRoute
 import com.example.traveling.data.repository.LocalStorageRepository
 import com.example.traveling.data.repository.OpenMeteoService
 import com.example.traveling.data.repository.PdfExportService
+import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.SavedRoutesRepository
 import com.example.traveling.data.repository.TravelRepository
 import com.example.traveling.data.repository.WeatherInfo
+import com.example.traveling.features.main.TravelPathSeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +30,7 @@ class TravelViewModel : ViewModel() {
     private val pdfService = PdfExportService()
     private var localStorage: LocalStorageRepository? = null
     private val savedRoutesRepo = SavedRoutesRepository()
+    private val photoPostRepository = PhotoPostRepository()
 
     /** Must be called once from a Composable with LocalContext */
     fun initLocalStorage(context: Context) {
@@ -99,6 +102,11 @@ class TravelViewModel : ViewModel() {
     val formAvoidRain = MutableStateFlow(false)
     val formAvoidHeat = MutableStateFlow(false)
     val formAvoidCold = MutableStateFlow(false)
+    val formTravelShareSourcePostId = MutableStateFlow<String?>(null)
+    val formTravelSharePlaceName = MutableStateFlow("")
+    val formTravelShareTags = MutableStateFlow<List<String>>(emptyList())
+    val travelShareSeedPostId = formTravelShareSourcePostId
+    val travelShareSeedPlaceName = formTravelSharePlaceName
 
     // ── Validation destination ──
     private val _destinationNotFound = MutableStateFlow(false)
@@ -145,6 +153,96 @@ class TravelViewModel : ViewModel() {
 
     init {
         loadDestinations()
+    }
+
+    fun applyTravelSharePostSeed(postId: String) {
+        if (postId.isBlank()) return
+
+        viewModelScope.launch {
+            val post = photoPostRepository.getPostOnce(postId).getOrNull() ?: return@launch
+            applyTravelShareSeed(
+                TravelPathSeed(
+                    sourcePostId = post.postId,
+                    placeName = post.locationName,
+                    destinationName = post.city,
+                    latitude = post.displayLatitude ?: post.latitude ?: post.rawLatitude,
+                    longitude = post.displayLongitude ?: post.longitude ?: post.rawLongitude,
+                    placeType = post.placeType,
+                    tags = post.tags
+                )
+            )
+        }
+    }
+
+    fun applyTravelShareSeed(seed: TravelPathSeed) {
+        val placeName = seed.placeName.trim()
+        val cleanedTags = seed.tags.map { it.trim() }.filter { it.isNotBlank() }
+
+        formTravelShareSourcePostId.value = seed.sourcePostId
+        formTravelSharePlaceName.value = placeName
+        formTravelShareTags.value = cleanedTags
+
+        val candidateDestination = seed.destinationName?.trim().orEmpty()
+        val exists = _destinations.value.any { it.name.equals(candidateDestination, ignoreCase = true) }
+        if (candidateDestination.isNotBlank() && exists) {
+            formDestination.value = candidateDestination
+        }
+
+        if (placeName.isNotBlank() &&
+            formFavoritePlaces.value.none { it.equals(placeName, ignoreCase = true) }
+        ) {
+            formFavoritePlaces.value = formFavoritePlaces.value + placeName
+        }
+
+        val inferred = inferActivitiesFromTravelShareSeed(seed)
+        if (inferred.isNotEmpty()) {
+            formActivities.value = formActivities.value + inferred
+        }
+    }
+
+    fun clearTravelShareSeed() {
+        val placeName = formTravelSharePlaceName.value
+        if (placeName.isNotBlank()) {
+            formFavoritePlaces.value = formFavoritePlaces.value.filterNot {
+                it.equals(placeName, ignoreCase = true)
+            }
+        }
+        formTravelShareSourcePostId.value = null
+        formTravelSharePlaceName.value = ""
+        formTravelShareTags.value = emptyList()
+    }
+
+    private fun inferActivitiesFromTravelShareSeed(seed: TravelPathSeed): Set<String> {
+        val values = buildList {
+            add(seed.placeType.lowercase())
+            addAll(seed.tags.map { it.lowercase() })
+        }
+
+        val inferred = mutableSetOf<String>()
+        values.forEach { value ->
+            when {
+                value.contains("museum") || value.contains("musée") || value.contains("culture") || value.contains("cultural") -> {
+                    inferred += "culture"
+                }
+                value.contains("nature") || value.contains("park") || value.contains("parc") ||
+                    value.contains("mountain") || value.contains("beach") || value.contains("lake") || value.contains("forest") -> {
+                    inferred += "nature"
+                }
+                value.contains("restaurant") || value.contains("food") || value.contains("gastronomie") ||
+                    value.contains("cafe") || value.contains("café") -> {
+                    inferred += "food"
+                }
+                value.contains("shop") || value.contains("shopping") || value.contains("magasin") || value.contains("market") -> {
+                    inferred += "shopping"
+                }
+                value.contains("street") || value.contains("rue") || value.contains("monument") ||
+                    value.contains("architecture") || value.contains("photo") -> {
+                    inferred += "photo"
+                    inferred += "culture"
+                }
+            }
+        }
+        return inferred
     }
 
     private fun loadDestinations() {
@@ -311,21 +409,21 @@ class TravelViewModel : ViewModel() {
         val maxMinutes = durationHours * 60
         val wantedTypes = savedActivities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
-        // Séparer les attractions correspondant aux préférences
-        val prefMatched = filtered.filter { it.type in wantedTypes }
-        val prefOthers = filtered.filter { it.type !in wantedTypes }
-
         val usedIds = mutableSetOf<String>() // Pour éviter les doublons entre routes
+        val favoriteAttractionIds = (filtered + allAttractions)
+            .filter { matchesFavoritePlace(it) }
+            .map { it.id }
+            .toSet()
 
         // ── Route 1 : Économique ──
         val cheapPool = filtered.sortedBy { it.cost }
         val cheapAttractions = selectWithinConstraints(cheapPool, budget, maxMinutes, wantedTypes, usedIds)
-        usedIds.addAll(cheapAttractions.map { it.id })
+        usedIds.addAll(cheapAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
         // ── Route 2 : Équilibrée ──
         val balancedPool = filtered.sortedByDescending { it.rating / (it.cost.coerceAtLeast(1).toDouble()) }
         val balancedAttractions = selectWithinConstraints(balancedPool, budget, maxMinutes, wantedTypes, usedIds)
-        usedIds.addAll(balancedAttractions.map { it.id })
+        usedIds.addAll(balancedAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
         // ── Route 3 : Premium (pool élargi, budget +50%) ──
         val premiumPool = allAttractions.sortedByDescending { it.rating }
@@ -371,14 +469,34 @@ class TravelViewModel : ViewModel() {
         var totalMinutes = 0
         var hasPrefMatch = false
 
-        // D'abord, garantir au moins une attraction de la préférence
+        // D'abord, essayer d'inclure les lieux demandés par l'utilisateur ou TravelShare.
+        for (attr in available.filter { matchesFavoritePlace(it) }) {
+            val transitTime = if (selected.isEmpty()) 0 else 15
+            val newTotalMinutes = totalMinutes + attr.duration + transitTime
+            val newTotalCost = totalCost + attr.cost
+
+            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes) {
+                selected.add(attr)
+                totalCost = newTotalCost
+                totalMinutes = newTotalMinutes
+                if (attr.type in wantedTypes) hasPrefMatch = true
+            }
+        }
+
+        // Ensuite, garantir au moins une attraction de la préférence.
         if (wantedTypes.isNotEmpty()) {
-            val prefFirst = available.firstOrNull { it.type in wantedTypes }
+            val prefFirst = available.firstOrNull { it.type in wantedTypes && it !in selected }
             if (prefFirst != null) {
-                selected.add(prefFirst)
-                totalCost += prefFirst.cost
-                totalMinutes += prefFirst.duration
-                hasPrefMatch = true
+                val transitTime = if (selected.isEmpty()) 0 else 15
+                val newTotalMinutes = totalMinutes + prefFirst.duration + transitTime
+                val newTotalCost = totalCost + prefFirst.cost
+
+                if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes) {
+                    selected.add(prefFirst)
+                    totalCost = newTotalCost
+                    totalMinutes = newTotalMinutes
+                    hasPrefMatch = true
+                }
             }
         }
 
@@ -400,6 +518,14 @@ class TravelViewModel : ViewModel() {
         }
 
         return selected
+    }
+
+    private fun matchesFavoritePlace(attr: Attraction): Boolean {
+        return savedFavoritePlaces.any { favorite ->
+            val place = favorite.trim()
+            place.isNotBlank() &&
+                (attr.name.contains(place, ignoreCase = true) || place.contains(attr.name, ignoreCase = true))
+        }
     }
 
     private fun buildTravelRoute(

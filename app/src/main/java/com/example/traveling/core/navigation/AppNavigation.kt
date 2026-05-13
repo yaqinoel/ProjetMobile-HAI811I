@@ -203,7 +203,44 @@ fun AppNavigation() {
                 onNavigateLogin = { navController.navigate("login") },
                 onNavigateRegister = { navController.navigate("register") },
                 onAuthorClick = { userId -> navController.navigate("author_profile/$userId") },
-                onFindSimilarPhotos = { postId -> navController.navigate("main_similar/$postId") }
+                onFindSimilarPhotos = { postId -> navController.navigate("main_similar/$postId") },
+                onAddToTravelPath = { seed ->
+                    navController.navigate("main_from_photo/${seed.sourcePostId}") {
+                        popUpTo("main") { inclusive = false }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = "main_from_photo/{photoId}",
+            arguments = listOf(navArgument("photoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
+            MainScreen(
+                isAnonymous = false,
+                initialTravelPathPostId = photoId,
+                onLogout = {
+                    auth.signOut()
+                    navController.navigate("home") { popUpTo(0) { inclusive = true } }
+                },
+                onNavigateLogin = { navController.navigate("login") },
+                onNavigateRegister = { navController.navigate("register") },
+                onNavigateToNotifications = { navController.navigate("notifications") },
+                onNavigateToGroups = { navController.navigate("groups") },
+                onNavigateToMyPublishedPosts = { navController.navigate("my_published_posts") },
+                onNavigateToLikedPosts = { navController.navigate("liked_posts") },
+                onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
+                onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
+                onNavigateToImageMigration = { navController.navigate("image_migration") },
+                onNavigateToPublish = { navController.navigate("publish_photos") },
+                onNavigateToPhotoDetail = { detailPhotoId ->
+                    navController.navigate("photo_detail/$detailPhotoId")
+                },
+                onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
+                onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
+                onNavigateToFollowing = { navController.navigate("following") }
             )
         }
 
@@ -337,7 +374,41 @@ fun AppNavigation() {
                     navController.navigate("register")
                 },
                 onAuthorClick = { userId -> navController.navigate("author_profile/$userId") },
-                onFindSimilarPhotos = { postId -> navController.navigate("main_anonymous_similar/$postId") }
+                onFindSimilarPhotos = { postId -> navController.navigate("main_anonymous_similar/$postId") },
+                onAddToTravelPath = { seed ->
+                    navController.navigate("main_anonymous_from_photo/${seed.sourcePostId}") {
+                        popUpTo("main_anonymous") { inclusive = false }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = "main_anonymous_from_photo/{photoId}",
+            arguments = listOf(navArgument("photoId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
+            MainScreen(
+                isAnonymous = true,
+                initialTravelPathPostId = photoId,
+                onLogout = { navController.navigate("home") { popUpTo(0) { inclusive = true } } },
+                onNavigateLogin = {
+                    auth.signOut()
+                    navController.navigate("login")
+                },
+                onNavigateRegister = {
+                    auth.signOut()
+                    navController.navigate("register")
+                },
+                onNavigateToMyPublishedPosts = { navController.navigate("login") },
+                onNavigateToLikedPosts = { navController.navigate("liked_posts") },
+                onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToPhotoDetail = { detailPhotoId ->
+                    navController.navigate("photo_detail_anonymous/$detailPhotoId")
+                },
+                onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
+                onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
+                onNavigateToFollowing = { navController.navigate("login") }
             )
         }
 

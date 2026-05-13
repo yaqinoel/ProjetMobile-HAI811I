@@ -39,6 +39,7 @@ enum class MainTab(
 fun MainScreen(
     isAnonymous: Boolean = false,
     initialSimilarPostId: String? = null,
+    initialTravelPathPostId: String? = null,
     onLogout: () -> Unit = {},
     onNavigateLogin: () -> Unit = {},
     onNavigateRegister: () -> Unit = {},
@@ -57,6 +58,12 @@ fun MainScreen(
     onNavigateToFollowing: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
+
+    LaunchedEffect(initialTravelPathPostId) {
+        if (!initialTravelPathPostId.isNullOrBlank()) {
+            selectedTab = MainTab.PARCOURS
+        }
+    }
 
     Scaffold(
         containerColor = PageBg,
@@ -86,7 +93,10 @@ fun MainScreen(
                     onAuthorClick = onNavigateToAuthorProfile,
                     onGroupClick = onNavigateToGroupDetail
                 )
-                MainTab.PARCOURS -> TravelPathScreen(isAnonymous = isAnonymous)
+                MainTab.PARCOURS -> TravelPathScreen(
+                    isAnonymous = isAnonymous,
+                    initialTravelSharePostId = initialTravelPathPostId
+                )
                 MainTab.PROFIL -> ProfileScreen(
                     isAnonymous = isAnonymous,
                     onLogout = onLogout,

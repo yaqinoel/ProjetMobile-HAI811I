@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 
 // 导入数据模型
 import com.example.traveling.core.utils.openNavigationToPlace
+import com.example.traveling.features.main.TravelPathSeed
 import com.example.traveling.features.travelshare.PhotoPostDetailUi
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
@@ -51,6 +52,7 @@ fun PhotoPostDetailScreen(
     onNavigateRegister: () -> Unit = {},
     onAuthorClick: (String) -> Unit = {},
     onFindSimilarPhotos: (String) -> Unit = {},
+    onAddToTravelPath: (TravelPathSeed) -> Unit = {},
     viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,6 +91,7 @@ fun PhotoPostDetailScreen(
                 onNavigateRegister = onNavigateRegister,
                 onAuthorClick = onAuthorClick,
                 onFindSimilarPhotos = onFindSimilarPhotos,
+                onAddToTravelPath = onAddToTravelPath,
                 viewModel = viewModel
             )
         }
@@ -107,6 +110,7 @@ private fun PhotoPostDetailContent(
     onNavigateRegister: () -> Unit,
     onAuthorClick: (String) -> Unit,
     onFindSimilarPhotos: (String) -> Unit,
+    onAddToTravelPath: (TravelPathSeed) -> Unit,
     viewModel: PhotoPostDetailViewModel
 ) {
     val context = LocalContext.current
@@ -504,7 +508,19 @@ private fun PhotoPostDetailContent(
                         Text("Google Maps", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                     Button(
-                        onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} ajouté à TravelPath.") } },
+                        onClick = {
+                            onAddToTravelPath(
+                                TravelPathSeed(
+                                    sourcePostId = photo.id,
+                                    placeName = photo.location,
+                                    destinationName = photo.city.takeIf { it.isNotBlank() },
+                                    latitude = photo.lat,
+                                    longitude = photo.lng,
+                                    placeType = photo.placeType,
+                                    tags = photo.tags
+                                )
+                            )
+                        },
                         modifier = Modifier.weight(1f).height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)) // Amber
@@ -528,7 +544,19 @@ private fun PhotoPostDetailContent(
                         Text("Ce lieu peut être ajouté comme étape obligatoire lors de la génération d'un parcours.", fontSize = 12.sp, color = Stone500, lineHeight = 18.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AssistChip(
-                                onClick = { coroutineScope.launch { snackbarHostState.showSnackbar("${photo.location} sera utilisé dans le prochain parcours.") } },
+                                onClick = {
+                                    onAddToTravelPath(
+                                        TravelPathSeed(
+                                            sourcePostId = photo.id,
+                                            placeName = photo.location,
+                                            destinationName = photo.city.takeIf { it.isNotBlank() },
+                                            latitude = photo.lat,
+                                            longitude = photo.lng,
+                                            placeType = photo.placeType,
+                                            tags = photo.tags
+                                        )
+                                    )
+                                },
                                 label = { Text("Utiliser ce lieu") },
                                 leadingIcon = { Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp)) }
                             )

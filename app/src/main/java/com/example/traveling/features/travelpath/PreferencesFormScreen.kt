@@ -43,6 +43,11 @@ internal fun PreferencesForm(
     var avoidRain by remember { mutableStateOf(travelViewModel.formAvoidRain.value) }
     var avoidHeat by remember { mutableStateOf(travelViewModel.formAvoidHeat.value) }
     var avoidCold by remember { mutableStateOf(travelViewModel.formAvoidCold.value) }
+    val vmDestination by travelViewModel.formDestination.collectAsState()
+    val vmFavoritePlaces by travelViewModel.formFavoritePlaces.collectAsState()
+    val vmActivities by travelViewModel.formActivities.collectAsState()
+    val travelSharePlaceName by travelViewModel.formTravelSharePlaceName.collectAsState()
+    val travelShareTags by travelViewModel.formTravelShareTags.collectAsState()
 
     // Sync form state back to ViewModel whenever values change
     LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
@@ -54,6 +59,15 @@ internal fun PreferencesForm(
     LaunchedEffect(avoidRain) { travelViewModel.formAvoidRain.value = avoidRain }
     LaunchedEffect(avoidHeat) { travelViewModel.formAvoidHeat.value = avoidHeat }
     LaunchedEffect(avoidCold) { travelViewModel.formAvoidCold.value = avoidCold }
+    LaunchedEffect(vmDestination) {
+        if (vmDestination != destination) destination = vmDestination
+    }
+    LaunchedEffect(vmFavoritePlaces) {
+        if (vmFavoritePlaces != favoritePlaces) favoritePlaces = vmFavoritePlaces
+    }
+    LaunchedEffect(vmActivities) {
+        if (vmActivities != selectedActivities) selectedActivities = vmActivities
+    }
 
     val destinationNotFound by travelViewModel.destinationNotFound.collectAsState()
 
@@ -199,6 +213,49 @@ internal fun PreferencesForm(
             SectionCard {
                 Text("Lieux à visiter (optionnel)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
+
+                if (travelSharePlaceName.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFFEF2F2),
+                        border = BorderStroke(1.dp, Color(0xFFFECACA)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Route, contentDescription = null, tint = RedPrimary, modifier = Modifier.size(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Inspiration depuis TravelShare",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = StoneLighter
+                                )
+                                Text(
+                                    travelSharePlaceName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StoneText
+                                )
+                                if (travelShareTags.isNotEmpty()) {
+                                    Text(
+                                        travelShareTags.take(4).joinToString(" · "),
+                                        fontSize = 11.sp,
+                                        color = StoneMuted
+                                    )
+                                }
+                            }
+                            IconButton(onClick = { travelViewModel.clearTravelShareSeed() }, modifier = Modifier.size(22.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Retirer", tint = Stone500, modifier = Modifier.size(14.dp))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = newPlace,

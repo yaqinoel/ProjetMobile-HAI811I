@@ -9,10 +9,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun TravelPathScreen(
     isAnonymous: Boolean = false,
     initialDestination: String? = null,
+    initialTravelSharePostId: String? = null,
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val step by travelViewModel.currentStep.collectAsState()
     val selectedRouteId by travelViewModel.currentRouteId.collectAsState()
+
+    LaunchedEffect(initialTravelSharePostId) {
+        if (!initialTravelSharePostId.isNullOrBlank()) {
+            travelViewModel.applyTravelSharePostSeed(initialTravelSharePostId)
+            travelViewModel.setStep("preferences")
+        }
+    }
 
     when {
         step == "detail" && selectedRouteId != null -> {

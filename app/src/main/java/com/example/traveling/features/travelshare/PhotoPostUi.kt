@@ -69,7 +69,9 @@ data class PhotoPostDetailUi(
     val voiceNoteUrl: String? = null,
     val title: String = "",
     val authorId: String = "",
-    val authorAvatarUrl: String? = null
+    val authorAvatarUrl: String? = null,
+    val city: String = "",
+    val placeType: String = ""
 )
 
 fun PhotoPostDocument.toPhotoPostUi(
@@ -138,7 +140,9 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
         commentsList = comments.map { it.toPhotoPostCommentUi() },
         locationPrecision = locationPrecision,
         title = title,
-        authorId = authorId
+        authorId = authorId,
+        city = city.orEmpty(),
+        placeType = placeType
     )
 }
 

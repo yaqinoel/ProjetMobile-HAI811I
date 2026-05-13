@@ -307,6 +307,17 @@ class PhotoPostRepository(
             }
     }
 
+    suspend fun getPostOnce(postId: String): Result<PhotoPostDocument> {
+        return runCatching {
+            db.collection(FirestoreCollections.PHOTO_POSTS)
+                .document(postId)
+                .get()
+                .awaitResult()
+                .toObject(PhotoPostDocument::class.java)
+                ?: error("Post introuvable")
+        }
+    }
+
     fun observePostComments(
         postId: String,
         onChanged: (List<PhotoCommentDocument>) -> Unit,
