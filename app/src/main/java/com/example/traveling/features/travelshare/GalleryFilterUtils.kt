@@ -1,7 +1,7 @@
-package com.example.traveling.features.travelshare.util
+package com.example.traveling.features.travelshare
 
-import com.example.traveling.features.travelshare.model.GalleryFilter
-import com.example.traveling.features.travelshare.model.PhotoPostUi
+import com.example.traveling.features.travelshare.GalleryFilter
+import com.example.traveling.features.travelshare.PhotoPostUi
 import java.util.Calendar
 import kotlin.math.atan2
 import kotlin.math.cos

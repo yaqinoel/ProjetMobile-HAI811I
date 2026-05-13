@@ -9,10 +9,10 @@ import androidx.navigation.navArgument
 import com.example.traveling.features.main.MainScreen
 import com.google.firebase.auth.FirebaseAuth
 
-import com.example.traveling.features.passerelle.LaunchScreen
-import com.example.traveling.features.passerelle.LoginScreen
-import com.example.traveling.features.passerelle.ForgotPasswordScreen
-import com.example.traveling.features.passerelle.RegisterScreen
+import com.example.traveling.features.auth.LaunchScreen
+import com.example.traveling.features.auth.LoginScreen
+import com.example.traveling.features.auth.ForgotPasswordScreen
+import com.example.traveling.features.auth.RegisterScreen
 import com.example.traveling.features.profile.LikedPostsScreen
 import com.example.traveling.features.profile.LikedRoutesScreen
 import com.example.traveling.features.profile.ImageMigrationScreen
@@ -20,12 +20,12 @@ import com.example.traveling.features.profile.FollowingManagementScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
 import com.example.traveling.features.profile.SavedRoutesScreen
-import com.example.traveling.features.travelshare.GroupDetailScreen
-import com.example.traveling.features.travelshare.GroupsScreen
 import com.example.traveling.features.travelshare.AuthorProfileScreen
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
+import com.example.traveling.features.travelshare.GroupDetailScreen
+import com.example.traveling.features.travelshare.GroupsScreen
 import com.example.traveling.features.travelshare.PublishPhotosScreen
-import com.example.traveling.features.travelshare.notifications.NotificationsScreen
+import com.example.traveling.features.travelshare.NotificationsScreen
 
 @Composable
 fun AppNavigation() {

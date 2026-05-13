@@ -8,8 +8,8 @@ import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.NotificationRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.UserRepository
-import com.example.traveling.features.travelshare.model.PhotoPostUi
-import com.example.traveling.features.travelshare.model.toPhotoPostUi
+import com.example.traveling.features.travelshare.PhotoPostUi
+import com.example.traveling.features.travelshare.toPhotoPostUi
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.flow.MutableStateFlow

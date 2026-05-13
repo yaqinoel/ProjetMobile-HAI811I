@@ -35,7 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 
 // 导入数据模型
 import com.example.traveling.core.utils.openNavigationToPlace
-import com.example.traveling.features.travelshare.model.PhotoPostDetailUi
+import com.example.traveling.features.travelshare.PhotoPostDetailUi
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch

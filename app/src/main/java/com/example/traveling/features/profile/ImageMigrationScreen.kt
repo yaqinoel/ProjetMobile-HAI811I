@@ -43,7 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.data.repository.FirestoreSeeder
-import com.example.traveling.data.repository.ImageMigrationHelper
+import com.example.traveling.core.utils.ImageMigrationHelper
 import com.example.traveling.ui.theme.CardBg
 import com.example.traveling.ui.theme.ProfileCardBg
 import com.example.traveling.ui.theme.ProfilePageBg

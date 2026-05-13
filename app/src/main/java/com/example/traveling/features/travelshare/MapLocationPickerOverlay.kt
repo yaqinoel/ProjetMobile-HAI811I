@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.sp
 import com.example.traveling.data.repository.PlacePredictionUi
 import com.example.traveling.data.repository.PlaceSearchRepository
 import com.example.traveling.data.repository.SelectedLocationCandidate
-import com.example.traveling.features.travelshare.model.SelectedLocationUi
-import com.example.traveling.features.travelshare.model.buildSelectedLocation
+import com.example.traveling.features.travelshare.SelectedLocationUi
+import com.example.traveling.features.travelshare.buildSelectedLocation
 import com.example.traveling.ui.theme.CardBg
 import com.example.traveling.ui.theme.RedPrimary
 import com.example.traveling.ui.theme.Stone400

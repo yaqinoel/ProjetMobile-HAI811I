@@ -52,9 +52,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.core.utils.openNavigationToPlace
-import com.example.traveling.features.travelshare.model.GalleryFilter
-import com.example.traveling.features.travelshare.model.PhotoPostUi
-import com.example.traveling.features.travelshare.util.filterGalleryPosts
+import com.example.traveling.features.travelshare.GalleryFilter
+import com.example.traveling.features.travelshare.PhotoPostUi
+import com.example.traveling.features.travelshare.filterGalleryPosts
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import com.google.android.gms.maps.CameraUpdateFactory

@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.model
+package com.example.traveling.features.travelshare
 
 data class GalleryFilter(
     val query: String = "",

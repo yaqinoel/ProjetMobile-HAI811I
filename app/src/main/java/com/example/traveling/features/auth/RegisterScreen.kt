@@ -1,4 +1,4 @@
-package com.example.traveling.features.passerelle
+package com.example.traveling.features.auth
 
 import android.net.Uri
 import android.widget.Toast

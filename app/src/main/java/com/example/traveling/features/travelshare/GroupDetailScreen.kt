@@ -40,7 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.repository.PhotoPostRepository
-import com.example.traveling.features.travelshare.model.toPhotoPostUi
+import com.example.traveling.features.travelshare.toPhotoPostUi
 import com.example.traveling.ui.theme.CardBg
 import com.example.traveling.ui.theme.PageBg
 import com.example.traveling.ui.theme.RedPrimary

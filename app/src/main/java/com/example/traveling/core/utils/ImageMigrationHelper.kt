@@ -1,4 +1,4 @@
-package com.example.traveling.data.repository
+package com.example.traveling.core.utils
 
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import kotlin.math.abs
 
 /**
  * One-time helper to replace expired public image links with real photos.
@@ -151,7 +152,7 @@ object ImageMigrationHelper {
                 .filter { it.isNotBlank() }
                 .joinToString(",")
             val encoded = URLEncoder.encode(query, "UTF-8").replace("+", ",")
-            val lock = kotlin.math.abs("${target.id}-$variant-$IMAGE_VERSION".hashCode())
+            val lock = abs("${target.id}-$variant-$IMAGE_VERSION".hashCode())
             SourceImage(
                 url = "https://loremflickr.com/1200/800/$encoded?lock=$lock",
                 contentType = "image/jpeg"

@@ -34,7 +34,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.launch
 import coil.request.ImageRequest
-import com.example.traveling.features.travelshare.model.PhotoPostUi
+import com.example.traveling.features.travelshare.PhotoPostUi
 import com.example.traveling.ui.theme.*
 
 // 将坐标映射为 Google Maps 专用的 LatLng 对象

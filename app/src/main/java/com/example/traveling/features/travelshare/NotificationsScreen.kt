@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.notifications
+package com.example.traveling.features.travelshare
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -72,8 +72,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.traveling.data.model.NotificationDocument
 import com.example.traveling.data.model.NotificationSettingsDocument
-import com.example.traveling.features.travelshare.NotificationsUiState
-import com.example.traveling.features.travelshare.NotificationsViewModel
 import com.example.traveling.ui.theme.BgColor
 import com.example.traveling.ui.theme.CardBg
 import com.example.traveling.ui.theme.HeaderBg

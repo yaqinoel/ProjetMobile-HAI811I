@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.data.model.PhotoPostDocument
-import com.example.traveling.features.travelshare.model.PhotoPostUi
-import com.example.traveling.features.travelshare.model.toPhotoPostUi
+import com.example.traveling.features.travelshare.PhotoPostUi
+import com.example.traveling.features.travelshare.toPhotoPostUi
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 

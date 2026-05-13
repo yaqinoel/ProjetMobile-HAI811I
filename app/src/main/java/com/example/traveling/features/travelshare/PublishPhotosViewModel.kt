@@ -9,8 +9,8 @@ import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.PublishPhotoPostInput
 import com.example.traveling.data.repository.UserRepository
-import com.example.traveling.features.travelshare.ai.ImageAnnotationRepository
-import com.example.traveling.features.travelshare.model.SelectedLocationUi
+import com.example.traveling.features.travelshare.ImageAnnotationRepository
+import com.example.traveling.features.travelshare.SelectedLocationUi
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

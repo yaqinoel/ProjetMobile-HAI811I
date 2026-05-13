@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.model
+package com.example.traveling.features.travelshare
 
 import androidx.compose.ui.graphics.Color
 import com.example.traveling.data.model.PhotoCommentDocument

@@ -44,7 +44,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.traveling.data.model.UserJoinedGroupDocument
-import com.example.traveling.features.travelshare.model.SelectedLocationUi
+import com.example.traveling.features.travelshare.MapLocationPickerOverlay
+import com.example.traveling.features.travelshare.SelectedLocationUi
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch

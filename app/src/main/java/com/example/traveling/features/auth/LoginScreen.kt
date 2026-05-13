@@ -1,4 +1,4 @@
-package com.example.traveling.features.passerelle
+package com.example.traveling.features.auth
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke

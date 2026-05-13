@@ -1,4 +1,4 @@
-package com.example.traveling.features.passerelle
+package com.example.traveling.features.auth
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
@@ -48,7 +48,7 @@ fun LaunchScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(id = R.drawable.bg_lunch),
+            painter = painterResource(id = R.drawable.bg_launch),
             contentDescription = "Fond d'écran Voyage",
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()

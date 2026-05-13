@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.ai
+package com.example.traveling.features.travelshare
 
 import android.content.Context
 import android.net.Uri

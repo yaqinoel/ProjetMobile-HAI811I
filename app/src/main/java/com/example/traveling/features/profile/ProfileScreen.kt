@@ -273,8 +273,7 @@ private fun AuthenticatedProfileView(
         ProfileMenuItem("Notifications", "Préférences et alertes", Icons.Default.Notifications, Color(0xFF10B981), action = onOpenNotifications),
         ProfileMenuItem("Itinéraires aimés", "Routes que vous avez aimées", Icons.Default.FavoriteBorder, Color(0xFFE11D48), action = onOpenLikedRoutes),
         ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes),
-        ProfileMenuItem("Migration images", "Remplacer les anciennes URLs par Firebase Storage", Icons.Default.CloudUpload, Color(0xFF2563EB), action = onOpenImageMigration),
-        ProfileMenuItem("Paramètres", "Compte & confidentialité", Icons.Default.Settings, Color(0xFF78716C))
+        ProfileMenuItem("Migration images", "Remplacer les anciennes URLs par Firebase Storage", Icons.Default.CloudUpload, Color(0xFF2563EB), action = onOpenImageMigration)
     )
 
     val stats = listOf(

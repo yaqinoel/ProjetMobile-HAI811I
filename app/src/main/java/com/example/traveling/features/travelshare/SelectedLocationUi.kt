@@ -1,4 +1,4 @@
-package com.example.traveling.features.travelshare.model
+package com.example.traveling.features.travelshare
 
 import kotlin.math.round
 
