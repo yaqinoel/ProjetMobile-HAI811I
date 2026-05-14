@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.traveling.data.model.PhotoPostDocument
+import com.example.traveling.data.model.TravelShareAttractionDocument
 import com.example.traveling.data.model.UserJoinedGroupDocument
 import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
@@ -53,6 +55,14 @@ class PublishPhotosViewModel(
                 .onSuccess { _joinedGroups.value = it }
                 .onFailure { _uiState.value = PublishUiState.Error(it.localizedMessage ?: "Impossible de charger les groupes") }
         }
+    }
+
+    suspend fun loadPostForEdit(postId: String): Result<PhotoPostDocument> {
+        return photoPostRepository.getPostOnce(postId)
+    }
+
+    suspend fun loadTravelShareAttractionForEdit(postId: String): Result<TravelShareAttractionDocument?> {
+        return photoPostRepository.getTravelShareAttractionOnce(postId)
     }
 
     fun annotateSelectedImages(context: Context, selectedPhotoUris: List<String>) {
@@ -111,7 +121,8 @@ class PublishPhotosViewModel(
             _uiState.value = PublishUiState.Error("Ajoutez au moins une photo")
             return
         }
-        if (visibility == "group" && selectedGroup == null) {
+        val normalizedVisibility = visibility.lowercase()
+        if (normalizedVisibility == "group" && selectedGroup == null) {
             _uiState.value = PublishUiState.Error("Sélectionnez un groupe")
             return
         }
@@ -148,9 +159,9 @@ class PublishPhotosViewModel(
                 locationPrecision = selectedLocation.precision,
                 placeType = placeType,
                 tags = tags,
-                visibility = visibility,
-                groupId = if (visibility == "group") selectedGroup?.groupId else null,
-                groupName = if (visibility == "group") selectedGroup?.name else null,
+                visibility = normalizedVisibility,
+                groupId = if (normalizedVisibility == "group") selectedGroup?.groupId else null,
+                groupName = if (normalizedVisibility == "group") selectedGroup?.name else null,
                 isLinkedToTravelPath = isLinkedToTravelPath,
                 travelPathCost = travelPathCost,
                 travelPathDurationMinutes = travelPathDurationMinutes,
@@ -170,6 +181,81 @@ class PublishPhotosViewModel(
                         error.localizedMessage ?: "Échec de publication"
                     )
                 }
+        }
+    }
+
+    fun updateExistingPost(
+        postId: String,
+        selectedPhotoUris: List<String>,
+        voiceNoteUri: String?,
+        title: String,
+        description: String,
+        selectedLocation: SelectedLocationUi,
+        visibility: String,
+        selectedGroup: UserJoinedGroupDocument?,
+        tags: List<String>,
+        placeType: String,
+        isLinkedToTravelPath: Boolean,
+        travelPathCost: Int? = null,
+        travelPathDurationMinutes: Int? = null,
+        travelPathEffortLevel: Int? = null,
+        travelPathOpenHours: String? = null,
+        travelPathClosedDay: String? = null,
+        travelPathWeatherType: String? = null,
+        travelPathBestTimeSlots: List<String> = emptyList()
+    ) {
+        val currentUser = auth.currentUser
+        if (currentUser == null) {
+            _uiState.value = PublishUiState.Error("Vous devez être connecté pour modifier")
+            return
+        }
+        if (selectedPhotoUris.isEmpty()) {
+            _uiState.value = PublishUiState.Error("Ajoutez au moins une photo")
+            return
+        }
+        if (visibility == "group" && selectedGroup == null) {
+            _uiState.value = PublishUiState.Error("Sélectionnez un groupe")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = PublishUiState.Uploading("Enregistrement...")
+            photoPostRepository.updatePostFromPublishForm(
+                postId = postId,
+                authorId = currentUser.uid,
+                imageRefs = selectedPhotoUris,
+                voiceNoteRef = voiceNoteUri,
+                title = title,
+                description = description,
+                locationName = selectedLocation.name,
+                locationAddress = selectedLocation.address,
+                googlePlaceId = selectedLocation.googlePlaceId,
+                locationSource = selectedLocation.source,
+                city = selectedLocation.city,
+                country = selectedLocation.country,
+                rawLatitude = selectedLocation.rawLatitude,
+                rawLongitude = selectedLocation.rawLongitude,
+                displayLatitude = selectedLocation.displayLatitude,
+                displayLongitude = selectedLocation.displayLongitude,
+                locationPrecision = selectedLocation.precision,
+                visibility = visibility,
+                groupId = if (visibility == "group") selectedGroup?.groupId else null,
+                groupName = if (visibility == "group") selectedGroup?.name else null,
+                tags = tags,
+                placeType = placeType,
+                isLinkedToTravelPath = isLinkedToTravelPath,
+                travelPathCost = travelPathCost,
+                travelPathDurationMinutes = travelPathDurationMinutes,
+                travelPathEffortLevel = travelPathEffortLevel,
+                travelPathOpenHours = travelPathOpenHours,
+                travelPathClosedDay = travelPathClosedDay,
+                travelPathWeatherType = travelPathWeatherType,
+                travelPathBestTimeSlots = travelPathBestTimeSlots
+            ).onSuccess {
+                _uiState.value = PublishUiState.Success(postId)
+            }.onFailure { error ->
+                _uiState.value = PublishUiState.Error(error.localizedMessage ?: "Échec de modification")
+            }
         }
     }
 

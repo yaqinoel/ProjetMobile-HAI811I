@@ -362,6 +362,17 @@ class PhotoPostRepository(
         }
     }
 
+    suspend fun getTravelShareAttractionOnce(postId: String): Result<TravelShareAttractionDocument?> {
+        return runCatching {
+            db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS)
+                .document("photo_$postId")
+                .get()
+                .awaitResult()
+                .takeIf { it.exists() }
+                ?.toObject(TravelShareAttractionDocument::class.java)
+        }
+    }
+
     fun observePostComments(
         postId: String,
         onChanged: (List<PhotoCommentDocument>) -> Unit,
@@ -655,6 +666,11 @@ class PhotoPostRepository(
         postId: String,
         title: String,
         description: String,
+        locationName: String,
+        city: String?,
+        country: String?,
+        locationPrecision: String,
+        placeType: String,
         visibility: String,
         tags: List<String>,
         isLinkedToTravelPath: Boolean
@@ -685,6 +701,11 @@ class PhotoPostRepository(
             val updatedPostForPlace = existingPost?.copy(
                 title = title,
                 description = description,
+                locationName = locationName,
+                city = city,
+                country = country,
+                locationPrecision = locationPrecision,
+                placeType = placeType,
                 tags = tags,
                 visibility = visibility,
                 isLinkedToTravelPath = shouldLinkToTravelPath && travelPathDestination != null,
@@ -696,6 +717,11 @@ class PhotoPostRepository(
             val updateValues = mutableMapOf<String, Any?>(
                 "title" to title,
                 "description" to description,
+                "locationName" to locationName,
+                "city" to city,
+                "country" to country,
+                "locationPrecision" to locationPrecision,
+                "placeType" to placeType,
                 "visibility" to visibility,
                 "tags" to tags,
                 "isLinkedToTravelPath" to (shouldLinkToTravelPath && travelPathDestination != null),
@@ -734,6 +760,177 @@ class PhotoPostRepository(
                     ),
                     SetOptions.merge()
                 )
+            }.commit().awaitResult()
+        }
+    }
+
+    suspend fun updatePostFromPublishForm(
+        postId: String,
+        authorId: String,
+        imageRefs: List<String>,
+        voiceNoteRef: String?,
+        title: String,
+        description: String,
+        locationName: String,
+        locationAddress: String?,
+        googlePlaceId: String?,
+        locationSource: String?,
+        city: String?,
+        country: String?,
+        rawLatitude: Double?,
+        rawLongitude: Double?,
+        displayLatitude: Double?,
+        displayLongitude: Double?,
+        locationPrecision: String,
+        visibility: String,
+        groupId: String?,
+        groupName: String?,
+        tags: List<String>,
+        placeType: String,
+        isLinkedToTravelPath: Boolean,
+        travelPathCost: Int? = null,
+        travelPathDurationMinutes: Int? = null,
+        travelPathEffortLevel: Int? = null,
+        travelPathOpenHours: String? = null,
+        travelPathClosedDay: String? = null,
+        travelPathWeatherType: String? = null,
+        travelPathBestTimeSlots: List<String> = emptyList()
+    ): Result<Unit> {
+        return runCatching {
+            require(imageRefs.isNotEmpty()) { "Aucune image à publier" }
+            val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
+            val existingPost = postRef.get().awaitResult().toObject(PhotoPostDocument::class.java)
+                ?: error("Publication introuvable")
+            require(existingPost.authorId == authorId) { "Vous ne pouvez modifier que vos publications" }
+
+            val existingImageUrls = imageRefs.filter { it.isRemoteStorageRef() }
+            val localImageUris = imageRefs.filterNot { it.isRemoteStorageRef() }.map(Uri::parse)
+            val uploadedImageUrls = if (localImageUris.isNotEmpty()) {
+                uploadAllImages(
+                    authorId = authorId,
+                    postId = postId,
+                    uris = localImageUris,
+                    startIndex = existingImageUrls.size
+                )
+            } else {
+                emptyList()
+            }
+            val imageUrls = existingImageUrls + uploadedImageUrls
+            require(imageUrls.isNotEmpty()) { "Aucune image à publier" }
+
+            val voiceNoteUrl = when {
+                voiceNoteRef.isNullOrBlank() -> null
+                voiceNoteRef.isRemoteStorageRef() -> voiceNoteRef
+                else -> uploadVoiceNote(authorId = authorId, postId = postId, uri = Uri.parse(voiceNoteRef))
+            }
+
+            val visibleLat = displayLatitude ?: rawLatitude
+            val visibleLng = displayLongitude ?: rawLongitude
+            val normalizedVisibility = visibility.lowercase()
+            val shouldLinkToTravelPath = isLinkedToTravelPath && normalizedVisibility == "public"
+            val travelPathDestination = if (shouldLinkToTravelPath) {
+                travelRepository.ensureTravelPathDestinationForPost(
+                    city = city,
+                    country = country,
+                    lat = visibleLat,
+                    lng = visibleLng,
+                    imageUrl = imageUrls.firstOrNull(),
+                    sourcePostId = postId,
+                    userId = authorId
+                )
+            } else {
+                null
+            }
+
+            val updatedPost = existingPost.copy(
+                title = title,
+                description = description,
+                imageUrls = imageUrls,
+                voiceNoteUrl = voiceNoteUrl,
+                locationName = locationName,
+                locationAddress = locationAddress,
+                googlePlaceId = googlePlaceId,
+                locationSource = locationSource,
+                city = city,
+                country = country,
+                rawLatitude = rawLatitude,
+                rawLongitude = rawLongitude,
+                displayLatitude = displayLatitude,
+                displayLongitude = displayLongitude,
+                latitude = visibleLat,
+                longitude = visibleLng,
+                locationPrecision = locationPrecision,
+                placeType = placeType,
+                tags = tags,
+                visibility = normalizedVisibility,
+                groupId = if (normalizedVisibility == "group") groupId else null,
+                groupName = if (normalizedVisibility == "group") groupName else null,
+                isLinkedToTravelPath = shouldLinkToTravelPath && travelPathDestination != null,
+                travelPathPlaceId = if (shouldLinkToTravelPath && travelPathDestination != null) "photo_$postId" else null,
+                travelPathDestinationId = travelPathDestination?.id,
+                travelPathDestinationName = travelPathDestination?.name,
+                travelPathSource = travelPathDestination?.source
+            )
+            val updateValues = mutableMapOf<String, Any?>(
+                "title" to updatedPost.title,
+                "description" to updatedPost.description,
+                "imageUrls" to updatedPost.imageUrls,
+                "voiceNoteUrl" to updatedPost.voiceNoteUrl,
+                "locationName" to updatedPost.locationName,
+                "locationAddress" to updatedPost.locationAddress,
+                "googlePlaceId" to updatedPost.googlePlaceId,
+                "locationSource" to updatedPost.locationSource,
+                "city" to updatedPost.city,
+                "country" to updatedPost.country,
+                "rawLatitude" to updatedPost.rawLatitude,
+                "rawLongitude" to updatedPost.rawLongitude,
+                "displayLatitude" to updatedPost.displayLatitude,
+                "displayLongitude" to updatedPost.displayLongitude,
+                "latitude" to updatedPost.latitude,
+                "longitude" to updatedPost.longitude,
+                "locationPrecision" to updatedPost.locationPrecision,
+                "placeType" to updatedPost.placeType,
+                "tags" to updatedPost.tags,
+                "visibility" to updatedPost.visibility,
+                "groupId" to updatedPost.groupId,
+                "groupName" to updatedPost.groupName,
+                "isLinkedToTravelPath" to updatedPost.isLinkedToTravelPath,
+                "travelPathPlaceId" to updatedPost.travelPathPlaceId,
+                "travelPathDestinationId" to updatedPost.travelPathDestinationId,
+                "travelPathDestinationName" to updatedPost.travelPathDestinationName,
+                "travelPathSource" to updatedPost.travelPathSource,
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+
+            val attraction = buildTravelShareAttraction(
+                post = updatedPost,
+                costOverride = travelPathCost,
+                durationMinutesOverride = travelPathDurationMinutes,
+                effortLevelOverride = travelPathEffortLevel,
+                openHoursOverride = travelPathOpenHours,
+                closedDayOverride = travelPathClosedDay,
+                weatherTypeOverride = travelPathWeatherType,
+                bestTimeSlotsOverride = travelPathBestTimeSlots
+            )
+
+            db.batch().apply {
+                update(postRef, updateValues)
+                if (attraction != null) {
+                    set(
+                        db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
+                        attraction,
+                        SetOptions.merge()
+                    )
+                } else {
+                    set(
+                        db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document("photo_$postId"),
+                        mapOf(
+                            "status" to "inactive",
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        ),
+                        SetOptions.merge()
+                    )
+                }
             }.commit().awaitResult()
         }
     }
@@ -892,12 +1089,13 @@ class PhotoPostRepository(
     private suspend fun uploadAllImages(
         authorId: String,
         postId: String,
-        uris: List<Uri>
+        uris: List<Uri>,
+        startIndex: Int = 0
     ): List<String> = coroutineScope {
         uris.mapIndexed { index, uri ->
             async {
                 val ref = storage.reference
-                    .child("travelshare/posts/$authorId/$postId/$index.jpg")
+                    .child("travelshare/posts/$authorId/$postId/${startIndex + index}.jpg")
                 ref.putFile(uri).awaitResult()
                 ref.downloadUrl.awaitResult().toString()
             }
@@ -921,6 +1119,10 @@ private fun List<PhotoPostDocument>.sortedByNewest(): List<PhotoPostDocument> {
         compareByDescending<PhotoPostDocument> { it.createdAt?.seconds ?: 0L }
             .thenByDescending { it.createdAt?.nanoseconds ?: 0 }
     )
+}
+
+private fun String.isRemoteStorageRef(): Boolean {
+    return startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
 }
 
 private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { cont ->

@@ -68,6 +68,11 @@ class MyPublishedPostsViewModel(
         postId: String,
         title: String,
         description: String,
+        locationName: String,
+        city: String?,
+        country: String?,
+        locationPrecision: String,
+        placeType: String,
         visibility: String,
         tags: List<String>,
         isLinkedToTravelPath: Boolean
@@ -77,6 +82,11 @@ class MyPublishedPostsViewModel(
                 postId = postId,
                 title = title,
                 description = description,
+                locationName = locationName,
+                city = city,
+                country = country,
+                locationPrecision = locationPrecision.lowercase(),
+                placeType = placeType.lowercase(),
                 visibility = visibility.lowercase(),
                 tags = tags,
                 isLinkedToTravelPath = isLinkedToTravelPath

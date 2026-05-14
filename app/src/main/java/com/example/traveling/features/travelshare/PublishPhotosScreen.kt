@@ -47,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.UserJoinedGroupDocument
 import com.example.traveling.data.repository.PlaceSearchRepository
 import com.example.traveling.features.travelshare.MapLocationPickerOverlay
@@ -63,17 +64,20 @@ private const val MAX_SELECTED_PHOTOS = 14
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PublishPhotosScreen(
+    editPostId: String? = null,
     onBack: () -> Unit = {},
     onPublishSuccess: (String) -> Unit = {},
     onOpenMapPicker: () -> Unit = {} // Inject Map API caller
 ) {
     val context = LocalContext.current
+    val isEditMode = !editPostId.isNullOrBlank()
     // États Obligatoires (Required)
     var title by remember { mutableStateOf("") }
     var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
     var selectedLocation by remember { mutableStateOf<SelectedLocationUi?>(null) }
     var visibility by remember { mutableStateOf("public") }
     var selectedGroup by remember { mutableStateOf<UserJoinedGroupDocument?>(null) }
+    var pendingGroupId by remember { mutableStateOf<String?>(null) }
 
     // États Optionnels (Optional)
     var description by remember { mutableStateOf("") }
@@ -291,6 +295,7 @@ fun PublishPhotosScreen(
     var closedDay by remember { mutableStateOf("") }
     var weatherType by remember { mutableStateOf("both") }
     var bestTimeSlots by remember { mutableStateOf(setOf("apres-midi")) }
+    var editContentLoaded by remember(editPostId) { mutableStateOf(!isEditMode) }
 
     // Weather Tolerance
     var coldTolerance by remember { mutableStateOf(false) }
@@ -331,7 +336,7 @@ fun PublishPhotosScreen(
                 publishViewModel.resetState()
             }
             is PublishUiState.Success -> {
-                snackbarHostState.showSnackbar("Publication réussie")
+                snackbarHostState.showSnackbar(if (isEditMode) "Publication modifiée" else "Publication réussie")
                 publishViewModel.resetState()
                 onPublishSuccess(state.postId)
             }
@@ -363,10 +368,67 @@ fun PublishPhotosScreen(
 
     LaunchedEffect(Unit) {
         publishViewModel.loadJoinedGroups()
-        requestCurrentLocationIfNeeded()
+        if (!isEditMode) {
+            requestCurrentLocationIfNeeded()
+        }
+    }
+
+    LaunchedEffect(editPostId) {
+        val postId = editPostId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        publishViewModel.loadPostForEdit(postId)
+            .onSuccess { post ->
+                val normalizedVisibility = post.visibility.lowercase().ifBlank { "public" }
+                val travelShareAttraction = publishViewModel.loadTravelShareAttractionForEdit(postId).getOrNull()
+                val hasTravelPathLink = post.isLinkedToTravelPath ||
+                    !post.travelPathDestinationId.isNullOrBlank() ||
+                    !post.travelPathPlaceId.isNullOrBlank() ||
+                    travelShareAttraction?.status == "active"
+
+                title = post.title
+                selectedPhotos = post.imageUrls
+                selectedLocation = post.toSelectedLocationUi()
+                visibility = normalizedVisibility
+                pendingGroupId = post.groupId
+                description = post.description
+                selectedTags = post.tags
+                voiceNoteUri = post.voiceNoteUrl
+                isLinkedToPath = normalizedVisibility == "public" && hasTravelPathLink
+                selectedCategory = post.placeType.ifBlank { null }
+                travelShareAttraction?.let { attraction ->
+                    expense = attraction.cost.takeIf { it > 0 }?.toString().orEmpty()
+                    duration = (attraction.duration / 60f).takeIf { it > 0f } ?: 0f
+                    effort = attraction.effortLevel.takeIf { it in 1..5 }?.toFloat() ?: 0f
+                    openHours = attraction.openHours.takeUnless { it == "Horaires non renseignés" }.orEmpty()
+                    closedDay = attraction.closedDay
+                    weatherType = attraction.weatherType.ifBlank { "both" }
+                    bestTimeSlots = attraction.bestTimeSlots.toSet().ifEmpty { setOf("apres-midi") }
+                }
+                editContentLoaded = true
+            }
+            .onFailure { error ->
+                editContentLoaded = true
+                snackbarHostState.showSnackbar(error.localizedMessage ?: "Impossible de charger la publication")
+            }
+    }
+
+    LaunchedEffect(joinedGroups, pendingGroupId) {
+        val groupId = pendingGroupId ?: return@LaunchedEffect
+        selectedGroup = joinedGroups.firstOrNull { it.groupId == groupId }
+    }
+
+    LaunchedEffect(visibility) {
+        if (visibility != "public") {
+            isLinkedToPath = false
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
+        if (!editContentLoaded) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = RedPrimary)
+            }
+            return@Box
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -379,7 +441,12 @@ fun PublishPhotosScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) { Icon(Icons.Default.Close, "Annuler", tint = Stone800) }
-            Text("Publier une photo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Stone800)
+            Text(
+                if (isEditMode) "Modifier la publication" else "Publier une photo",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Stone800
+            )
             TextButton(
                 onClick = {
                     if (validateBeforePreview()) {
@@ -390,7 +457,11 @@ fun PublishPhotosScreen(
             ) {
                 val uploading = publishState is PublishUiState.Uploading
                 Text(
-                    if (uploading) "Publication..." else "Publier",
+                    if (uploading) {
+                        if (isEditMode) "Enregistrement..." else "Publication..."
+                    } else {
+                        if (isEditMode) "Enregistrer" else "Publier"
+                    },
                     color = if (uploading) Stone400 else RedPrimary,
                     fontWeight = FontWeight.Bold
                 )
@@ -579,7 +650,10 @@ fun PublishPhotosScreen(
                         title = "Groupe",
                         subtitle = selectedGroup?.name ?: "Choisir un groupe",
                         modifier = Modifier.weight(1f),
-                        onClick = { visibility = "group" }
+                        onClick = {
+                            visibility = "group"
+                            isLinkedToPath = false
+                        }
                     )
                 }
                 if (visibility == "group") {
@@ -676,7 +750,11 @@ fun PublishPhotosScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Ajouter au TravelPath", fontSize = 14.sp, color = Stone800, fontWeight = FontWeight.SemiBold)
                             Text(
-                                if (isLinkedToPath) "Créer aussi une étape exploitable par TravelPath" else "Optionnel : enrichir la future génération de parcours",
+                                when {
+                                    visibility != "public" -> "Disponible uniquement pour les publications publiques"
+                                    isLinkedToPath -> "Créer aussi une étape exploitable par TravelPath"
+                                    else -> "Optionnel : enrichir la future génération de parcours"
+                                },
                                 fontSize = 11.sp,
                                 color = if (isLinkedToPath) RedPrimary else Stone400,
                                 maxLines = 2,
@@ -686,7 +764,10 @@ fun PublishPhotosScreen(
                     }
                     Switch(
                         checked = isLinkedToPath,
-                        onCheckedChange = { isLinkedToPath = it },
+                        onCheckedChange = { checked ->
+                            isLinkedToPath = checked && visibility == "public"
+                        },
+                        enabled = visibility == "public",
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = RedPrimary, uncheckedTrackColor = Stone300, uncheckedThumbColor = Color.White)
                     )
                 }
@@ -958,7 +1039,12 @@ fun PublishPhotosScreen(
                     .padding(horizontal = 24.dp, vertical = 8.dp)
                     .padding(bottom = 32.dp)
             ) {
-                Text("Résumé de publication", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                Text(
+                    if (isEditMode) "Résumé des modifications" else "Résumé de publication",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Stone800
+                )
                 Spacer(Modifier.height(8.dp))
                 Text("Vérifiez les informations avant publication.", fontSize = 13.sp, color = Stone500)
                 Spacer(Modifier.height(16.dp))
@@ -984,25 +1070,58 @@ fun PublishPhotosScreen(
                     onClick = {
                         if (isRecordingVoice) stopVoiceRecording()
                         publishPreview = false
-                        publishViewModel.publish(
-                            selectedPhotoUris = selectedPhotos,
-                            voiceNoteUri = voiceNoteUri,
-                            title = title,
-                            description = description.ifBlank { title },
-                            selectedLocation = selectedLocation ?: return@Button,
-                            visibility = visibility,
-                            selectedGroup = selectedGroup,
-                            tags = selectedTags.ifEmpty { listOf("Voyage") },
-                            placeType = selectedCategory ?: "photo",
-                            isLinkedToTravelPath = isLinkedToPath,
-                            travelPathCost = if (isLinkedToPath) expense.toIntOrNull() else null,
-                            travelPathDurationMinutes = if (isLinkedToPath && duration > 0f) duration.toInt() * 60 else null,
-                            travelPathEffortLevel = if (isLinkedToPath && effort > 0f) effort.toInt() else null,
-                            travelPathOpenHours = if (isLinkedToPath) openHours.trim().takeIf { it.isNotBlank() } else null,
-                            travelPathClosedDay = if (isLinkedToPath) closedDay.trim().takeIf { it.isNotBlank() } else null,
-                            travelPathWeatherType = if (isLinkedToPath) weatherType else null,
-                            travelPathBestTimeSlots = if (isLinkedToPath) bestTimeSlots.toList() else emptyList()
-                        )
+                        val location = selectedLocation ?: return@Button
+                        val commonTags = selectedTags.ifEmpty { listOf("Voyage") }
+                        val commonPlaceType = selectedCategory ?: "photo"
+                        val commonCost = if (isLinkedToPath) expense.toIntOrNull() else null
+                        val commonDuration = if (isLinkedToPath && duration > 0f) duration.toInt() * 60 else null
+                        val commonEffort = if (isLinkedToPath && effort > 0f) effort.toInt() else null
+                        val commonOpenHours = if (isLinkedToPath) openHours.trim().takeIf { it.isNotBlank() } else null
+                        val commonClosedDay = if (isLinkedToPath) closedDay.trim().takeIf { it.isNotBlank() } else null
+                        val commonWeatherType = if (isLinkedToPath) weatherType else null
+                        val commonBestTimeSlots = if (isLinkedToPath) bestTimeSlots.toList() else emptyList()
+                        if (isEditMode && !editPostId.isNullOrBlank()) {
+                            publishViewModel.updateExistingPost(
+                                postId = editPostId,
+                                selectedPhotoUris = selectedPhotos,
+                                voiceNoteUri = voiceNoteUri,
+                                title = title,
+                                description = description.ifBlank { title },
+                                selectedLocation = location,
+                                visibility = visibility,
+                                selectedGroup = selectedGroup,
+                                tags = commonTags,
+                                placeType = commonPlaceType,
+                                isLinkedToTravelPath = isLinkedToPath,
+                                travelPathCost = commonCost,
+                                travelPathDurationMinutes = commonDuration,
+                                travelPathEffortLevel = commonEffort,
+                                travelPathOpenHours = commonOpenHours,
+                                travelPathClosedDay = commonClosedDay,
+                                travelPathWeatherType = commonWeatherType,
+                                travelPathBestTimeSlots = commonBestTimeSlots
+                            )
+                        } else {
+                            publishViewModel.publish(
+                                selectedPhotoUris = selectedPhotos,
+                                voiceNoteUri = voiceNoteUri,
+                                title = title,
+                                description = description.ifBlank { title },
+                                selectedLocation = location,
+                                visibility = visibility,
+                                selectedGroup = selectedGroup,
+                                tags = commonTags,
+                                placeType = commonPlaceType,
+                                isLinkedToTravelPath = isLinkedToPath,
+                                travelPathCost = commonCost,
+                                travelPathDurationMinutes = commonDuration,
+                                travelPathEffortLevel = commonEffort,
+                                travelPathOpenHours = commonOpenHours,
+                                travelPathClosedDay = commonClosedDay,
+                                travelPathWeatherType = commonWeatherType,
+                                travelPathBestTimeSlots = commonBestTimeSlots
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = RedPrimary),
@@ -1012,7 +1131,7 @@ fun PublishPhotosScreen(
                         if (publishState is PublishUiState.Uploading) {
                             (publishState as PublishUiState.Uploading).progressText
                         } else {
-                            "Publier"
+                            if (isEditMode) "Enregistrer" else "Publier"
                         }
                     )
                 }
@@ -1281,6 +1400,22 @@ private fun Context.lastKnownLocationOrNull(): Location? {
             }.getOrNull()
         }
         .maxByOrNull { it.time }
+}
+
+private fun PhotoPostDocument.toSelectedLocationUi(): SelectedLocationUi? {
+    val rawLat = rawLatitude ?: latitude ?: displayLatitude ?: return null
+    val rawLng = rawLongitude ?: longitude ?: displayLongitude ?: return null
+    return buildSelectedLocation(
+        name = locationName.ifBlank { title.ifBlank { "Lieu sélectionné" } },
+        rawLatitude = rawLat,
+        rawLongitude = rawLng,
+        precision = locationPrecision.ifBlank { "exact" },
+        address = locationAddress,
+        city = city,
+        country = country,
+        googlePlaceId = googlePlaceId,
+        source = locationSource ?: "edit"
+    )
 }
 
 @Preview(showBackground = true)

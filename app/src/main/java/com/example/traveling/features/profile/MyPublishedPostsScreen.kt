@@ -30,11 +30,15 @@ import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.features.travelshare.PhotoPostUi
 import com.example.traveling.features.travelshare.toPhotoPostUi
 import com.example.traveling.ui.theme.*
-import kotlinx.coroutines.launch
 
 private data class ProfilePostUi(
     val post: PhotoPostUi,
     val title: String,
+    val locationName: String,
+    val city: String?,
+    val country: String?,
+    val locationPrecision: String,
+    val placeType: String,
     val visibility: String,
     val groupName: String? = null,
     val linkedToTravelPath: Boolean = false,
@@ -47,17 +51,16 @@ private data class ProfilePostUi(
 @Composable
 fun MyPublishedPostsScreen(
     onBack: () -> Unit = {},
-    onOpenPhotoDetail: (String) -> Unit = {}
+    onOpenPhotoDetail: (String) -> Unit = {},
+    onEditPost: (String) -> Unit = {}
 ) {
     val viewModel: MyPublishedPostsViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     var posts by remember { mutableStateOf(emptyList<ProfilePostUi>()) }
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tous") }
-    var editingPostId by remember { mutableStateOf<String?>(null) }
     var deletingPostId by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         viewModel.observeMyPosts()
@@ -85,16 +88,12 @@ fun MyPublishedPostsScreen(
             val matchesFilter = when (selectedFilter) {
                 "Public" -> item.visibility == "Public"
                 "Groupe" -> item.visibility == "Groupe"
-                "TravelPath" -> item.linkedToTravelPath
-                "Signalés" -> item.isReported
-                "Brouillons" -> item.isDraft
                 else -> true
             }
             matchesQuery && matchesFilter
         }
     }
 
-    val editing = posts.find { it.post.id == editingPostId }
     val deleting = posts.find { it.post.id == deletingPostId }
 
     Scaffold(
@@ -131,7 +130,7 @@ fun MyPublishedPostsScreen(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("Tous", "Public", "Groupe", "TravelPath", "Signalés", "Brouillons").forEach { label ->
+                listOf("Tous", "Public", "Groupe").forEach { label ->
                     FilterChip(
                         selected = selectedFilter == label,
                         onClick = { selectedFilter = label },
@@ -160,7 +159,7 @@ fun MyPublishedPostsScreen(
                             PublishedPostCard(
                                 item = item,
                                 onView = { onOpenPhotoDetail(item.post.id) },
-                                onEdit = { editingPostId = item.post.id },
+                                onEdit = { onEditPost(item.post.id) },
                                 onDelete = { deletingPostId = item.post.id }
                             )
                         }
@@ -168,25 +167,6 @@ fun MyPublishedPostsScreen(
                 }
             }
         }
-    }
-
-    if (editing != null) {
-        EditPublishedPostSheet(
-            item = editing,
-            onDismiss = { editingPostId = null },
-            onSave = { updated ->
-                val parsedTags = updated.post.tags
-                viewModel.updatePost(
-                    postId = updated.post.id,
-                    title = updated.title,
-                    description = updated.description,
-                    visibility = updated.visibility,
-                    tags = parsedTags,
-                    isLinkedToTravelPath = updated.linkedToTravelPath
-                )
-                editingPostId = null
-            }
-        )
     }
 
     if (deleting != null) {
@@ -211,6 +191,11 @@ private fun PhotoPostDocument.toProfilePostUi(): ProfilePostUi {
     return ProfilePostUi(
         post = ui,
         title = title.ifBlank { ui.location },
+        locationName = locationName.ifBlank { ui.location },
+        city = city,
+        country = country,
+        locationPrecision = locationPrecision.ifBlank { "exact" },
+        placeType = placeType.ifBlank { "photo" },
         visibility = if (normalizedVisibility == "group" || normalizedVisibility == "groupe") "Groupe" else "Public",
         groupName = groupName,
         linkedToTravelPath = isLinkedToTravelPath,
@@ -248,76 +233,39 @@ private fun PublishedPostCard(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             item.post.tags.take(4).forEach { tag ->
-                AssistChip(onClick = {}, label = { Text("#$tag") })
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = "#$tag",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                )
             }
             if (item.linkedToTravelPath) {
                 AssistChip(onClick = {}, label = { Text("TravelPath") }, leadingIcon = { Icon(Icons.Default.Route, null, modifier = Modifier.size(14.dp)) })
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = onView, modifier = Modifier.weight(1f)) { Text("Voir") }
-            OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) { Text("Modifier") }
-            Button(
+            OutlinedButton(onClick = onView, modifier = Modifier.weight(1f)) {
+                Text("Voir", maxLines = 1, overflow = TextOverflow.Clip)
+            }
+            OutlinedButton(onClick = onEdit, modifier = Modifier.weight(1f)) {
+                Text("Modifier", maxLines = 1, overflow = TextOverflow.Clip)
+            }
+            FilledIconButton(
                 onClick = onDelete,
                 modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
-            ) { Text("Supprimer") }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditPublishedPostSheet(
-    item: ProfilePostUi,
-    onDismiss: () -> Unit,
-    onSave: (ProfilePostUi) -> Unit
-) {
-    var title by remember(item.post.id) { mutableStateOf(item.title) }
-    var description by remember(item.post.id) { mutableStateOf(item.description) }
-    var visibility by remember(item.post.id) { mutableStateOf(item.visibility) }
-    var tags by remember(item.post.id) { mutableStateOf(item.post.tags.joinToString(", ")) }
-    var linkedToTravelPath by remember(item.post.id) { mutableStateOf(item.linkedToTravelPath) }
-
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = CardBg) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Modifier la publication", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Stone800)
-            SearchInput(value = title, placeholder = "Titre", onValueChange = { title = it })
-            SearchInput(value = description, placeholder = "Description", onValueChange = { description = it })
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Public", "Groupe").forEach { option ->
-                    FilterChip(selected = visibility == option, onClick = { visibility = option }, label = { Text(option) })
-                }
-            }
-
-            SearchInput(value = tags, placeholder = "Tags séparés par des virgules", onValueChange = { tags = it })
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFFDC2626))
             ) {
-                Text("Ajouter au TravelPath", color = Stone800, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Switch(checked = linkedToTravelPath, onCheckedChange = { linkedToTravelPath = it })
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Supprimer",
+                    tint = Color.White
+                )
             }
-
-            Button(
-                onClick = {
-                    val parsedTags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                    onSave(
-                        item.copy(
-                            title = title.ifBlank { item.title },
-                            description = description,
-                            visibility = visibility,
-                            linkedToTravelPath = linkedToTravelPath,
-                            post = item.post.copy(tags = parsedTags.ifEmpty { item.post.tags }, description = description)
-                        )
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = RedPrimary)
-            ) { Text("Enregistrer") }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }

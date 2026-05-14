@@ -122,10 +122,29 @@ fun AppNavigation() {
                 }
             )
         }
+        composable(
+            route = "edit_publish/{postId}",
+            arguments = listOf(navArgument("postId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val postId = backStackEntry.arguments?.getString("postId") ?: ""
+            PublishPhotosScreen(
+                editPostId = postId,
+                onBack = {
+                    navController.popBackStack()
+                },
+                onPublishSuccess = {
+                    navController.popBackStack()
+                },
+                onOpenMapPicker = {
+                    // Static map picker is handled inside PublishPhotosScreen.
+                }
+            )
+        }
         composable("my_published_posts") {
             MyPublishedPostsScreen(
                 onBack = { navController.popBackStack() },
-                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
+                onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") },
+                onEditPost = { postId -> navController.navigate("edit_publish/$postId") }
             )
         }
         composable("liked_posts") {
