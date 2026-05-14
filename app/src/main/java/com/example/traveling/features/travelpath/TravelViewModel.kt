@@ -570,6 +570,8 @@ class TravelViewModel : ViewModel() {
             terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
                 terms.contains("cafe") || terms.contains("café") -> "Gastronomie"
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
+            terms.contains("sport") -> "Loisirs"
+            terms.contains("nightlife") || terms.contains("soir") || terms.contains("bar") -> "Loisirs"
             terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
             else -> "Photo"
         }
@@ -583,6 +585,8 @@ class TravelViewModel : ViewModel() {
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> 20
             terms.contains("museum") || terms.contains("musée") || terms.contains("culture") -> 12
             terms.contains("monument") || terms.contains("architecture") -> 10
+            terms.contains("sport") -> 15
+            terms.contains("nightlife") || terms.contains("bar") -> 30
             terms.contains("leisure") || terms.contains("loisirs") -> 18
             terms.contains("nature") || terms.contains("park") || terms.contains("parc") ||
                 terms.contains("beach") || terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> 0

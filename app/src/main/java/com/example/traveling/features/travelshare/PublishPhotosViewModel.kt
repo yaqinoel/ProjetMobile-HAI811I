@@ -93,7 +93,13 @@ class PublishPhotosViewModel(
         tags: List<String>,
         placeType: String,
         isLinkedToTravelPath: Boolean,
-        travelPathCost: Int? = null
+        travelPathCost: Int? = null,
+        travelPathDurationMinutes: Int? = null,
+        travelPathEffortLevel: Int? = null,
+        travelPathOpenHours: String? = null,
+        travelPathClosedDay: String? = null,
+        travelPathWeatherType: String? = null,
+        travelPathBestTimeSlots: List<String> = emptyList()
     ) {
         val currentUser = auth.currentUser
         if (currentUser == null) {
@@ -146,7 +152,13 @@ class PublishPhotosViewModel(
                 groupId = if (visibility == "group") selectedGroup?.groupId else null,
                 groupName = if (visibility == "group") selectedGroup?.name else null,
                 isLinkedToTravelPath = isLinkedToTravelPath,
-                travelPathCost = travelPathCost
+                travelPathCost = travelPathCost,
+                travelPathDurationMinutes = travelPathDurationMinutes,
+                travelPathEffortLevel = travelPathEffortLevel,
+                travelPathOpenHours = travelPathOpenHours,
+                travelPathClosedDay = travelPathClosedDay,
+                travelPathWeatherType = travelPathWeatherType,
+                travelPathBestTimeSlots = travelPathBestTimeSlots
             )
 
             photoPostRepository.publishPhotoPost(input)

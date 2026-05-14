@@ -1,7 +1,10 @@
 package com.example.traveling.features.travelshare
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
 import android.media.MediaPlayer
 import android.media.MediaRecorder
 import android.net.Uri
@@ -37,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,10 +48,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.traveling.data.model.UserJoinedGroupDocument
+import com.example.traveling.data.repository.PlaceSearchRepository
 import com.example.traveling.features.travelshare.MapLocationPickerOverlay
 import com.example.traveling.features.travelshare.SelectedLocationUi
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Locale
@@ -83,6 +89,7 @@ fun PublishPhotosScreen(
     var publishPreview by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val placeSearchRepository = remember(context) { PlaceSearchRepository(context) }
     val publishViewModel: PublishPhotosViewModel = viewModel()
     val publishState by publishViewModel.uiState.collectAsState()
     val aiAnnotationState by publishViewModel.aiAnnotationState.collectAsState()
@@ -144,6 +151,60 @@ fun PublishPhotosScreen(
         }
     }
 
+    fun setCurrentLocationAsDefault() {
+        val location = context.lastKnownLocationOrNull()
+        if (location == null) {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Position actuelle indisponible. Sélectionnez un lieu sur la carte.") }
+            return
+        }
+
+        coroutineScope.launch {
+            val latLng = LatLng(location.latitude, location.longitude)
+            val candidate = placeSearchRepository.reverseLookup(latLng)
+                .getOrNull()
+                ?.firstOrNull()
+                ?: placeSearchRepository.defaultCandidate(latLng)
+            selectedLocation = buildSelectedLocation(
+                name = candidate.name,
+                rawLatitude = candidate.latitude,
+                rawLongitude = candidate.longitude,
+                precision = "exact",
+                address = candidate.address,
+                city = candidate.city,
+                country = candidate.country,
+                googlePlaceId = candidate.googlePlaceId,
+                source = "current_location"
+            )
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            setCurrentLocationAsDefault()
+        } else {
+            coroutineScope.launch { snackbarHostState.showSnackbar("Permission localisation refusée.") }
+        }
+    }
+
+    fun requestCurrentLocationIfNeeded() {
+        val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
+            setCurrentLocationAsDefault()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     fun requestOrStartVoiceRecording() {
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -154,6 +215,22 @@ fun PublishPhotosScreen(
         } else {
             recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
+    }
+
+    fun validateBeforePreview(): Boolean {
+        val message = when {
+            title.isBlank() -> "Ajoutez un titre avant de publier."
+            selectedPhotos.isEmpty() -> "Ajoutez au moins une photo."
+            selectedLocation == null -> "Sélectionnez un lieu."
+            visibility == "group" && selectedGroup == null -> "Sélectionnez un groupe."
+            isRecordingVoice -> "Arrêtez l'enregistrement vocal avant de publier."
+            else -> null
+        }
+        if (message != null) {
+            coroutineScope.launch { snackbarHostState.showSnackbar(message) }
+            return false
+        }
+        return true
     }
 
     fun toggleVoicePlayback() {
@@ -210,6 +287,10 @@ fun PublishPhotosScreen(
     var expense by remember { mutableStateOf("") }
     var duration by remember { mutableFloatStateOf(0f) } // 0 = Not specified
     var effort by remember { mutableFloatStateOf(0f) }   // 0 = Not specified
+    var openHours by remember { mutableStateOf("") }
+    var closedDay by remember { mutableStateOf("") }
+    var weatherType by remember { mutableStateOf("both") }
+    var bestTimeSlots by remember { mutableStateOf(setOf("apres-midi")) }
 
     // Weather Tolerance
     var coldTolerance by remember { mutableStateOf(false) }
@@ -282,6 +363,7 @@ fun PublishPhotosScreen(
 
     LaunchedEffect(Unit) {
         publishViewModel.loadJoinedGroups()
+        requestCurrentLocationIfNeeded()
     }
 
     Box(modifier = Modifier.fillMaxSize().background(PageBg)) {
@@ -300,19 +382,16 @@ fun PublishPhotosScreen(
             Text("Publier une photo", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Stone800)
             TextButton(
                 onClick = {
-                    publishPreview = true
+                    if (validateBeforePreview()) {
+                        publishPreview = true
+                    }
                 },
-                enabled = title.isNotBlank() &&
-                    selectedPhotos.isNotEmpty() &&
-                    selectedLocation != null &&
-                    (visibility != "group" || selectedGroup != null) &&
-                    !isRecordingVoice &&
-                    publishState !is PublishUiState.Uploading
+                enabled = publishState !is PublishUiState.Uploading
             ) {
                 val uploading = publishState is PublishUiState.Uploading
                 Text(
                     if (uploading) "Publication..." else "Publier",
-                    color = if (title.isNotBlank()) RedPrimary else Stone400,
+                    color = if (uploading) Stone400 else RedPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -582,18 +661,27 @@ fun PublishPhotosScreen(
                         .fillMaxWidth()
                         .background(if (isLinkedToPath) Color(0xFFFEF2F2) else CardBg, RoundedCornerShape(12.dp))
                         .border(1.dp, if (isLinkedToPath) Color(0xFFFCA5A5) else StoneBorder, RoundedCornerShape(12.dp))
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Box(modifier = Modifier.size(32.dp).background(if (isLinkedToPath) RedPrimary else Stone100, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Outlined.Route, null, tint = if (isLinkedToPath) Color.White else Stone500, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(12.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Ajouter au TravelPath", fontSize = 14.sp, color = Stone800, fontWeight = FontWeight.SemiBold)
-                            Text(if (isLinkedToPath) "Créer aussi une étape exploitable par TravelPath" else "Optionnel : enrichir la future génération de parcours", fontSize = 11.sp, color = if (isLinkedToPath) RedPrimary else Stone400)
+                            Text(
+                                if (isLinkedToPath) "Créer aussi une étape exploitable par TravelPath" else "Optionnel : enrichir la future génération de parcours",
+                                fontSize = 11.sp,
+                                color = if (isLinkedToPath) RedPrimary else Stone400,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                     Switch(
@@ -612,29 +700,37 @@ fun PublishPhotosScreen(
                 SectionCard {
                     Text("Type d'activité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val types = listOf(
-                            Triple("Culture", Icons.Default.AccountBalance, "Culture"),
-                            Triple("Nature", Icons.Default.Park, "Nature"),
-                            Triple("Food", Icons.Default.Restaurant, "Food"),
-                            Triple("Aventure", Icons.Default.Explore, "Aventure")
-                        )
-                        types.forEach { (id, icon, label) ->
-                            val selected = selectedCategory == id
-                            Surface(
-                                onClick = { selectedCategory = if (selected) null else id },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(2.dp, if (selected) Color(0xFFF87171) else Color.Transparent),
-                                color = if (selected) Color(0xFFFEF2F2) else Color(0xFFF5F5F4)
-                            ) {
-                                Column(modifier = Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(icon, null, tint = if (selected) RedPrimary else StoneMuted, modifier = Modifier.size(20.dp))
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = if (selected) RedPrimary else StoneMuted)
+                    val types = listOf(
+                        Triple("culture", Icons.Default.AccountBalance, "Culture"),
+                        Triple("food", Icons.Default.Restaurant, "Gastronomie"),
+                        Triple("nature", Icons.Default.Park, "Nature"),
+                        Triple("leisure", Icons.Default.SportsEsports, "Loisirs"),
+                        Triple("shopping", Icons.Default.ShoppingBag, "Shopping"),
+                        Triple("nightlife", Icons.Default.Nightlife, "Vie nocturne"),
+                        Triple("sport", Icons.Default.DirectionsRun, "Sport"),
+                        Triple("photo", Icons.Default.PhotoCamera, "Photo")
+                    )
+                    types.chunked(4).forEach { rowTypes ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowTypes.forEach { (id, icon, label) ->
+                                val selected = selectedCategory == id
+                                Surface(
+                                    onClick = { selectedCategory = if (selected) null else id },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(2.dp, if (selected) Color(0xFFF87171) else Color.Transparent),
+                                    color = if (selected) Color(0xFFFEF2F2) else Color(0xFFF5F5F4)
+                                ) {
+                                    Column(modifier = Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(icon, null, tint = if (selected) RedPrimary else StoneMuted, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(label, fontSize = 9.sp, fontWeight = FontWeight.Medium, color = if (selected) RedPrimary else StoneMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
                                 }
                             }
+                            repeat(4 - rowTypes.size) { Spacer(Modifier.weight(1f)) }
                         }
+                        Spacer(Modifier.height(8.dp))
                     }
                 }
 
@@ -714,6 +810,83 @@ fun PublishPhotosScreen(
                     }
                 }
 
+                SectionCard {
+                    Text("Horaires et disponibilité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = openHours,
+                        onValueChange = { openHours = it },
+                        placeholder = { Text("Ex: 09:00-18:00", color = StoneLighter, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.Schedule, null, tint = RedPrimary) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RedPrimary,
+                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedContainerColor = Color(0xFFF5F5F4),
+                            focusedContainerColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = closedDay,
+                        onValueChange = { closedDay = it },
+                        placeholder = { Text("Jour fermé (optionnel)", color = StoneLighter, fontSize = 14.sp) },
+                        leadingIcon = { Icon(Icons.Default.EventBusy, null, tint = RedPrimary) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = RedPrimary,
+                            unfocusedBorderColor = Color.Transparent,
+                            unfocusedContainerColor = Color(0xFFF5F5F4),
+                            focusedContainerColor = Color.White
+                        ),
+                        singleLine = true
+                    )
+                }
+
+                SectionCard {
+                    Text("Conditions et meilleur moment", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        listOf(
+                            "indoor" to "Intérieur",
+                            "outdoor" to "Extérieur",
+                            "both" to "Les deux"
+                        ).forEach { (id, label) ->
+                            FilterChip(
+                                selected = weatherType == id,
+                                onClick = { weatherType = id },
+                                label = { Text(label, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        listOf(
+                            "matin" to "Matin",
+                            "apres-midi" to "Après-midi",
+                            "soir" to "Soir"
+                        ).forEach { (id, label) ->
+                            val selected = id in bestTimeSlots
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    bestTimeSlots = if (selected) {
+                                        (bestTimeSlots - id).ifEmpty { setOf("apres-midi") }
+                                    } else {
+                                        bestTimeSlots + id
+                                    }
+                                },
+                                label = { Text(label, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
                 // Weather Tolerance
                 SectionCard {
                     Text("Tolérance Météo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
@@ -730,6 +903,33 @@ fun PublishPhotosScreen(
         }
         }
         SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
+        if (publishState is PublishUiState.Uploading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.28f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = CardBg,
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(color = RedPrimary)
+                        Text(
+                            (publishState as PublishUiState.Uploading).progressText,
+                            color = Stone800,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
     }
 
     if (showMapPicker) {
@@ -767,6 +967,8 @@ fun PublishPhotosScreen(
                 InfoLine("TravelPath", if (isLinkedToPath) "Étape TravelPath" else "Non lié")
                 if (isLinkedToPath) {
                     InfoLine("Coût TravelPath", expense.toIntOrNull()?.let { "$it EUR" } ?: "Non spécifié")
+                    InfoLine("Durée TravelPath", if (duration > 0f) "${duration.toInt()} h" else "Non spécifiée")
+                    InfoLine("Effort", if (effort > 0f) effortLabels[effort.toInt()] ?: "Modéré" else "Non spécifié")
                 }
                 Spacer(Modifier.height(16.dp))
                 Button(
@@ -782,9 +984,15 @@ fun PublishPhotosScreen(
                             visibility = visibility,
                             selectedGroup = selectedGroup,
                             tags = selectedTags.ifEmpty { listOf("Voyage") },
-                            placeType = selectedCategory?.lowercase() ?: "street",
+                            placeType = selectedCategory ?: "photo",
                             isLinkedToTravelPath = isLinkedToPath,
-                            travelPathCost = if (isLinkedToPath) expense.toIntOrNull() else null
+                            travelPathCost = if (isLinkedToPath) expense.toIntOrNull() else null,
+                            travelPathDurationMinutes = if (isLinkedToPath && duration > 0f) duration.toInt() * 60 else null,
+                            travelPathEffortLevel = if (isLinkedToPath && effort > 0f) effort.toInt() else null,
+                            travelPathOpenHours = if (isLinkedToPath) openHours.trim().takeIf { it.isNotBlank() } else null,
+                            travelPathClosedDay = if (isLinkedToPath) closedDay.trim().takeIf { it.isNotBlank() } else null,
+                            travelPathWeatherType = if (isLinkedToPath) weatherType else null,
+                            travelPathBestTimeSlots = if (isLinkedToPath) bestTimeSlots.toList() else emptyList()
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -1051,6 +1259,19 @@ private fun MediaPlayer.runCatchingStopAndRelease() {
         if (isPlaying) stop()
     }
     release()
+}
+
+private fun Context.lastKnownLocationOrNull(): Location? {
+    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+    return providers
+        .filter { provider -> runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false) }
+        .mapNotNull { provider ->
+            runCatching {
+                locationManager.getLastKnownLocation(provider)
+            }.getOrNull()
+        }
+        .maxByOrNull { it.time }
 }
 
 @Preview(showBackground = true)

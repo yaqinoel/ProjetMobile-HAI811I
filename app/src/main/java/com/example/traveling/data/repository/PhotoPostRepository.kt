@@ -48,7 +48,13 @@ data class PublishPhotoPostInput(
     val groupId: String?,
     val groupName: String?,
     val isLinkedToTravelPath: Boolean,
-    val travelPathCost: Int? = null
+    val travelPathCost: Int? = null,
+    val travelPathDurationMinutes: Int? = null,
+    val travelPathEffortLevel: Int? = null,
+    val travelPathOpenHours: String? = null,
+    val travelPathClosedDay: String? = null,
+    val travelPathWeatherType: String? = null,
+    val travelPathBestTimeSlots: List<String> = emptyList()
 )
 
 class PhotoPostRepository(
@@ -141,7 +147,16 @@ class PhotoPostRepository(
             val userRef = db.collection(FirestoreCollections.USERS).document(input.authorId)
             val batch = db.batch()
             batch.set(postRef, post)
-            buildTravelShareAttraction(post, input.travelPathCost)?.let { attraction ->
+            buildTravelShareAttraction(
+                post = post,
+                costOverride = input.travelPathCost,
+                durationMinutesOverride = input.travelPathDurationMinutes,
+                effortLevelOverride = input.travelPathEffortLevel,
+                openHoursOverride = input.travelPathOpenHours,
+                closedDayOverride = input.travelPathClosedDay,
+                weatherTypeOverride = input.travelPathWeatherType,
+                bestTimeSlotsOverride = input.travelPathBestTimeSlots
+            )?.let { attraction ->
                 batch.set(
                     db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
                     attraction,
@@ -725,7 +740,13 @@ class PhotoPostRepository(
 
     private fun buildTravelShareAttraction(
         post: PhotoPostDocument,
-        costOverride: Int? = null
+        costOverride: Int? = null,
+        durationMinutesOverride: Int? = null,
+        effortLevelOverride: Int? = null,
+        openHoursOverride: String? = null,
+        closedDayOverride: String? = null,
+        weatherTypeOverride: String? = null,
+        bestTimeSlotsOverride: List<String> = emptyList()
     ): TravelShareAttractionDocument? {
         if (!post.isLinkedToTravelPath || post.visibility != "public" || post.status != "published") return null
         val destinationId = post.travelPathDestinationId ?: return null
@@ -743,17 +764,17 @@ class PhotoPostRepository(
             type = attractionType,
             cost = costOverride?.coerceAtLeast(0)
                 ?: estimateTravelShareCost(attractionType, post.placeType, post.tags),
-            duration = 45,
+            duration = durationMinutesOverride?.takeIf { it > 0 } ?: 45,
             rating = 4.2 + minOf(post.likeCount, 50) / 100.0,
             description = post.description.ifBlank { post.title },
             imageUrl = post.imageUrls.firstOrNull().orEmpty(),
             lat = lat,
             lng = lng,
-            openHours = "Horaires non renseignés",
-            closedDay = "",
-            effortLevel = 1,
-            weatherType = "both",
-            bestTimeSlots = listOf("apres-midi"),
+            openHours = openHoursOverride?.takeIf { it.isNotBlank() } ?: "Horaires non renseignés",
+            closedDay = closedDayOverride.orEmpty(),
+            effortLevel = effortLevelOverride?.takeIf { it in 1..5 } ?: 1,
+            weatherType = weatherTypeOverride?.takeIf { it in setOf("indoor", "outdoor", "both") } ?: "both",
+            bestTimeSlots = bestTimeSlotsOverride.ifEmpty { listOf("apres-midi") },
             tags = (post.tags + "TravelShare").distinct(),
             imageUrls = post.imageUrls,
             source = "travelshare",
@@ -776,6 +797,8 @@ class PhotoPostRepository(
             terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
                 terms.contains("cafe") || terms.contains("café") -> "Gastronomie"
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
+            terms.contains("sport") -> "Loisirs"
+            terms.contains("nightlife") || terms.contains("soir") || terms.contains("bar") -> "Loisirs"
             terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
             else -> "Photo"
         }
@@ -789,6 +812,8 @@ class PhotoPostRepository(
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> 20
             terms.contains("museum") || terms.contains("musée") || terms.contains("culture") -> 12
             terms.contains("monument") || terms.contains("architecture") -> 10
+            terms.contains("sport") -> 15
+            terms.contains("nightlife") || terms.contains("bar") -> 30
             terms.contains("leisure") || terms.contains("loisirs") -> 18
             terms.contains("nature") || terms.contains("park") || terms.contains("parc") ||
                 terms.contains("beach") || terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> 0
