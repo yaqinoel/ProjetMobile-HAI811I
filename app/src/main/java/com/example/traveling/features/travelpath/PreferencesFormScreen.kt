@@ -24,7 +24,6 @@ import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.TravelPathData
 import com.example.traveling.ui.theme.*
 
-//  PREFERENCES FORM
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PreferencesForm(
@@ -37,7 +36,6 @@ internal fun PreferencesForm(
     val destinations by travelViewModel.destinations.collectAsState()
     val citiesList = quickCities.ifEmpty { TravelPathData.defaultQuickCities }
 
-    // -- Form state backed by ViewModel (persists across navigation) --
     var destination by remember { mutableStateOf(travelViewModel.formDestination.value.ifEmpty { initialDestination ?: "" }) }
     var selectedActivities by remember { mutableStateOf(travelViewModel.formActivities.value) }
     var budget by remember { mutableFloatStateOf(travelViewModel.formBudget.value) }
@@ -55,7 +53,6 @@ internal fun PreferencesForm(
     val travelShareTags by travelViewModel.formTravelShareTags.collectAsState()
     val travelShareSuggestions by travelViewModel.travelSharePhotoSuggestions.collectAsState()
 
-    // Sync form state back to ViewModel whenever values change
     LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
     LaunchedEffect(selectedActivities) { travelViewModel.formActivities.value = selectedActivities }
     LaunchedEffect(budget) { travelViewModel.formBudget.value = budget }
@@ -106,7 +103,6 @@ internal fun PreferencesForm(
             .fillMaxSize()
             .background(PageBg)
     ) {
-        // -- Header --
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = CardBg.copy(alpha = 0.9f),
@@ -136,7 +132,6 @@ internal fun PreferencesForm(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // -- Destination --
             SectionCard {
                 Text("Destination", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(8.dp))
@@ -293,8 +288,6 @@ internal fun PreferencesForm(
                     }
                 }
             }
-
-            // -- Activity Preferences --
             SectionCard {
                 Text("Préférences d'intérêts", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
@@ -341,8 +334,6 @@ internal fun PreferencesForm(
                     Spacer(Modifier.height(8.dp))
                 }
             }
-
-            // -- Favorite Places --
             SectionCard {
                 Text("Lieux à visiter (optionnel)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
@@ -420,8 +411,6 @@ internal fun PreferencesForm(
                         }
                     }
                 }
-
-                // Suggested Attractions Row
                 if (suggestedAttractions.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     Text("Suggestions pour cette ville :", fontSize = 11.sp, color = StoneLighter)
@@ -503,8 +492,6 @@ internal fun PreferencesForm(
                     }
                 }
             }
-
-            // -- Budget Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -531,7 +518,6 @@ internal fun PreferencesForm(
                 }
             }
 
-            // -- Duration Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -559,7 +545,6 @@ internal fun PreferencesForm(
                 }
             }
 
-            // -- Effort Slider --
             SectionCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -604,7 +589,6 @@ internal fun PreferencesForm(
                 }
             }
 
-            // -- Weather Tolerance --
             SectionCard {
                 Text("Meteo & Confort", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                 Spacer(Modifier.height(12.dp))
@@ -642,7 +626,6 @@ internal fun PreferencesForm(
                 }
             }
 
-            // -- Generate Button --
             Button(
                 onClick = {
                     travelViewModel.selectDestination(
@@ -693,7 +676,7 @@ internal fun PreferencesForm(
                 }
             }
 
-            Spacer(Modifier.height(80.dp)) // Bottom padding for navigation bar
+            Spacer(Modifier.height(80.dp))
         }
     }
 }

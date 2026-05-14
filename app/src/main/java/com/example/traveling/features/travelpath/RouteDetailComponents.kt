@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.sp
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.ui.theme.*
 
-// Time slot styling data
 internal data class TimeSlotStyle(
     val label: String,
     val icon: ImageVector,
@@ -31,7 +30,6 @@ internal val timeSlotStyles = mapOf(
     TimeSlot.SOIR to TimeSlotStyle("Soir", Icons.Default.DarkMode, Color(0xFFEEF2FF), Color(0xFF4338CA), Color(0xFFC7D2FE))
 )
 
-// Glass-style icon button (used in hero header)
 @Composable
 internal fun IconButtonGlass(
     onClick: () -> Unit,
@@ -49,7 +47,6 @@ internal fun IconButtonGlass(
     }
 }
 
-// Stat item used in the stats bar
 @Composable
 internal fun DetailStatItem(
     icon: ImageVector,

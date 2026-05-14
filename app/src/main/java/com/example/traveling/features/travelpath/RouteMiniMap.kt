@@ -40,22 +40,22 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text("Aperçu du Trajet", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneText)
             Spacer(Modifier.height(12.dp))
-            
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(8.dp))
             ) {
-                // Bounds calculation for the camera
+
                 var mapLoaded by remember { mutableStateOf(false) }
                 val cameraPositionState = rememberCameraPositionState()
-                
+
                 LaunchedEffect(validStops, mapLoaded) {
                     if (mapLoaded) {
                         val builder = LatLngBounds.builder()
                         validStops.forEach { builder.include(LatLng(it.lat, it.lng)) }
-                        // Decode polylines to include them in bounds
+
                         validStops.forEach { stop ->
                             if (!stop.polylineToNext.isNullOrEmpty()) {
                                 stop.polylineToNext.split("||").forEach { polyStr ->
@@ -64,10 +64,10 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
                                 }
                             }
                         }
-                        
+
                         val bounds = builder.build()
                         cameraPositionState.animate(
-                            CameraUpdateFactory.newLatLngBounds(bounds, 100) // 100px padding
+                            CameraUpdateFactory.newLatLngBounds(bounds, 100)
                         )
                     }
                 }
@@ -82,7 +82,7 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
                         mapToolbarEnabled = false
                     )
                 ) {
-                    // Draw Polylines
+
                     validStops.forEach { stop ->
                         if (!stop.polylineToNext.isNullOrEmpty()) {
                             stop.polylineToNext.split("||").forEach { polyStr ->
@@ -96,7 +96,6 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
                         }
                     }
 
-                    // Draw Markers
                     validStops.forEachIndexed { index, stop ->
                         val position = LatLng(stop.lat, stop.lng)
                         val title = "${index + 1}. ${stop.name}"

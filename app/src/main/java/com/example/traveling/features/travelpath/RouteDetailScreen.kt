@@ -30,7 +30,6 @@ import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
-// Route detail page — assembles hero, stats, map, timeline, and action buttons
 @Composable
 fun RouteDetailScreen(
     routeId: String,
@@ -47,13 +46,11 @@ fun RouteDetailScreen(
     val pdfExportPath by travelViewModel.pdfExportPath.collectAsState()
     val stopTravelSharePhotos by travelViewModel.stopTravelSharePhotos.collectAsState()
 
-    // Initialize local storage for SharedPreferences access
     LaunchedEffect(Unit) {
         travelViewModel.initLocalStorage(context)
         travelViewModel.fetchWeather()
     }
 
-    // Like / Save state persisted via SharedPreferences
     var liked by remember(routeId) {
         mutableStateOf(travelViewModel.isRouteLiked(routeId))
     }
@@ -63,7 +60,6 @@ fun RouteDetailScreen(
     var expandedStopId by remember { mutableStateOf<String?>("s1") }
     var showRegenerateDialog by remember { mutableStateOf(false) }
 
-    // Handle PDF export result
     LaunchedEffect(pdfExportPath) {
         pdfExportPath?.let { file ->
             Toast.makeText(context, "PDF enregistré : ${file.name}", Toast.LENGTH_LONG).show()
@@ -99,7 +95,7 @@ fun RouteDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // 1. Hero image with back/like/share
+
             RouteHeroSection(
                 heroImage = heroImage,
                 destName = destName,
@@ -118,17 +114,14 @@ fun RouteDetailScreen(
                 }
             )
 
-            // 2. Stats bar + real weather info
             RouteStatsBar(
                 stops = stops,
                 routeDuration = selectedRoute?.duration ?: "5-6h",
                 weather = weather
             )
 
-            // 3. Mini map
             RouteMiniMap(stops = stops)
 
-            // 4. Stops timeline
             RouteTimeline(
                 groups = groups,
                 expandedStopId = expandedStopId,
@@ -141,7 +134,6 @@ fun RouteDetailScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // 5. Action buttons + offline banner
             RouteActionButtons(
                 saved = saved,
                 onToggleSave = {

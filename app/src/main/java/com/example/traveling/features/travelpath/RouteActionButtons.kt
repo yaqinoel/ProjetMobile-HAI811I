@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.ui.theme.*
 
-// Bottom action buttons: Save / Export PDF / Regenerate / Share + Offline banner
 @Composable
 internal fun RouteActionButtons(
     saved: Boolean,
@@ -30,7 +29,7 @@ internal fun RouteActionButtons(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Save button
+
             Surface(
                 onClick = onToggleSave,
                 modifier = Modifier.weight(1f).height(44.dp),
@@ -56,7 +55,7 @@ internal fun RouteActionButtons(
                     )
                 }
             }
-            // Export PDF
+
             Surface(
                 onClick = onExportPdf,
                 modifier = Modifier.weight(1f).height(44.dp),
@@ -77,7 +76,7 @@ internal fun RouteActionButtons(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Regenerate
+
             Surface(
                 onClick = onRegenerate,
                 modifier = Modifier.weight(1f).height(44.dp),
@@ -94,7 +93,7 @@ internal fun RouteActionButtons(
                     Text("Regénérer", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
                 }
             }
-            // Share
+
             Surface(
                 onClick = onShare,
                 modifier = Modifier.weight(1f).height(44.dp),
@@ -113,7 +112,6 @@ internal fun RouteActionButtons(
             }
         }
 
-        // Offline banner
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = AmberLight,

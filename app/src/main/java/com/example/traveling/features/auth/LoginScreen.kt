@@ -34,7 +34,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -47,27 +46,25 @@ fun LoginScreen(
     val userRepository = remember { UserRepository() }
     val coroutineScope = rememberCoroutineScope()
 
-    // 状态管理
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) } // 密码是否可见
+    var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // 外层容器：带有渐变背景
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(listOf(Red50, Amber50_30)))
     ) {
-        // 1. 顶部返回按钮区域
+
         Box(modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Surface(
                 onClick = onBack,
                 modifier = Modifier.size(40.dp),
                 shape = RoundedCornerShape(8.dp),
                 color = Color.White,
-                border = BorderStroke(1.dp, Color(0x80FEE2E2)), // border-red-100/50
+                border = BorderStroke(1.dp, Color(0x80FEE2E2)),
                 shadowElevation = 1.dp
             ) {
                 Icon(
@@ -79,10 +76,8 @@ fun LoginScreen(
             }
         }
 
-        // 核心内容区域
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
 
-            // --- Logo 区域 ---
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 32.dp)) {
                 Box(
                     modifier = Modifier
@@ -98,14 +93,11 @@ fun LoginScreen(
                 Text("Voyageur du Monde", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Stone800, letterSpacing = 0.5.sp)
             }
 
-            // --- 欢迎文本 ---
             Text("Bon retour", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Stone800, modifier = Modifier.padding(bottom = 4.dp))
             Text("Connectez-vous pour continuer votre voyage", fontSize = 14.sp, color = Stone500, modifier = Modifier.padding(bottom = 32.dp))
 
-            // --- 表单区域 ---
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-                // Email 输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Email", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
                     OutlinedTextField(
@@ -120,13 +112,12 @@ fun LoginScreen(
                             unfocusedContainerColor = Color.White,
                             focusedContainerColor = Color.White,
                             unfocusedBorderColor = Stone200,
-                            focusedBorderColor = Color(0xFFF87171) // 焦点时的红色边框
+                            focusedBorderColor = Color(0xFFF87171)
                         ),
                         modifier = Modifier.fillMaxWidth().height(52.dp)
                     )
                 }
 
-                // 密码输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Mot de passe", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
                     OutlinedTextField(
@@ -158,7 +149,6 @@ fun LoginScreen(
                     )
                 }
 
-                // 忘记密码
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     Text(
                         text = "Mot de passe oublié ?",
@@ -169,14 +159,12 @@ fun LoginScreen(
                     )
                 }
 
-                // 错误提示
                 if (errorMessage != null) {
                     Text(text = errorMessage!!, color = Color.Red, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // --- 登录按钮 (保留了你的 Firebase 逻辑) ---
                 Button(
                     onClick = {
                         if (email.isNotEmpty() && password.isNotEmpty()) {
@@ -235,7 +223,7 @@ fun LoginScreen(
                                 Brush.horizontalGradient(listOf(Red700, Red800)),
                                 RoundedCornerShape(8.dp)
                             )
-                            .border(1.dp, Color(0x4DDC2626), RoundedCornerShape(8.dp)), // border-red-600/30
+                            .border(1.dp, Color(0x4DDC2626), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isLoading) {
@@ -249,7 +237,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // --- 底部注册入口 ---
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.Center,

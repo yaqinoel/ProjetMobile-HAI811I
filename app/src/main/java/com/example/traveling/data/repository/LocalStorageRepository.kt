@@ -15,17 +15,11 @@ import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Manages local persistence for saved/liked routes and offline caching.
- * Uses SharedPreferences for lightweight key-value storage.
- */
 class LocalStorageRepository(context: Context) {
 
     private val appContext = context.applicationContext
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences("traveling_prefs", Context.MODE_PRIVATE)
-
-    // ─── Like / Save ───
 
     fun isRouteLiked(routeId: String): Boolean =
         prefs.getStringSet("liked_routes", emptySet())?.contains(routeId) == true
@@ -55,7 +49,6 @@ class LocalStorageRepository(context: Context) {
         return nowSaved
     }
 
-    /** Store lightweight route metadata so profile can display it */
     fun storeRouteInfo(route: TravelRoute, destName: String) {
         val effectiveDestName = destName.ifBlank { route.destName }
         val json = JSONObject().apply {
@@ -111,8 +104,6 @@ class LocalStorageRepository(context: Context) {
         return ids.mapNotNull { getRouteInfo(it) }
     }
 
-    // ─── Offline Route Caching ───
-
     fun cacheRoute(routeKey: String, route: TravelRoute, stops: List<RouteStop>) {
         val json = JSONObject().apply {
             put("route", routeToJson(route))
@@ -120,7 +111,6 @@ class LocalStorageRepository(context: Context) {
         }
         prefs.edit().putString("cache_route_$routeKey", json.toString()).apply()
 
-        // Track cached keys
         val keys = prefs.getStringSet("cached_route_keys", emptySet())?.toMutableSet() ?: mutableSetOf()
         keys.add(routeKey)
         prefs.edit().putStringSet("cached_route_keys", keys).apply()
@@ -174,8 +164,6 @@ class LocalStorageRepository(context: Context) {
 
     fun getCachedRouteKeys(): Set<String> =
         prefs.getStringSet("cached_route_keys", emptySet()) ?: emptySet()
-
-    // ─── JSON serialization helpers ───
 
     private fun routeToJson(r: TravelRoute) = JSONObject().apply {
         put("id", r.id); put("name", r.name); put("subtitle", r.subtitle)

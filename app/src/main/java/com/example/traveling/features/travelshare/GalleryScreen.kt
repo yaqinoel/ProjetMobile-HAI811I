@@ -52,9 +52,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.core.utils.openNavigationToPlace
-import com.example.traveling.features.travelshare.GalleryFilter
-import com.example.traveling.features.travelshare.PhotoPostUi
-import com.example.traveling.features.travelshare.filterGalleryPosts
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -98,7 +95,6 @@ private val PHOTO_RADIUS = listOf(
     PhotoFilterOption("similar", "Photos similaires")
 )
 
-// ─── 核心 UI ───
 @Composable
 fun GalleryScreen(
     isAnonymous: Boolean = false,
@@ -125,7 +121,7 @@ fun GalleryScreen(
         else -> emptyList()
     }
 
-    var viewMode by rememberSaveable { mutableStateOf("list") } // "list", "grid", "map"
+    var viewMode by rememberSaveable { mutableStateOf("list") }
     var shuffledPhotos by remember { mutableStateOf<List<PhotoPostUi>?>(null) }
     var similarToPostId by rememberSaveable { mutableStateOf(initialSimilarPostId.orEmpty()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -421,7 +417,6 @@ fun GalleryScreen(
     }
 }
 
-// ─── 顶部导航栏 ───
 @Composable
 private fun HeaderBar(
     viewMode: String,
@@ -533,6 +528,7 @@ private fun HeaderBar(
                         Icon(Icons.Default.Close, contentDescription = "Effacer", tint = StoneMuted, modifier = Modifier.size(16.dp))
                     }
                 }
+                Spacer(Modifier.width(8.dp))
                 IconButton(
                     onClick = onToggleFilters,
                     modifier = Modifier
@@ -1054,7 +1050,6 @@ private fun FilterRow(
     }
 }
 
-// ─── 视图切换器 ───
 @Composable
 private fun ViewToggle(viewMode: String, onSetViewMode: (String) -> Unit) {
     Row(modifier = Modifier.background(Color(0xFFF5F5F4), RoundedCornerShape(8.dp)).padding(2.dp)) {
@@ -1073,7 +1068,6 @@ private fun ViewToggle(viewMode: String, onSetViewMode: (String) -> Unit) {
     }
 }
 
-// ─── 顶部 Stories 横向列表 ───
 @Composable
 private fun FollowedShortcutsRow(
     shortcuts: List<TravelShareShortcutUi>,
@@ -1132,7 +1126,6 @@ private fun FollowedShortcutsRow(
     }
 }
 
-// ─── List 列表视图 (详细卡片) ───
 @Composable
 fun PhotoListView(
     photos: List<PhotoPostUi>,
@@ -1168,7 +1161,6 @@ fun PhotoListView(
                 modifier = Modifier.fillMaxWidth().clickable { onPhotoClick(photo.id)}
             ) {
                 Column {
-                    // 卡片头部 (作者、位置)
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         UserAvatar(
                             avatarUrl = photo.authorAvatarUrl,
@@ -1207,13 +1199,11 @@ fun PhotoListView(
                         }
                     }
 
-                    // 主图片
                     AsyncImage(
                         model = photo.imageUrl, contentDescription = photo.description, contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
                     )
 
-                    // 互动按钮、文字与标签
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1299,7 +1289,6 @@ private fun TagChip(text: String) {
     )
 }
 
-// ─── Grid 网格视图 ───
 @Composable
 private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> Unit) {
     LazyVerticalGrid(
@@ -1315,10 +1304,9 @@ private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> U
             val displayTitle = photo.title.ifBlank { photo.location }
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(3f / 4f).clip(RoundedCornerShape(12.dp)).clickable { onPhotoClick(photo.id) }) {
                 AsyncImage(model = photo.imageUrl, contentDescription = displayTitle, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                // 底部渐变黑色背景
+
                 Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = 0.8f)))))
 
-                // 右上角点赞按钮
                 Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(28.dp).background(Color.Black.copy(alpha = 0.3f), CircleShape), contentAlignment = Alignment.Center) {
                     Icon(if (photo.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, contentDescription = "Like", tint = if (photo.isLiked) Color.Red else Color.White, modifier = Modifier.size(14.dp))
                 }
@@ -1339,7 +1327,6 @@ private fun PhotoGridView(photos: List<PhotoPostUi>, onPhotoClick: (String) -> U
                     )
                 }
 
-                // 左下角文字信息
                 Column(modifier = Modifier.align(Alignment.BottomStart).padding(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFDE047), modifier = Modifier.size(10.dp))
@@ -1438,16 +1425,14 @@ private fun daysInMonth(year: Int, month: Int): Int {
     }.getActualMaximum(Calendar.DAY_OF_MONTH)
 }
 
-@Preview(showBackground = true, name = "Mode Connecté (已登录状态)")
+@Preview(showBackground = true, name = "Mode Connecté")
 @Composable
 fun GalleryScreenPreview() {
-    // 预览已登录用户的界面
     GalleryScreen(isAnonymous = false)
 }
 
-@Preview(showBackground = true, name = "Mode Anonyme (匿名状态)")
+@Preview(showBackground = true, name = "Mode Anonyme")
 @Composable
 fun GalleryScreenAnonymousPreview() {
-    // 预览匿名用户的界面（你会发现顶部的加号和通知小铃铛不见了）
     GalleryScreen(isAnonymous = true)
 }

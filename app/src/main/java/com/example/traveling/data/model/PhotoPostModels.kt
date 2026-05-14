@@ -2,7 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/** photoPosts/{postId} */
 data class PhotoPostDocument(
     val postId: String = "",
     val authorId: String = "",
@@ -46,7 +45,6 @@ data class PhotoPostDocument(
     val status: String = "published"
 )
 
-/** photoPosts/{postId}/comments/{commentId} */
 data class PhotoCommentDocument(
     val commentId: String = "",
     val postId: String = "",
@@ -59,14 +57,12 @@ data class PhotoCommentDocument(
     val status: String = "visible"
 )
 
-/** photoPosts/{postId}/likes/{userId} */
 data class PostLikeDocument(
     val userId: String = "",
     val postId: String = "",
     val createdAt: Timestamp? = null
 )
 
-/** photoPosts/{postId}/saves/{userId} */
 data class PostSaveDocument(
     val userId: String = "",
     val postId: String = "",

@@ -94,7 +94,7 @@ fun LikedRoutesScreen(
                         onRemove = {
                             localStorage.toggleRouteLike(route.id)
                             routes = localStorage.getLikedRoutes()
-                            // Sync delete to Firestore
+
                             scope.launch {
                                 try { savedRoutesRepo.removeRoute(route.id, "liked") }
                                 catch (_: Exception) {}
@@ -173,7 +173,7 @@ fun SavedRoutesScreen(
                         onRemove = {
                             localStorage.toggleRouteSave(route.id)
                             routes = localStorage.getSavedRoutes()
-                            // Sync delete to Firestore
+
                             scope.launch {
                                 try { savedRoutesRepo.removeRoute(route.id, "saved") }
                                 catch (_: Exception) {}
@@ -186,7 +186,6 @@ fun SavedRoutesScreen(
     }
 }
 
-// Shared route card component
 @Composable
 private fun RouteListCard(
     route: LocalStorageRepository.RouteInfoSummary,
@@ -203,7 +202,7 @@ private fun RouteListCard(
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Route image
+
         AsyncImage(
             model = route.imageUrl,
             contentDescription = route.name,
@@ -214,16 +213,13 @@ private fun RouteListCard(
                 .clip(RoundedCornerShape(10.dp))
         )
 
-        // Route name + destination
         Text(route.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Stone800)
         Text(route.destName, fontSize = 13.sp, color = accentColor, fontWeight = FontWeight.Medium)
 
-        // Subtitle
         if (route.subtitle.isNotBlank()) {
             Text(route.subtitle, maxLines = 2, overflow = TextOverflow.Ellipsis, color = StoneMuted, fontSize = 12.sp)
         }
 
-        // Stats row
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Default.AttachMoney, null, tint = StoneMuted, modifier = Modifier.size(14.dp))
@@ -243,12 +239,11 @@ private fun RouteListCard(
             }
         }
 
-        // Action buttons
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Open detail button
+
             Button(
                 onClick = onOpen,
                 modifier = Modifier.weight(1f),
@@ -259,7 +254,7 @@ private fun RouteListCard(
                 Spacer(Modifier.width(4.dp))
                 Text("Voir détail", fontSize = 12.sp)
             }
-            // Remove button
+
             OutlinedButton(
                 onClick = onRemove,
                 modifier = Modifier.weight(1f),

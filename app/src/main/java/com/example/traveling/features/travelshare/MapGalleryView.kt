@@ -37,14 +37,13 @@ import coil.request.ImageRequest
 import com.example.traveling.features.travelshare.PhotoPostUi
 import com.example.traveling.ui.theme.*
 
-// 将坐标映射为 Google Maps 专用的 LatLng 对象
 private val PHOTO_COORDS = mapOf(
-    "1" to LatLng(40.43, 116.57), // 北京长城
-    "2" to LatLng(39.92, 116.40), // 北京故宫
-    "3" to LatLng(25.27, 110.29), // 桂林
-    "4" to LatLng(29.32, 110.43), // 张家界
-    "5" to LatLng(30.24, 120.14), // 杭州西湖
-    "6" to LatLng(31.24, 121.49)  // 上海外滩
+    "1" to LatLng(40.43, 116.57),
+    "2" to LatLng(39.92, 116.40),
+    "3" to LatLng(25.27, 110.29),
+    "4" to LatLng(29.32, 110.43),
+    "5" to LatLng(30.24, 120.14),
+    "6" to LatLng(31.24, 121.49)
 )
 
 @Composable
@@ -58,13 +57,11 @@ fun MapView(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // 初始视角定位在中国中心点
     val chinaCenter = LatLng(35.8617, 104.1954)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(chinaCenter, 4f)
     }
 
-    // 地图 UI 设置：隐藏默认的缩放按钮，我们用自己设计的
     val uiSettings by remember {
         mutableStateOf(MapUiSettings(zoomControlsEnabled = false, mapToolbarEnabled = false))
     }
@@ -75,17 +72,17 @@ fun MapView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clipToBounds() // 彻底解决溢出遮挡顶部栏的问题
+            .clipToBounds()
     ) {
-        // --- 1. Google Maps 原生图层 ---
+
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             uiSettings = uiSettings,
             properties = mapProperties,
-            onMapClick = { selectedPin = null } // 点击空白处关闭详情页
+            onMapClick = { selectedPin = null }
         ) {
-            // 在地图上绘制所有的自定义图钉
+
             photos.forEach { photo ->
                 val coord = if (photo.latitude != null && photo.longitude != null) {
                     LatLng(photo.latitude, photo.longitude)
@@ -98,7 +95,7 @@ fun MapView(
                     state = MarkerState(position = coord),
                     onClick = {
                         selectedPin = if (isSelected) null else photo.id
-                        // 点击图钉时，平滑移动相机到图钉位置
+
                         coroutineScope.launch {
                             cameraPositionState.animate(
                                 CameraUpdateFactory.newLatLng(coord),
@@ -110,7 +107,7 @@ fun MapView(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(if (isSelected) 36.dp else 28.dp) // 选中时稍微变大
+                            .size(if (isSelected) 36.dp else 28.dp)
                             .offset(y = (-14).dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -121,7 +118,6 @@ fun MapView(
                             modifier = Modifier.fillMaxSize()
                         )
                         AsyncImage(
-                            // 使用 ImageRequest 并强制关闭硬件加速
                             model = ImageRequest.Builder(context)
                                 .data(photo.imageUrl)
                                 .allowHardware(false)
@@ -139,7 +135,6 @@ fun MapView(
             }
         }
 
-        // 悬浮控制器 (自定义的缩放与定位按钮)
         Column(
             modifier = Modifier
                 .padding(16.dp)
@@ -190,7 +185,6 @@ fun MapView(
             }
         }
 
-        // 底部滑动详情页 (Bottom Sheet)
         AnimatedVisibility(
             visible = selectedPhoto != null,
             enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),

@@ -7,7 +7,6 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import com.example.traveling.data.repository.UserRepository
 
-
 class AnonymousAuthRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val userRepository: UserRepository = UserRepository()

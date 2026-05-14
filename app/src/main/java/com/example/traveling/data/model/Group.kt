@@ -2,7 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/** groups/{groupId} */
 data class GroupDocument(
     val groupId: String = "",
     val name: String = "",
@@ -17,7 +16,6 @@ data class GroupDocument(
     val updatedAt: Timestamp? = null
 )
 
-/** groups/{groupId}/members/{userId} */
 data class GroupMemberDocument(
     val userId: String = "",
     val displayName: String = "",

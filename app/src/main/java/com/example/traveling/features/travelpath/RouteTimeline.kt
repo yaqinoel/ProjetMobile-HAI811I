@@ -28,7 +28,6 @@ import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.ui.theme.*
 
-// Timeline section showing stops grouped by Matin / Après-midi / Soir
 @Composable
 internal fun RouteTimeline(
     groups: List<Pair<TimeSlot, List<RouteStop>>>,
@@ -46,7 +45,7 @@ internal fun RouteTimeline(
             val style = timeSlotStyles[slot] ?: return@forEach
 
             Column {
-                // Time slot header
+
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = style.bgColor,
@@ -64,14 +63,13 @@ internal fun RouteTimeline(
 
                 Spacer(Modifier.height(8.dp))
 
-                // Stop items
                 slotStops.forEachIndexed { idx, stop ->
                     val isExpanded = expandedStopId == stop.id
 
                     Column {
-                        // Stop header (clickable)
+
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            // Timeline indicator
+
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier.width(40.dp)
@@ -99,7 +97,6 @@ internal fun RouteTimeline(
 
                             Spacer(Modifier.width(12.dp))
 
-                            // Stop info
                             Surface(
                                 onClick = { onToggleExpand(stop.id) },
                                 modifier = Modifier.weight(1f),
@@ -151,7 +148,6 @@ internal fun RouteTimeline(
                             }
                         }
 
-                        // Expanded detail
                         AnimatedVisibility(
                             visible = isExpanded,
                             enter = expandVertically() + fadeIn(),
@@ -164,7 +160,6 @@ internal fun RouteTimeline(
                             )
                         }
 
-                        // Distance connector between stops
                         if (idx < slotStops.size - 1 && slotStops[idx + 1].distance != "Départ") {
                             Row(
                                 modifier = Modifier.padding(start = 52.dp, top = 4.dp, bottom = 4.dp),
@@ -188,7 +183,6 @@ internal fun RouteTimeline(
     }
 }
 
-// Expanded detail card for a single stop (gallery + description + actions)
 @Composable
 private fun StopExpandedDetail(
     stop: RouteStop,
@@ -235,7 +229,6 @@ private fun StopExpandedDetail(
                     lineHeight = 18.sp
                 )
 
-                // Rating + hours
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -253,7 +246,6 @@ private fun StopExpandedDetail(
                     }
                 }
 
-                // Distance from previous
                 if (stop.distance != "Départ") {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -310,7 +302,6 @@ private fun StopExpandedDetail(
                     }
                 }
 
-                // Action buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
                         onClick = { },

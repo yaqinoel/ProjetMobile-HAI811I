@@ -24,7 +24,6 @@ import com.example.traveling.features.profile.ProfileScreen
 import com.example.traveling.features.travelpath.TravelPathScreen
 import com.example.traveling.features.travelshare.GalleryScreen
 
-// Tab 定义
 enum class MainTab(
     val label: String,
     val selectedIcon: ImageVector,
@@ -118,7 +117,6 @@ fun MainScreen(
     }
 }
 
-//  BOTTOM NAV BAR
 @Composable
 private fun BottomNavBar(
     selectedTab: MainTab,
@@ -150,7 +148,7 @@ private fun BottomNavBar(
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxHeight()
                     ) {
-                        // Active indicator dot
+
                         Box(
                             modifier = Modifier
                                 .width(if (selected) 24.dp else 0.dp)
@@ -179,7 +177,6 @@ private fun BottomNavBar(
     }
 }
 
-//  PLACEHOLDER for unimplemented tabs
 @Composable
 private fun PlaceholderScreen(
     title: String,

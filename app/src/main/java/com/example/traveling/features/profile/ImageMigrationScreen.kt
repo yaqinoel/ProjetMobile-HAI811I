@@ -55,9 +55,6 @@ import com.example.traveling.ui.theme.StoneMuted
 import com.example.traveling.ui.theme.StoneText
 import kotlinx.coroutines.launch
 
-/**
- * One-time admin screen to upload destination and attraction images to Storage.
- */
 @Composable
 fun ImageMigrationScreen(onBack: () -> Unit = {}) {
     val scope = rememberCoroutineScope()

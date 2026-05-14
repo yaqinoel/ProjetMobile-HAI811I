@@ -51,8 +51,8 @@ data class PhotoPostDetailUi(
     val imageUrls: List<String>,
     val location: String,
     val country: String,
-    val lat: Double,             // 纬度 (用于渲染经纬度数字)
-    val lng: Double,             // 新增：经度 (用于生成地图路线)
+    val lat: Double,
+    val lng: Double,
     val date: String,
     val author: String,
     val authorAvatar: String,

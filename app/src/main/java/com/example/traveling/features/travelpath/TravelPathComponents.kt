@@ -14,8 +14,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.ui.theme.*
 
-//  SHARED COMPOSABLE COMPONENTS
-/** Section card wrapper used throughout forms and results. */
 @Composable
 internal fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -31,7 +29,6 @@ internal fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-/** Small stat chip used in RouteCard (Budget, Duration, Stops). */
 @Composable
 internal fun StatChip(
     icon: ImageVector,
@@ -60,7 +57,6 @@ internal fun StatChip(
     }
 }
 
-/** Toggle button for weather preferences (Froid, Chaleur, Humidité). */
 @Composable
 internal fun WeatherToggle(
     label: String,

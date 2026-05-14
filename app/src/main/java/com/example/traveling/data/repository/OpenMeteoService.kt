@@ -6,10 +6,6 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * Fetches real-time weather from the free Open-Meteo API (no API key required).
- * https://open-meteo.com/
- */
 data class WeatherInfo(
     val temperature: Double,
     val weatherCode: Int,

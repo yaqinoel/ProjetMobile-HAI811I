@@ -2,7 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/** notifications/{notificationId} */
 data class NotificationDocument(
     val notificationId: String = "",
     val receiverId: String = "",

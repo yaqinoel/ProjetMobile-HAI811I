@@ -2,7 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/** users/{userId} */
 data class User(
     val userId: String = "",
     val displayName: String = "",
@@ -19,13 +18,11 @@ data class User(
     val isAnonymousUpgraded: Boolean = false
 )
 
-/** users/{userId}/likedPosts/{postId} */
 data class UserLikedPostDocument(
     val postId: String = "",
     val createdAt: Timestamp? = null
 )
 
-/** users/{userId}/savedPosts/{postId} */
 data class UserSavedPostDocument(
     val postId: String = "",
     val createdAt: Timestamp? = null,
@@ -33,7 +30,6 @@ data class UserSavedPostDocument(
     val note: String? = null
 )
 
-/** users/{userId}/joinedGroups/{groupId} */
 data class UserJoinedGroupDocument(
     val groupId: String = "",
     val name: String = "",
@@ -41,7 +37,6 @@ data class UserJoinedGroupDocument(
     val joinedAt: Timestamp? = null
 )
 
-/** users/{userId}/notificationSettings/default */
 data class NotificationSettingsDocument(
     val notifyFromFollowedUsers: Boolean = true,
     val notifyFromGroups: Boolean = true,

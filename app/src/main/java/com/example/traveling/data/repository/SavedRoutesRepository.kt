@@ -12,14 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
-/**
- * Repository for syncing liked/saved routes to Firestore.
- *
- * Firestore structure:
- *   users/{userId}/saved_routes/{documentId}
- *     - routeId, type ("liked" | "saved"), destName, routeName, ...
- *     - stops: [{ id, name, type, timeSlot, ... }]
- */
 class SavedRoutesRepository {
 
     private val db = FirebaseFirestore.getInstance()
@@ -31,14 +23,11 @@ class SavedRoutesRepository {
         db.collection("users").document(it).collection("saved_routes")
     }
 
-    // ─── Write ───
-
-    /** Save a route (liked or saved) to Firestore */
     suspend fun saveRoute(
         route: TravelRoute,
         stops: List<RouteStop>,
         destName: String,
-        type: String   // "liked" or "saved"
+        type: String
     ) {
         val col = collection() ?: return
         val docId = "${type}_${route.id}"
@@ -81,16 +70,12 @@ class SavedRoutesRepository {
         col.document(docId).set(doc).await()
     }
 
-    /** Remove a route from Firestore */
     suspend fun removeRoute(routeId: String, type: String) {
         val col = collection() ?: return
         val docId = "${type}_${routeId}"
         col.document(docId).delete().await()
     }
 
-    // ─── Read ───
-
-    /** Get all saved routes of a given type as a real-time Flow */
     fun getRoutes(type: String): Flow<List<SavedRouteDocument>> = callbackFlow {
         val col = collection()
         if (col == null) {
@@ -113,7 +98,6 @@ class SavedRoutesRepository {
         awaitClose { listener.remove() }
     }
 
-    /** Get a single route by routeId and type */
     suspend fun getRoute(routeId: String, type: String): SavedRouteDocument? {
         val col = collection() ?: return null
         val docId = "${type}_${routeId}"
@@ -126,9 +110,6 @@ class SavedRoutesRepository {
         }
     }
 
-    // ─── Conversion helpers ───
-
-    /** Convert a SavedRouteDocument back to TravelRoute + List<RouteStop> */
     fun toRouteAndStops(doc: SavedRouteDocument): Pair<TravelRoute, List<RouteStop>> {
         val route = TravelRoute(
             id = doc.routeId, name = doc.routeName,

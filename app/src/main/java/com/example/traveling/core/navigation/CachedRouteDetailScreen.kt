@@ -16,10 +16,6 @@ import com.example.traveling.features.travelpath.RouteDetailScreen
 import com.example.traveling.features.travelpath.TravelViewModel
 import com.example.traveling.ui.theme.*
 
-/**
- * Wrapper screen that loads a cached route from local cache or Firestore
- * into TravelViewModel, then displays the standard RouteDetailScreen.
- */
 @Composable
 fun CachedRouteDetailScreen(
     routeId: String,
@@ -33,7 +29,7 @@ fun CachedRouteDetailScreen(
 
     LaunchedEffect(routeId) {
         travelViewModel.initLocalStorage(context)
-        // Try async version which checks local cache then Firestore
+
         val success = travelViewModel.loadCachedRouteAsync(routeId)
         if (success) {
             loaded = true

@@ -4,7 +4,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 
-/** TravelPathScreen — Point d'entrée principal du module Parcours */
 @Composable
 fun TravelPathScreen(
     isAnonymous: Boolean = false,
@@ -54,7 +53,6 @@ fun TravelPathScreen(
         )
     }
 
-    // Auto-transition from loading to results
     if (step == "loading") {
         LaunchedEffect(Unit) {
             kotlinx.coroutines.delay(1800)

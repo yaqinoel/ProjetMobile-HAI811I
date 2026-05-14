@@ -59,7 +59,6 @@ fun RegisterScreen(
     val userRepository = remember { UserRepository() }
     val coroutineScope = rememberCoroutineScope()
 
-    // 状态管理
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -81,7 +80,7 @@ fun RegisterScreen(
             .background(Brush.verticalGradient(listOf(Red50, Amber50_30)))
             .verticalScroll(scrollState)
     ) {
-        // 顶部返回按钮区域
+
         Box(modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)) {
             Surface(
                 onClick = onBack,
@@ -100,10 +99,8 @@ fun RegisterScreen(
             }
         }
 
-        // 核心内容区域
         Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
 
-            // --- Logo 区域 ---
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 32.dp)) {
                 Box(
                     modifier = Modifier
@@ -119,11 +116,9 @@ fun RegisterScreen(
                 Text("Voyageur du Monde", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Stone800, letterSpacing = 0.5.sp)
             }
 
-            // --- 标题 ---
             Text("Créer un compte", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Stone800, modifier = Modifier.padding(bottom = 4.dp))
             Text("Rejoignez la communauté des voyageurs", fontSize = 14.sp, color = Stone500, modifier = Modifier.padding(bottom = 32.dp))
 
-            // --- 表单区域 ---
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -166,7 +161,6 @@ fun RegisterScreen(
                     }
                 }
 
-                // Nom 输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Nom", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
                     OutlinedTextField(
@@ -202,7 +196,6 @@ fun RegisterScreen(
                     )
                 }
 
-                // Email 输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Email", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
                     OutlinedTextField(
@@ -221,7 +214,6 @@ fun RegisterScreen(
                     )
                 }
 
-                // 密码输入框
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Mot de passe", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Stone500, modifier = Modifier.padding(start = 4.dp))
                     OutlinedTextField(
@@ -251,14 +243,12 @@ fun RegisterScreen(
                     )
                 }
 
-                // 错误提示
                 if (errorMessage != null) {
                     Text(text = errorMessage!!, color = Color.Red, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // --- 注册按钮 ---
                 Button(
                     onClick = {
                         if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
@@ -271,11 +261,10 @@ fun RegisterScreen(
                             errorMessage = null
                             val auth = FirebaseAuth.getInstance()
 
-                            // 1. Créer utilisateur Firebase Auth
                             auth.createUserWithEmailAndPassword(email, password)
                                 .addOnCompleteListener { task ->
                                     if (task.isSuccessful) {
-                                        // 2. Mettre à jour displayName côté Firebase Auth
+
                                         val user = auth.currentUser
                                         val uid = user?.uid
                                         val profileUpdates = UserProfileChangeRequest.Builder()
@@ -290,7 +279,6 @@ fun RegisterScreen(
                                                 return@addOnCompleteListener
                                             }
 
-                                            // 3. Initialiser users/{uid} dans Firestore
                                             coroutineScope.launch {
                                                 try {
                                                     val avatarUrl = selectedAvatarUri?.let { uri ->
@@ -345,7 +333,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- 隐私条款说明 ---
             Text(
                 text = "En vous inscrivant, vous acceptez nos conditions d'utilisation et notre politique de confidentialité.",
                 fontSize = 12.sp,
@@ -357,7 +344,6 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- 底部登录入口 ---
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
                 horizontalArrangement = Arrangement.Center,

@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.traveling.ui.theme.*
 
-// Hero image section with back/like/share buttons and route info overlay
 @Composable
 internal fun RouteHeroSection(
     heroImage: String,
@@ -52,7 +51,6 @@ internal fun RouteHeroSection(
                 )
         )
 
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -78,7 +76,6 @@ internal fun RouteHeroSection(
             }
         }
 
-        // Bottom info
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)

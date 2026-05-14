@@ -76,7 +76,7 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
                 onOpenSettings = {
-                    // Static settings panel is handled inside NotificationsScreen.
+
                 },
                 onOpenPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")
@@ -118,7 +118,7 @@ fun AppNavigation() {
                     }
                 },
                 onOpenMapPicker = {
-                    // Static map picker is handled inside PublishPhotosScreen.
+
                 }
             )
         }
@@ -136,7 +136,7 @@ fun AppNavigation() {
                     navController.popBackStack()
                 },
                 onOpenMapPicker = {
-                    // Static map picker is handled inside PublishPhotosScreen.
+
                 }
             )
         }

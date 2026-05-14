@@ -2,10 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/**
- * Destination (城市/目的地)
- * Firestore collection: "destinations"
- */
 data class Destination(
     val id: String = "",
     val name: String = "",
@@ -23,34 +19,29 @@ data class Destination(
     val isVerified: Boolean = false
 )
 
-/**
- * Attraction (景点)
- * Firestore collection: "attractions"
- */
 data class Attraction(
     val id: String = "",
     val destinationId: String = "",
     val name: String = "",
-    val type: String = "",           // Culture, Nature, Gastronomie, Loisirs, Shopping, Monument, Photo
-    val cost: Int = 0,               // 门票/费用 (¥)
-    val duration: Int = 0,           // 平均游览时间 (分钟)
+    val type: String = "",
+    val cost: Int = 0,
+    val duration: Int = 0,
     val rating: Double = 0.0,
     val description: String = "",
     val imageUrl: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     val openHours: String = "",
-    val closedDay: String = "",      // 休息日
-    val effortLevel: Int = 1,        // 体力消耗 1-5
-    val weatherType: String = "both",// indoor / outdoor / both
-    val bestTimeSlots: List<String> = emptyList(), // matin, apres-midi, soir
+    val closedDay: String = "",
+    val effortLevel: Int = 1,
+    val weatherType: String = "both",
+    val bestTimeSlots: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
     val imageUrls: List<String> = emptyList(),
     val source: String = "official",
     val sourcePostId: String? = null
 )
 
-/** travelShareAttractions/{id} */
 data class TravelShareAttractionDocument(
     val id: String = "",
     val destinationId: String = "",
@@ -79,10 +70,6 @@ data class TravelShareAttractionDocument(
     val status: String = "active"
 )
 
-/**
- * GeneratedRoute (生成的路线)
- * Firestore collection: "generated_routes"
- */
 data class GeneratedRoute(
     val id: String = "",
     val userId: String = "",

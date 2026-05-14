@@ -21,7 +21,6 @@ import coil.compose.AsyncImage
 import com.example.traveling.data.model.TravelRoute
 import com.example.traveling.ui.theme.*
 
-//  RESULTS SCREEN
 @Composable
 internal fun ResultsScreen(
     travelViewModel: TravelViewModel,
@@ -35,7 +34,7 @@ internal fun ResultsScreen(
             .fillMaxSize()
             .background(PageBg)
     ) {
-        // ── Header ──
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = CardBg.copy(alpha = 0.9f),
@@ -80,7 +79,7 @@ internal fun ResultsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Recommendation tip
+
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = Color(0xFFFEF2F2),
@@ -99,7 +98,6 @@ internal fun ResultsScreen(
                 }
             }
 
-            // Route cards
             routes.forEachIndexed { index, route ->
                 RouteCard(
                     route = route,
@@ -108,7 +106,6 @@ internal fun ResultsScreen(
                 )
             }
 
-            // Offline mode banner
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = AmberLight,
@@ -135,7 +132,6 @@ internal fun ResultsScreen(
     }
 }
 
-//  ROUTE CARD COMPONENT
 @Composable
 internal fun RouteCard(
     route: TravelRoute,
@@ -149,7 +145,7 @@ internal fun RouteCard(
         border = BorderStroke(1.dp, StoneBorder)
     ) {
         Column {
-            // Image header
+
             Box(modifier = Modifier.height(144.dp).fillMaxWidth()) {
                 AsyncImage(
                     model = route.imageUrl,
@@ -157,7 +153,7 @@ internal fun RouteCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-                // Gradient overlay
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -167,7 +163,7 @@ internal fun RouteCard(
                             )
                         )
                 )
-                // Recommended badge
+
                 if (isRecommended) {
                     Surface(
                         modifier = Modifier
@@ -183,7 +179,7 @@ internal fun RouteCard(
                         )
                     }
                 }
-                // Rating badge
+
                 Surface(
                     modifier = Modifier
                         .padding(12.dp)
@@ -200,7 +196,7 @@ internal fun RouteCard(
                         Text("${route.rating}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                     }
                 }
-                // Title
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -212,7 +208,7 @@ internal fun RouteCard(
             }
 
             Column(modifier = Modifier.padding(12.dp)) {
-                // Stats row
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -248,7 +244,6 @@ internal fun RouteCard(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Highlights timeline
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     route.highlights.take(4).forEachIndexed { i, highlight ->
                         Row(
@@ -290,7 +285,6 @@ internal fun RouteCard(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Action buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = onViewDetail,

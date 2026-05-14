@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.traveling.ui.theme.*
 
-//  LOADING SCREEN
 @Composable
 internal fun LoadingScreen() {
     var progress by remember { mutableFloatStateOf(0f) }
@@ -31,7 +30,6 @@ internal fun LoadingScreen() {
             kotlinx.coroutines.delay(16)
         }
     }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -39,7 +37,6 @@ internal fun LoadingScreen() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Rotating icon
         Surface(
             modifier = Modifier.size(64.dp),
             shape = RoundedCornerShape(16.dp),

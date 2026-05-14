@@ -67,11 +67,11 @@ fun PublishPhotosScreen(
     editPostId: String? = null,
     onBack: () -> Unit = {},
     onPublishSuccess: (String) -> Unit = {},
-    onOpenMapPicker: () -> Unit = {} // Inject Map API caller
+    onOpenMapPicker: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isEditMode = !editPostId.isNullOrBlank()
-    // États Obligatoires (Required)
+
     var title by remember { mutableStateOf("") }
     var selectedPhotos by remember { mutableStateOf(emptyList<String>()) }
     var selectedLocation by remember { mutableStateOf<SelectedLocationUi?>(null) }
@@ -79,7 +79,6 @@ fun PublishPhotosScreen(
     var selectedGroup by remember { mutableStateOf<UserJoinedGroupDocument?>(null) }
     var pendingGroupId by remember { mutableStateOf<String?>(null) }
 
-    // États Optionnels (Optional)
     var description by remember { mutableStateOf("") }
     var tagInput by remember { mutableStateOf("") }
     var selectedTags by remember { mutableStateOf(emptyList<String>()) }
@@ -286,18 +285,16 @@ fun PublishPhotosScreen(
         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
     }
 
-    // TravelPath Parameters
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var expense by remember { mutableStateOf("") }
-    var duration by remember { mutableFloatStateOf(0f) } // 0 = Not specified
-    var effort by remember { mutableFloatStateOf(0f) }   // 0 = Not specified
+    var duration by remember { mutableFloatStateOf(0f) }
+    var effort by remember { mutableFloatStateOf(0f) }
     var openHours by remember { mutableStateOf("") }
     var closedDay by remember { mutableStateOf("") }
     var weatherType by remember { mutableStateOf("both") }
     var bestTimeSlots by remember { mutableStateOf(setOf("apres-midi")) }
     var editContentLoaded by remember(editPostId) { mutableStateOf(!isEditMode) }
 
-    // Weather Tolerance
     var coldTolerance by remember { mutableStateOf(false) }
     var heatTolerance by remember { mutableStateOf(false) }
     var humidityTolerance by remember { mutableStateOf(false) }
@@ -434,7 +431,7 @@ fun PublishPhotosScreen(
                 .fillMaxSize()
                 .systemBarsPadding()
         ) {
-        // HEADER
+
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -538,14 +535,13 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // INFORMATIONS DE BASE
             Column(
                 modifier = Modifier
                     .background(CardBg, RoundedCornerShape(12.dp))
                     .border(1.dp, StoneBorder, RoundedCornerShape(12.dp))
                     .padding(16.dp)
             ) {
-                // Titre (OBLIGATOIRE)
+
                 BasicTextField(
                     value = title,
                     onValueChange = { title = it },
@@ -564,7 +560,6 @@ fun PublishPhotosScreen(
 
                 HorizontalDivider(color = Stone300.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 12.dp))
 
-                // Description (Optionnel)
                 BasicTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -632,7 +627,6 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // PARTAGE PUBLIC / GROUPE
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Partage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -681,11 +675,9 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // GÉOLOCALISATION (OBLIGATOIRE) & TRAVELPATH
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Localisation", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
-                // Lieu GPS avec Google Maps Picker
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -773,11 +765,9 @@ fun PublishPhotosScreen(
                 }
             }
 
-            // INFOS PRATIQUES
             if (isLinkedToPath) Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Paramètres d'itinéraire (Optionnel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
-                // Type d'activité
                 SectionCard {
                     Text("Type d'activité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(12.dp))
@@ -815,7 +805,6 @@ fun PublishPhotosScreen(
                     }
                 }
 
-                // Budget (Style TravelPath TextField)
                 SectionCard {
                     Text("Budget dépensé", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(8.dp))
@@ -837,7 +826,6 @@ fun PublishPhotosScreen(
                     )
                 }
 
-                // Durée Slider
                 SectionCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Durée estimée", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
@@ -858,7 +846,6 @@ fun PublishPhotosScreen(
                     }
                 }
 
-                // Effort Slider
                 SectionCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text("Effort Physique", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
@@ -968,7 +955,6 @@ fun PublishPhotosScreen(
                     }
                 }
 
-                // Weather Tolerance
                 SectionCard {
                     Text("Tolérance Météo", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(12.dp))
@@ -1140,7 +1126,6 @@ fun PublishPhotosScreen(
     }
 }
 
-// --- Helper Composables (from TravelPathScreen) ---
 @Composable
 private fun VoiceNoteRecorder(
     hasVoiceNote: Boolean,
@@ -1350,8 +1335,8 @@ private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = CardBg,
-        shadowElevation = 1.dp, // Match TravelPath
-        border = BorderStroke(1.dp, StoneBorder) // Match TravelPath
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, StoneBorder)
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
@@ -1367,7 +1352,7 @@ private fun WeatherToggle(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         border = BorderStroke(2.dp, if (selected) selectedColor else Color.Transparent),
-        color = if (selected) selectedBg else Color(0xFFF5F5F4) // Match TravelPath
+        color = if (selected) selectedBg else Color(0xFFF5F5F4)
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null, modifier = Modifier.size(20.dp), tint = if (selected) selectedColor else StoneLighter)

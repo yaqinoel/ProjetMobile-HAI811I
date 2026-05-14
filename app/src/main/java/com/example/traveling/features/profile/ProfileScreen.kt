@@ -34,8 +34,6 @@ import com.example.traveling.data.model.User
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 
-
-// ─── 数据模型 ───
 data class ProfileMenuItem(
     val label: String,
     val subtitle: String,
@@ -52,7 +50,6 @@ data class ProfileStat(
     val action: () -> Unit = {}
 )
 
-// ─── 核心组件 ───
 @Composable
 fun ProfileScreen(
     isAnonymous: Boolean = false,
@@ -132,7 +129,6 @@ fun ProfileScreen(
     }
 }
 
-// ─── 匿名状态视图 ───
 @Composable
 private fun AnonymousProfileView(
     onLogin: () -> Unit,
@@ -145,7 +141,7 @@ private fun AnonymousProfileView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Globe Icon
+
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -250,7 +246,6 @@ private fun AnonymousProfileAction(
     }
 }
 
-// ─── 已登录状态视图 ───
 @Composable
 private fun AuthenticatedProfileView(
     user: User,
@@ -285,17 +280,16 @@ private fun AuthenticatedProfileView(
 
     Column(modifier = Modifier.fillMaxSize().background(ProfilePageBg).verticalScroll(scrollState)) {
 
-        // 顶部红色 Header 区域 & 悬浮统计卡片
         Box {
-            // 红色背景
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(listOf(Color(0xFF991B1B), Color(0xFF7F1D1D))))
                     .padding(horizontal = 24.dp)
-                    .padding(top = 32.dp, bottom = 64.dp) // 底部留白给悬浮卡片
+                    .padding(top = 32.dp, bottom = 64.dp)
             ) {
-                // 顶部标题和登出
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Profil", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onLogout() }) {
@@ -307,9 +301,8 @@ private fun AuthenticatedProfileView(
 
                 Spacer(Modifier.height(24.dp))
 
-                // 用户信息
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 头像
+
                     UserAvatar(
                         avatarUrl = user.avatarUrl,
                         fallbackText = user.displayName.firstOrNull()?.uppercase() ?: "V",
@@ -321,7 +314,7 @@ private fun AuthenticatedProfileView(
                         textSize = 32.sp
                     )
                     Spacer(Modifier.width(16.dp))
-                    // 资料
+
                     Column {
                         Text(user.displayName.ifBlank { "Voyageur" }, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         val subtitle = listOfNotNull(
@@ -333,7 +326,6 @@ private fun AuthenticatedProfileView(
                 }
             }
 
-            // 悬浮的统计卡片 (使用 offset 将其向下推出红色背景区)
             Card(
                 colors = CardDefaults.cardColors(containerColor = ProfileCardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -342,7 +334,7 @@ private fun AuthenticatedProfileView(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .align(Alignment.BottomCenter)
-                    .offset(y = 40.dp) // 核心悬浮效果
+                    .offset(y = 40.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     stats.forEach { stat ->
@@ -359,10 +351,8 @@ private fun AuthenticatedProfileView(
             }
         }
 
-        // 用于抵消悬浮卡片占用空间的 Spacer
         Spacer(Modifier.height(56.dp))
 
-        // 菜单列表
         Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             menuItems.forEach { item ->
                 Row(
@@ -373,17 +363,17 @@ private fun AuthenticatedProfileView(
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 图标
+
                     Box(modifier = Modifier.size(40.dp).background(item.iconColor.copy(0.12f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                         Icon(item.icon, null, tint = item.iconColor, modifier = Modifier.size(20.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    // 文字
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(item.label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = StoneText)
                         Text(item.subtitle, fontSize = 11.sp, color = StoneMuted)
                     }
-                    // 徽标和箭头
+
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (item.badge != null) {
                             Box(modifier = Modifier.size(20.dp).background(Color(0xFFEF4444), CircleShape), contentAlignment = Alignment.Center) {
@@ -401,7 +391,6 @@ private fun AuthenticatedProfileView(
     }
 }
 
-// ─── 预览 ───
 @Preview(showBackground = true, name = "Connecté")
 @Composable
 fun ProfileScreenPreview() {

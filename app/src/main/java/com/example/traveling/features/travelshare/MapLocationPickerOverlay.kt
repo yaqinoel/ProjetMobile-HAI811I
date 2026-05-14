@@ -57,7 +57,7 @@ fun MapLocationPickerOverlay(
     val context = LocalContext.current
     val repository = remember(context) { PlaceSearchRepository(context) }
     val coroutineScope = rememberCoroutineScope()
-    val defaultLatLng = LatLng(43.6108, 3.8767) // Montpellier
+    val defaultLatLng = LatLng(43.6108, 3.8767)
 
     var selectedLatLng by remember {
         mutableStateOf(initialLocation?.let { LatLng(it.rawLatitude, it.rawLongitude) } ?: defaultLatLng)

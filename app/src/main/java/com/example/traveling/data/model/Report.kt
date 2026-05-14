@@ -2,7 +2,6 @@ package com.example.traveling.data.model
 
 import com.google.firebase.Timestamp
 
-/** reports/{reportId} */
 data class ReportDocument(
     val reportId: String = "",
     val postId: String = "",

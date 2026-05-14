@@ -11,9 +11,9 @@ data class SelectedLocationUi(
     val rawLongitude: Double,
     val displayLatitude: Double,
     val displayLongitude: Double,
-    val precision: String, // "exact" / "approx"
+    val precision: String,
     val googlePlaceId: String? = null,
-    val source: String = "manual" // "search", "map_click", "default", "manual"
+    val source: String = "manual"
 )
 
 fun blurCoordinate(value: Double, gridSize: Double = 0.01): Double {

@@ -13,14 +13,10 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import java.text.Normalizer
 
-/**
- * Repository pour accéder aux données Firestore (destinations & attractions).
- */
 class TravelRepository {
 
     private val db = FirebaseFirestore.getInstance()
 
-    /** Flux temps-réel de toutes les destinations. */
     fun getDestinations(): Flow<List<Destination>> = callbackFlow {
         val listener = db.collection(FirestoreCollections.DESTINATIONS)
             .addSnapshotListener { snapshot, error ->
@@ -39,7 +35,6 @@ class TravelRepository {
         awaitClose { listener.remove() }
     }
 
-    /** Flux temps-réel des attractions pour une destination donnée. */
     fun getAttractionsByDestination(destinationId: String): Flow<List<Attraction>> = callbackFlow {
         val listener = db.collection(FirestoreCollections.ATTRACTIONS)
             .whereEqualTo("destinationId", destinationId)
@@ -56,7 +51,6 @@ class TravelRepository {
         awaitClose { listener.remove() }
     }
 
-    /** Flux temps-réel de TOUTES les attractions. */
     fun getAllAttractions(): Flow<List<Attraction>> = callbackFlow {
         val listener = db.collection(FirestoreCollections.ATTRACTIONS)
             .addSnapshotListener { snapshot, error ->

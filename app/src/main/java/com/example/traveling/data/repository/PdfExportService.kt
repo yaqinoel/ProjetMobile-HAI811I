@@ -11,10 +11,6 @@ import com.example.traveling.data.model.TravelRoute
 import java.io.File
 import java.io.FileOutputStream
 
-/**
- * Generates a PDF itinerary document.
- * Returns the File path of the created PDF, or null on failure.
- */
 class PdfExportService {
 
     fun exportItinerary(
@@ -25,17 +21,15 @@ class PdfExportService {
     ): File? {
         return try {
             val document = PdfDocument()
-            val pageWidth = 595  // A4 width in points
-            val pageHeight = 842 // A4 height in points
+            val pageWidth = 595
+            val pageHeight = 842
 
-            // ── Page 1: Header + Stops ──
             var pageNumber = 1
             var pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageNumber).create()
             var page = document.startPage(pageInfo)
             var canvas = page.canvas
             var yPos = 60f
 
-            // Title paint
             val titlePaint = Paint().apply {
                 textSize = 22f; typeface = Typeface.DEFAULT_BOLD
                 color = android.graphics.Color.parseColor("#B91C1C")
@@ -55,7 +49,6 @@ class PdfExportService {
                 strokeWidth = 2f
             }
 
-            // Draw header
             canvas.drawText("🗺️ Voyageur du Monde", 40f, yPos, titlePaint)
             yPos += 28f
             canvas.drawText("Itinéraire : ${route.name} — $destName", 40f, yPos, subtitlePaint)
@@ -63,13 +56,11 @@ class PdfExportService {
             canvas.drawLine(40f, yPos, pageWidth - 40f, yPos, headerLinePaint)
             yPos += 20f
 
-            // Route stats
             canvas.drawText("Budget : ${route.budget} € | Durée : ${route.duration} | ${stops.size} arrêts | Note : ${route.rating}/5", 40f, yPos, bodyPaint)
             yPos += 30f
 
-            // Draw each stop
             stops.forEachIndexed { index, stop ->
-                // Check if we need a new page
+
                 if (yPos > pageHeight - 100) {
                     document.finishPage(page)
                     pageNumber++
@@ -79,7 +70,6 @@ class PdfExportService {
                     yPos = 60f
                 }
 
-                // Stop number circle indicator
                 val circleX = 55f
                 val circleY = yPos + 6f
                 val circlePaint = Paint().apply {
@@ -94,27 +84,22 @@ class PdfExportService {
                 }
                 canvas.drawText("${index + 1}", circleX, circleY + 4f, numPaint)
 
-                // Stop name and time
                 canvas.drawText("${stop.arrivalTime} — ${stop.name}", 80f, yPos + 10f, boldPaint)
                 yPos += 22f
 
-                // Stop details
                 val costStr = if (stop.cost > 0) "${stop.cost} €" else "Gratuit"
                 canvas.drawText("${stop.type} · ${stop.duration} · $costStr · ★ ${stop.rating}", 80f, yPos, bodyPaint)
                 yPos += 18f
 
-                // Description (truncated to fit)
                 val desc = if (stop.description.length > 90) stop.description.take(90) + "…" else stop.description
                 canvas.drawText(desc, 80f, yPos, subtitlePaint)
                 yPos += 18f
 
-                // Distance to next
                 if (index < stops.size - 1 && stops[index + 1].distance != "Départ") {
                     canvas.drawText("→ ${stops[index + 1].distance} (${stops[index + 1].walkTime})", 80f, yPos, subtitlePaint)
                     yPos += 14f
                 }
 
-                // Connector line
                 if (index < stops.size - 1) {
                     val linePaint = Paint().apply {
                         color = android.graphics.Color.parseColor("#FEE2E2")
@@ -126,7 +111,6 @@ class PdfExportService {
                 yPos += 16f
             }
 
-            // Footer
             yPos += 10f
             canvas.drawLine(40f, yPos, pageWidth - 40f, yPos, headerLinePaint)
             yPos += 18f
@@ -134,7 +118,6 @@ class PdfExportService {
 
             document.finishPage(page)
 
-            // Save to Downloads
             val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val fileName = "itineraire_${destName.replace(" ", "_")}_${route.id}.pdf"
             val file = File(downloadsDir, fileName)

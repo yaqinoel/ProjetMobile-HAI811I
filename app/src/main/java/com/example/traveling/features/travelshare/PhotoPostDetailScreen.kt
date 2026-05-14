@@ -33,15 +33,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 
-// 导入数据模型
 import com.example.traveling.core.utils.openNavigationToPlace
 import com.example.traveling.features.main.TravelPathSeed
 import com.example.traveling.features.travelshare.PhotoPostDetailUi
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
 import kotlinx.coroutines.launch
-
-// 主页面入口 (状态与路由管理)
 
 @Composable
 fun PhotoPostDetailScreen(
@@ -56,8 +53,6 @@ fun PhotoPostDetailScreen(
     viewModel: PhotoPostDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // 当 photoId 传入时，触发 ViewModel 加载真实数据
     LaunchedEffect(photoId) {
         viewModel.loadPhoto(photoId)
     }
@@ -82,7 +77,6 @@ fun PhotoPostDetailScreen(
             }
         }
         is PhotoPostDetailUiState.Success -> {
-            // 数据成功加载，把 PhotoDetail 喂给纯 UI 组件
             PhotoPostDetailContent(
                 photo = state.photo,
                 isAnonymous = isAnonymous,
@@ -97,8 +91,6 @@ fun PhotoPostDetailScreen(
         }
     }
 }
-
-// 纯展示组件
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -169,9 +161,8 @@ private fun PhotoPostDetailContent(
         containerColor = PageBg,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // ─── 顶部导航栏 (Figma 中的 Header) ───
             Surface(
-                color = PageBg.copy(alpha = 0.95f), // 稍微带点透明度的毛玻璃效果
+                color = PageBg.copy(alpha = 0.95f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -183,7 +174,6 @@ private fun PhotoPostDetailContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        // 返回按钮 (浅红色底)
                         Surface(
                             onClick = onBack,
                             shape = RoundedCornerShape(8.dp),
@@ -196,7 +186,6 @@ private fun PhotoPostDetailContent(
                             }
                         }
 
-                        // 顶部作者头像与名字
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -263,7 +252,7 @@ private fun PhotoPostDetailContent(
             }
         },
         bottomBar = {
-            // ─── 底部悬浮评论框 (Figma 中的 Bottom Input) ───
+
             Surface(
                 color = PageBg,
                 shadowElevation = 16.dp,
@@ -295,7 +284,7 @@ private fun PhotoPostDetailContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // 输入框
+
                         Row(
                             modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically
@@ -323,7 +312,6 @@ private fun PhotoPostDetailContent(
 	                            }
 	                        }
 
-                        // 发送按钮 (红色方形)
                         Surface(
                             onClick = {
                                 if (newComment.isNotBlank()) {
@@ -350,7 +338,7 @@ private fun PhotoPostDetailContent(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ─── 1. 主图与多图轮播区 (比例 4:3) ───
+
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                     AsyncImage(
@@ -361,7 +349,6 @@ private fun PhotoPostDetailContent(
                     )
                 }
 
-                // 多图指示器
                 if (photo.imageUrls.size > 1) {
                     Box(
                         modifier = Modifier
@@ -375,7 +362,6 @@ private fun PhotoPostDetailContent(
                 }
             }
 
-            // ─── 2. 互动操作区 (点赞/评论数) ───
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -395,7 +381,7 @@ private fun PhotoPostDetailContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.ChatBubbleOutline, null, tint = Stone600, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(6.dp))
-                        // 👈 这里动态读取了真实的评论列表长度
+
                         Text("${photo.commentsList.size}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                     }
                 }
@@ -409,7 +395,6 @@ private fun PhotoPostDetailContent(
 
             HorizontalDivider(color = StoneBorder)
 
-            // ─── 3. 描述正文与标签 ───
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = displayTitle,
@@ -459,10 +444,9 @@ private fun PhotoPostDetailContent(
 
                 Spacer(Modifier.height(24.dp))
 
-                // ─── 4. 详细行程卡片 (Info Card) ───
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFFFFFBEB), // 浅黄色底
+                    color = Color(0xFFFFFBEB),
                     border = BorderStroke(1.dp, Color(0xFFFDE68A).copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -472,17 +456,16 @@ private fun PhotoPostDetailContent(
                         } else {
                             "Position exacte"
                         }
-                        // 👈 这里使用了新增的 lat 和 lng
+
                         InfoRow(Icons.Outlined.Place, Color(0xFFFEE2E2), RedDark, photo.location, "${photo.country}\n$precisionLabel\n${photo.lat}, ${photo.lng}")
                         InfoRow(Icons.Outlined.CalendarToday, Color(0xFFFEF3C7), Color(0xFFB45309), "Date", photo.date)
-                        // 👈 这里使用了新增的 howToGetThere
+
                         InfoRow(Icons.Outlined.NearMe, Color(0xFFF3E8FF), Color(0xFF7E22CE), "Comment s'y rendre", photo.howToGetThere)
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
 
-                // ─── 5. 导航操作按钮 ───
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
@@ -510,7 +493,7 @@ private fun PhotoPostDetailContent(
                         onClick = { onFindSimilarPhotos(photo.id) },
                         modifier = Modifier.fillMaxWidth().height(44.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)) // Amber
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
                     ) {
                         Icon(Icons.Outlined.Collections, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
@@ -561,12 +544,11 @@ private fun PhotoPostDetailContent(
 
                 Spacer(Modifier.height(32.dp))
 
-                // ─── 6. 真实的评论列表 ───
                 Text("Commentaires (${photo.commentsList.size})", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
                 Spacer(Modifier.height(16.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // 👈 动态遍历 viewModel 传过来的评论列表
+
                     photo.commentsList.forEach { comment ->
                         Row(verticalAlignment = Alignment.Top) {
                             UserAvatar(
@@ -589,7 +571,7 @@ private fun PhotoPostDetailContent(
                     }
                 }
 
-                Spacer(Modifier.height(24.dp)) // 防止列表被底部的输入框遮挡
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -672,7 +654,6 @@ private fun MediaPlayer.runCatchingStopAndRelease() {
     release()
 }
 
-// ─── 辅助组件：信息行 (用于黄色交通卡片内部) ───
 @Composable
 private fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, iconBg: Color, iconTint: Color, title: String, subtitle: String) {
     Row(verticalAlignment = Alignment.Top) {

@@ -9,14 +9,6 @@ object FirestoreSeeder {
     private val db = FirebaseFirestore.getInstance()
     private const val TAG = "FirestoreSeeder"
 
-    // ═══════════════════════════════════════════════════
-    //  PUBLIC API
-    // ═══════════════════════════════════════════════════
-
-    /**
-     * 批量写入所有预设数据
-     * @param clearFirst 是否先清空已有数据再写入
-     */
     fun seedAll(clearFirst: Boolean = false) {
         if (clearFirst) {
             clearCollection("destinations") { seedDestinations() }
@@ -27,11 +19,9 @@ object FirestoreSeeder {
         }
     }
 
-    //  DESTINATIONS — 中国 5 城 + 法国 5 城
-
     private fun seedDestinations() {
         val destinations = listOf(
-            // ─── 中国 ───
+
             Destination("pekin", "Pékin", "Chine",
                 "Capitale millénaire, cœur politique et culturel de la Chine avec ses palais impériaux et ses hutongs.",
                 "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=800", 39.9042, 116.4074),
@@ -48,7 +38,6 @@ object FirestoreSeeder {
                 "Paysages karstiques iconiques de la rivière Li, montagnes en pain de sucre et rizières en terrasses.",
                 "https://images.unsplash.com/photo-1529921879218-f99546d03a24?w=800", 25.2744, 110.2990),
 
-            // ─── 法国 ───
             Destination("paris", "Paris", "France",
                 "Ville Lumière, capitale de l'art, de la mode et de la gastronomie, iconique pour la Tour Eiffel et le Louvre.",
                 "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800", 48.8566, 2.3522),
@@ -76,17 +65,15 @@ object FirestoreSeeder {
             .addOnFailureListener { Log.e(TAG, " Erreur destinations", it) }
     }
 
-    //  ATTRACTIONS — 景点数据
-
     private fun seedAttractions() {
         val attractions = buildList {
-            // ─── CHINE ───
+
             addAll(pekinAttractions())
             addAll(xianAttractions())
             addAll(hangzhouAttractions())
             addAll(chengduAttractions())
             addAll(guilinAttractions())
-            // ─── FRANCE ───
+
             addAll(parisAttractions())
             addAll(lyonAttractions())
             addAll(niceAttractions())
@@ -94,7 +81,6 @@ object FirestoreSeeder {
             addAll(bordeauxAttractions())
         }
 
-        // Firestore 批量写入限制 500 条/batch
         val batches = attractions.chunked(400)
         batches.forEachIndexed { idx, chunk ->
             val batch = db.batch()
@@ -108,7 +94,6 @@ object FirestoreSeeder {
         }
     }
 
-    //  北京景点
     private fun pekinAttractions() = listOf(
         Attraction("pk_cite_interdite", "pekin", "Cité Interdite", "Culture",
             60, 150, 4.9,
@@ -174,7 +159,6 @@ object FirestoreSeeder {
             listOf("apres-midi"), listOf("premium", "vip", "hélicoptère", "vol"))
     )
 
-    //  西安景点
     private fun xianAttractions() = listOf(
         Attraction("xa_terrecuite", "xian", "Armée de Terre Cuite", "Culture",
             120, 180, 4.9,
@@ -219,7 +203,6 @@ object FirestoreSeeder {
             listOf("matin"), listOf("montagne", "randonnée", "sacré")),
     )
 
-    //  杭州景点
     private fun hangzhouAttractions() = listOf(
         Attraction("hz_lac_ouest", "hangzhou", "Lac de l'Ouest", "Nature",
             0, 120, 4.9,
@@ -264,7 +247,6 @@ object FirestoreSeeder {
             listOf("soir"), listOf("spectacle", "Zhang Yimou", "nocturne")),
     )
 
-    //  成都景点
     private fun chengduAttractions() = listOf(
         Attraction("cd_pandas", "chengdu", "Base des Pandas Géants", "Nature",
             55, 150, 4.9,
@@ -316,7 +298,6 @@ object FirestoreSeeder {
             listOf("soir"), listOf("premium", "vip", "michelin", "gastronomie"))
     )
 
-    //  桂林景点
     private fun guilinAttractions() = listOf(
         Attraction("gl_riviere_li", "guilin", "Croisière Rivière Li", "Nature",
             210, 240, 4.9,
@@ -361,7 +342,6 @@ object FirestoreSeeder {
             listOf("soir"), listOf("spectacle", "Zhang Yimou", "plein-air")),
     )
 
-    //  PARIS 景点
     private fun parisAttractions() = listOf(
         Attraction("pa_tour_eiffel", "paris", "Tour Eiffel", "Monument",
             26, 120, 4.8,
@@ -434,7 +414,6 @@ object FirestoreSeeder {
             listOf("soir"), listOf("premium", "vip", "cabaret", "spectacle"))
     )
 
-    //  LYON 景点
     private fun lyonAttractions() = listOf(
         Attraction("ly_vieux_lyon", "lyon", "Vieux Lyon", "Culture",
             0, 120, 4.8,
@@ -479,7 +458,6 @@ object FirestoreSeeder {
             listOf("apres-midi"), listOf("shopping", "place", "centre-ville")),
     )
 
-    //  NICE 景点
     private fun niceAttractions() = listOf(
         Attraction("ni_promenade", "nice", "Promenade des Anglais", "Loisirs",
             0, 60, 4.8,
@@ -531,7 +509,6 @@ object FirestoreSeeder {
             listOf("matin", "apres-midi"), listOf("premium", "vip", "yacht", "hélicoptère", "Monaco"))
     )
 
-    //  MARSEILLE 景点
     private fun marseilleAttractions() = listOf(
         Attraction("ma_notre_dame", "marseille", "Notre-Dame de la Garde", "Monument",
             0, 60, 4.8,
@@ -576,7 +553,6 @@ object FirestoreSeeder {
             listOf("matin"), listOf("île", "Dumas", "bateau")),
     )
 
-    //  BORDEAUX 景点
     private fun bordeauxAttractions() = listOf(
         Attraction("bo_cite_vin", "bordeaux", "Cité du Vin", "Culture",
             22, 120, 4.7,
@@ -621,7 +597,6 @@ object FirestoreSeeder {
             listOf("matin", "apres-midi"), listOf("jardin", "parc", "détente")),
     )
 
-    //  HELPERS
     private fun clearCollection(name: String, onComplete: () -> Unit) {
         db.collection(name).get()
             .addOnSuccessListener { snapshot ->

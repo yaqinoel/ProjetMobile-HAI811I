@@ -12,13 +12,6 @@ import java.net.URL
 import java.net.URLEncoder
 import kotlin.math.abs
 
-/**
- * One-time helper to replace expired public image links with real photos.
- *
- * It downloads real public photos for each destination/attraction, uploads them
- * under the Firebase Storage root "travelpath", then writes the Storage URLs
- * back to Firestore.
- */
 object ImageMigrationHelper {
 
     private val storage = FirebaseStorage.getInstance()

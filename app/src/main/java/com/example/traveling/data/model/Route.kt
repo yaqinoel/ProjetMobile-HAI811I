@@ -14,7 +14,7 @@ data class TravelRoute(
     val reviews: Int,
     val imageUrl: String,
     val highlights: List<String>,
-    val gradientColors: Pair<Long, Long> // Start and end gradient color
+    val gradientColors: Pair<Long, Long>
 )
 
 data class RouteStop(
@@ -51,7 +51,6 @@ data class Activity(
     val icon: String
 )
 
-// Données UI statiques (labels et villes par défaut)
 object TravelPathData {
 
     val activities = listOf(
@@ -65,6 +64,5 @@ object TravelPathData {
         Activity("photo", "Photo", "📸"),
     )
 
-    // Villes par défaut (sera remplacé par Firestore si disponible)
     val defaultQuickCities = listOf("Paris", "Lyon", "Nice", "Pékin", "Hangzhou")
 }

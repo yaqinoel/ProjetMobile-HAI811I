@@ -18,14 +18,13 @@ import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.repository.WeatherInfo
 import com.example.traveling.ui.theme.*
 
-// Stats bar (Budget / Duration / Stops / Distance) + Weather info banner
 @Composable
 internal fun RouteStatsBar(
     stops: List<RouteStop>,
     routeDuration: String,
     weather: WeatherInfo? = null
 ) {
-    // Stats row
+
     Surface(
         color = CardBg,
         border = BorderStroke(1.dp, StoneBorder)
@@ -40,7 +39,7 @@ internal fun RouteStatsBar(
             DetailStatItem(Icons.Default.AttachMoney, "$totalCost €", "Budget", RedPrimary)
             DetailStatItem(Icons.Default.Schedule, routeDuration, "Durée", Color(0xFFB45309))
             DetailStatItem(Icons.Outlined.DirectionsWalk, "${stops.size}", "Arrêts", StoneMuted)
-            // Calculate real total distance from stops
+
             val totalDist = stops.mapNotNull { s ->
                 if (s.distance == "Départ") null
                 else s.distance.replace(" km", "").replace(" m", "").replace(",", ".").toDoubleOrNull()
@@ -52,7 +51,6 @@ internal fun RouteStatsBar(
         }
     }
 
-    // Weather info — real data if available, fallback otherwise
     val emoji = weather?.emoji ?: "☀️"
     val title = if (weather != null) "Météo du jour : ${weather.description}, ${weather.temperature.toInt()}°C"
                 else "Météo du jour : Chargement…"

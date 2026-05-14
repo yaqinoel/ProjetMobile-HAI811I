@@ -38,36 +38,29 @@ class TravelViewModel : ViewModel() {
     private val photoPostRepository = PhotoPostRepository()
     private val travelBridgeRepository = TravelBridgeRepository()
 
-    /** Must be called once from a Composable with LocalContext */
     fun initLocalStorage(context: Context) {
         if (localStorage == null) {
             localStorage = LocalStorageRepository(context.applicationContext)
         }
     }
 
-    // ── Destinations ──
     private val _destinations = MutableStateFlow<List<Destination>>(emptyList())
     val destinations: StateFlow<List<Destination>> = _destinations.asStateFlow()
 
-    /** Noms des villes pour le sélecteur rapide */
     private val _quickCities = MutableStateFlow<List<String>>(emptyList())
     val quickCities: StateFlow<List<String>> = _quickCities.asStateFlow()
 
-    // ── Attractions de la destination sélectionnée ──
     private val _attractions = MutableStateFlow<List<Attraction>>(emptyList())
     val attractions: StateFlow<List<Attraction>> = _attractions.asStateFlow()
 
-    // ── Routes générées ──
     private val _routes = MutableStateFlow<List<TravelRoute>>(emptyList())
     val routes: StateFlow<List<TravelRoute>> = _routes.asStateFlow()
 
-    // ── Stops pour RouteDetail ──
     private val _routeStops = MutableStateFlow<List<RouteStop>>(emptyList())
     val routeStops: StateFlow<List<RouteStop>> = _routeStops.asStateFlow()
     private val _stopTravelSharePhotos = MutableStateFlow<Map<String, List<PhotoPostDocument>>>(emptyMap())
     val stopTravelSharePhotos: StateFlow<Map<String, List<PhotoPostDocument>>> = _stopTravelSharePhotos.asStateFlow()
 
-    // ── Attractions suggérées pour le formulaire ──
     private val _suggestedAttractions = MutableStateFlow<List<Attraction>>(emptyList())
     val suggestedAttractions: StateFlow<List<Attraction>> = _suggestedAttractions.asStateFlow()
     private val _travelSharePhotoSuggestions = MutableStateFlow<List<PhotoPostDocument>>(emptyList())
@@ -76,27 +69,22 @@ class TravelViewModel : ViewModel() {
     private val _isLoadingTravelShareSuggestions = MutableStateFlow(false)
     val isLoadingTravelShareSuggestions: StateFlow<Boolean> = _isLoadingTravelShareSuggestions.asStateFlow()
 
-    // ── Destination & Route sélectionnées ──
     private val _selectedDestination = MutableStateFlow<Destination?>(null)
     val selectedDestination: StateFlow<Destination?> = _selectedDestination.asStateFlow()
 
     private val _selectedRoute = MutableStateFlow<TravelRoute?>(null)
     val selectedRoute: StateFlow<TravelRoute?> = _selectedRoute.asStateFlow()
 
-    // ── Loading state ──
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // ── Weather ──
     private val _weather = MutableStateFlow<WeatherInfo?>(null)
     val weather: StateFlow<WeatherInfo?> = _weather.asStateFlow()
 
-    // ── PDF export result ──
     private val _pdfExportPath = MutableStateFlow<File?>(null)
     val pdfExportPath: StateFlow<File?> = _pdfExportPath.asStateFlow()
 
-    // ── État de navigation de l'écran (persiste entre les changements de tab) ──
-    private val _currentStep = MutableStateFlow("preferences") // preferences, loading, results, detail
+    private val _currentStep = MutableStateFlow("preferences")
     val currentStep: StateFlow<String> = _currentStep.asStateFlow()
 
     private val _currentRouteId = MutableStateFlow<String?>(null)
@@ -105,7 +93,6 @@ class TravelViewModel : ViewModel() {
     fun setStep(step: String) { _currentStep.value = step }
     fun setCurrentRouteId(id: String?) { _currentRouteId.value = id }
 
-    // ── État du formulaire (persiste entre retour résultats → formulaire) ──
     val formDestination = MutableStateFlow("")
     val formActivities = MutableStateFlow(setOf<String>())
     val formBudget = MutableStateFlow(600f)
@@ -121,11 +108,9 @@ class TravelViewModel : ViewModel() {
     val travelShareSeedPostId = formTravelShareSourcePostId
     val travelShareSeedPlaceName = formTravelSharePlaceName
 
-    // ── Validation destination ──
     private val _destinationNotFound = MutableStateFlow(false)
     val destinationNotFound: StateFlow<Boolean> = _destinationNotFound.asStateFlow()
 
-    /** Vérifie si la destination saisie a des données */
     fun checkDestination(name: String) {
         if (name.isBlank()) {
             _destinationNotFound.value = false
@@ -135,7 +120,6 @@ class TravelViewModel : ViewModel() {
         _destinationNotFound.value = !found
     }
 
-    // ── Mapping activités UI → types Firestore ──
     private val activityTypeMapping = mapOf(
         "culture" to listOf("Culture", "Monument"),
         "food" to listOf("Gastronomie"),
@@ -147,14 +131,12 @@ class TravelViewModel : ViewModel() {
         "photo" to listOf("Photo", "Nature", "Monument")
     )
 
-    // ── Données de filtrage sauvegardées ──
     private var savedFavoritePlaces: List<String> = emptyList()
     private var savedActivities: Set<String> = emptySet()
     private var savedAvoidRain: Boolean = false
     private var savedAvoidHeat: Boolean = false
     private var savedAvoidCold: Boolean = false
 
-    // ── Attractions par route ──
     private var routeAttractionsMap: Map<String, List<Attraction>> = emptyMap()
     private var suggestedAttractionsJob: Job? = null
     private var travelShareSuggestionsJob: Job? = null
@@ -339,14 +321,11 @@ class TravelViewModel : ViewModel() {
                 val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
                 _weather.value = currentWeather
 
-                // ── Filtrage strict → relaxé ──
                 val filtered = filterAttractions(mergedAttractions, budget, activities, effort, currentWeather)
                 val weatherAdjustedAll = applyWeatherPreferences(mergedAttractions, currentWeather)
 
-                // Générer les 3 routes avec des sous-ensembles différents
                 _routes.value = generateRoutes(filtered, weatherAdjustedAll, dest, budget, durationHours)
 
-                // Précharger les stops de la première route
                 if (_routes.value.isNotEmpty()) {
                     val firstRouteAttractions = routeAttractionsMap[_routes.value[0].id] ?: emptyList()
                     _routeStops.value = generateStops(firstRouteAttractions)
@@ -638,7 +617,7 @@ class TravelViewModel : ViewModel() {
         val lng = displayLongitude ?: longitude ?: rawLongitude
         return lat != null && lng != null && locationName.isNotBlank()
     }
-    //  FILTERING LOGIC
+
     private fun filterAttractions(
         all: List<Attraction>,
         budget: Int,
@@ -646,17 +625,15 @@ class TravelViewModel : ViewModel() {
         effort: Int,
         weather: WeatherInfo?
     ): List<Attraction> {
-        // Déterminer les types d'attractions recherchés
+
         val wantedTypes = activities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
-        // Étape 1 : filtre strict (type + coût individuel ≤ budget + effort)
         var result = all.filter { attr ->
             (wantedTypes.isEmpty() || attr.type in wantedTypes) &&
             attr.cost <= budget &&
             attr.effortLevel <= effort + 1
         }
 
-        // Étape 2 : relâcher le filtre de type si trop peu de résultats
         if (result.size < 3) {
             result = all.filter { attr ->
                 attr.cost <= budget &&
@@ -664,12 +641,10 @@ class TravelViewModel : ViewModel() {
             }
         }
 
-        // Étape 3 : en dernier recours, prendre les 5 meilleurs par note
         if (result.size < 3) {
             result = all.sortedByDescending { it.rating }.take(5)
         }
 
-        // Prioriser les lieux favoris de l'utilisateur
         if (savedFavoritePlaces.isNotEmpty()) {
             val favorites = result.filter { attr ->
                 savedFavoritePlaces.any { fav ->
@@ -731,27 +706,23 @@ class TravelViewModel : ViewModel() {
         val maxMinutes = durationHours * 60
         val wantedTypes = savedActivities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
-        val usedIds = mutableSetOf<String>() // Pour éviter les doublons entre routes
+        val usedIds = mutableSetOf<String>()
         val favoriteAttractionIds = (filtered + allAttractions)
             .filter { matchesFavoritePlace(it) }
             .map { it.id }
             .toSet()
 
-        // ── Route 1 : Économique ──
         val cheapPool = filtered.sortedBy { it.cost }
         val cheapAttractions = selectWithinConstraints(cheapPool, budget, maxMinutes, wantedTypes, usedIds)
         usedIds.addAll(cheapAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
-        // ── Route 2 : Équilibrée ──
         val balancedPool = filtered.sortedByDescending { it.rating / (it.cost.coerceAtLeast(1).toDouble()) }
         val balancedAttractions = selectWithinConstraints(balancedPool, budget, maxMinutes, wantedTypes, usedIds)
         usedIds.addAll(balancedAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
-        // ── Route 3 : Premium (pool élargi, budget +50%) ──
         val premiumPool = allAttractions.sortedByDescending { it.rating }
         val premiumAttractions = selectWithinConstraints(premiumPool, (budget * 1.5).toInt(), (maxMinutes * 1.3).toInt(), wantedTypes, usedIds)
 
-        // Stocker les associations route → attractions
         routeAttractionsMap = mapOf(
             "${dest.id}_eco" to cheapAttractions,
             "${dest.id}_bal" to balancedAttractions,
@@ -783,7 +754,7 @@ class TravelViewModel : ViewModel() {
         wantedTypes: Set<String>,
         excludeIds: Set<String>
     ): List<Attraction> {
-        // Filtrer les attractions déjà prises par d'autres routes
+
         val available = sorted.filter { it.id !in excludeIds }
 
         val selected = mutableListOf<Attraction>()
@@ -791,7 +762,6 @@ class TravelViewModel : ViewModel() {
         var totalMinutes = 0
         var hasPrefMatch = false
 
-        // D'abord, essayer d'inclure les lieux demandés par l'utilisateur ou TravelShare.
         for (attr in available.filter { matchesFavoritePlace(it) }) {
             val transitTime = if (selected.isEmpty()) 0 else 15
             val newTotalMinutes = totalMinutes + attr.duration + transitTime
@@ -805,7 +775,6 @@ class TravelViewModel : ViewModel() {
             }
         }
 
-        // Ensuite, garantir au moins une attraction de la préférence.
         if (wantedTypes.isNotEmpty()) {
             val prefFirst = available.firstOrNull { it.type in wantedTypes && it !in selected }
             if (prefFirst != null) {
@@ -822,9 +791,8 @@ class TravelViewModel : ViewModel() {
             }
         }
 
-        // Ensuite, compléter avec le reste
         for (attr in available) {
-            if (attr in selected) continue // Déjà ajouté
+            if (attr in selected) continue
             val transitTime = if (selected.isEmpty()) 0 else 15
             val newTotalMinutes = totalMinutes + attr.duration + transitTime
             val newTotalCost = totalCost + attr.cost
@@ -875,7 +843,6 @@ class TravelViewModel : ViewModel() {
         )
     }
 
-    /** Sélectionne une route et génère les stops correspondants. */
     fun selectRoute(routeId: String) {
         _selectedRoute.value = _routes.value.find { it.id == routeId }
         val routeAttractions = routeAttractionsMap[routeId] ?: return
@@ -886,12 +853,9 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    //  STOP GENERATION (SCHEDULING)
-
     private suspend fun generateStops(attractions: List<Attraction>): List<RouteStop> {
         if (attractions.isEmpty()) return emptyList()
 
-        // Trier par créneaux horaires pour un planning logique
         val ordered = attractions.sortedBy { attr ->
             when {
                 attr.bestTimeSlots.contains("matin") -> 0
@@ -905,7 +869,7 @@ class TravelViewModel : ViewModel() {
         var currentMinute = 0
 
         val basicStops = ordered.mapIndexed { index, attr ->
-            // ── Distance & temps de marche ──
+
             var distString = "Départ"
             var walkStr = ""
             var walkMinutes = 0
@@ -923,7 +887,6 @@ class TravelViewModel : ViewModel() {
                     walkStr = "~15 min"
                 }
 
-                // Ajouter le temps de marche pour l'arrivée
                 currentMinute += walkMinutes
                 currentHour += currentMinute / 60
                 currentMinute %= 60
@@ -961,20 +924,18 @@ class TravelViewModel : ViewModel() {
                 sourcePostId = attr.sourcePostId
             )
 
-            // Avancer l'heure : UNIQUEMENT la durée de la visite
             currentMinute += attr.duration
             currentHour += currentMinute / 60
             currentMinute %= 60
 
             stop
         }
-        
-        // ── Real Directions via Google Maps API ──
+
         try {
             val apiKey = com.example.traveling.BuildConfig.MAPS_API_KEY
             val directionsService = com.example.traveling.data.repository.GoogleDirectionsService()
             val directions = directionsService.getDirections(basicStops, apiKey)
-            
+
             if (directions.size == basicStops.size - 1) {
                 return basicStops.mapIndexed { index, stop ->
                     if (index > 0) {
@@ -996,9 +957,6 @@ class TravelViewModel : ViewModel() {
         return basicStops
     }
 
-    /**
-     * Calcule la distance géolocalisée (Haversine) entre deux points en kilomètres.
-     */
     private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val r = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
@@ -1010,10 +968,6 @@ class TravelViewModel : ViewModel() {
         return r * c
     }
 
-    // ═══════════════════════════════════════════════════
-    //  §3. INTERACTION — Like / Save / Share / Regenerate
-    // ═══════════════════════════════════════════════════
-
     fun isRouteLiked(routeId: String): Boolean =
         localStorage?.isRouteLiked(routeId) ?: false
 
@@ -1021,14 +975,12 @@ class TravelViewModel : ViewModel() {
         val route = _selectedRoute.value
         val destName = route?.destName ?: _selectedDestination.value?.name ?: ""
 
-        // Local persistence
         route?.let {
             localStorage?.storeRouteInfo(it, destName)
             localStorage?.cacheRoute(it.id, it, _routeStops.value)
         }
         val nowLiked = localStorage?.toggleRouteLike(routeId) ?: false
 
-        // Sync to Firestore
         viewModelScope.launch {
             try {
                 if (nowLiked && route != null) {
@@ -1056,7 +1008,6 @@ class TravelViewModel : ViewModel() {
         }
         val nowSaved = localStorage?.toggleRouteSave(routeId) ?: false
 
-        // Sync to Firestore
         viewModelScope.launch {
             try {
                 if (nowSaved && route != null) {
@@ -1074,10 +1025,8 @@ class TravelViewModel : ViewModel() {
     fun getLikedRoutes() = localStorage?.getLikedRoutes() ?: emptyList()
     fun getSavedRoutes() = localStorage?.getSavedRoutes() ?: emptyList()
 
-    /** Load a cached route into ViewModel state so RouteDetailScreen can display it.
-     *  Tries local cache first, then falls back to Firestore. */
     fun loadCachedRoute(routeId: String): Boolean {
-        // Try local cache first
+
         val cached = localStorage?.getCachedRoute(routeId)
         if (cached != null) {
             val (route, stops) = cached
@@ -1085,13 +1034,12 @@ class TravelViewModel : ViewModel() {
             _routeStops.value = stops
             return true
         }
-        // Will try Firestore asynchronously
+
         return false
     }
 
-    /** Async version: load route from Firestore when local cache is empty */
     suspend fun loadCachedRouteAsync(routeId: String): Boolean {
-        // Try local first
+
         val cached = localStorage?.getCachedRoute(routeId)
         if (cached != null) {
             val (route, stops) = cached
@@ -1099,14 +1047,14 @@ class TravelViewModel : ViewModel() {
             _routeStops.value = stops
             return true
         }
-        // Try Firestore (check both types)
+
         for (type in listOf("liked", "saved")) {
             val doc = savedRoutesRepo.getRoute(routeId, type)
             if (doc != null) {
                 val (route, stops) = savedRoutesRepo.toRouteAndStops(doc)
                 _selectedRoute.value = route
                 _routeStops.value = stops
-                // Also cache locally for next time
+
                 localStorage?.cacheRoute(route.id, route, stops)
                 return true
             }
@@ -1114,7 +1062,6 @@ class TravelViewModel : ViewModel() {
         return false
     }
 
-    /** Re-generate the current route with a concrete adjustment. */
     fun regenerateCurrentRoute(adjustment: RegenerationAdjustment = RegenerationAdjustment.SURPRISE) {
         val route = _selectedRoute.value ?: return
         val routeId = route.id
@@ -1150,7 +1097,6 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    /** Build a share text and return an ACTION_SEND Intent */
     fun buildShareIntent(): Intent {
         val route = _selectedRoute.value
         val dest = _selectedDestination.value
@@ -1174,10 +1120,6 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    // ═══════════════════════════════════════════════════
-    //  §4. OFFLINE MODE — Cache routes locally
-    // ═══════════════════════════════════════════════════
-
     fun cacheCurrentRoute() {
         val route = _selectedRoute.value ?: return
         val stops = _routeStops.value
@@ -1195,14 +1137,10 @@ class TravelViewModel : ViewModel() {
         return true
     }
 
-    // ═══════════════════════════════════════════════════
-    //  §5. WEATHER — Fetch from Open-Meteo
-    // ═══════════════════════════════════════════════════
-
     fun fetchWeather() {
         val dest = _selectedDestination.value ?: return
         if (dest.lat == 0.0 && dest.lng == 0.0) {
-            // Use first stop coords as fallback
+
             val firstStop = _routeStops.value.firstOrNull { it.lat != 0.0 } ?: return
             fetchWeatherAt(firstStop.lat, firstStop.lng)
         } else {
@@ -1215,10 +1153,6 @@ class TravelViewModel : ViewModel() {
             _weather.value = weatherService.getWeather(lat, lng)
         }
     }
-
-    // ═══════════════════════════════════════════════════
-    //  §6. PDF EXPORT
-    // ═══════════════════════════════════════════════════
 
     fun exportPdf(context: Context) {
         val route = _selectedRoute.value ?: return

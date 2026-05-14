@@ -1,15 +1,8 @@
 package com.example.traveling.data.model
 
-/**
- * Firestore document model for a user's saved/liked route.
- * Collection: "users/{userId}/saved_routes"
- *
- * Stores the full route + stops data so it can be loaded
- * from any device without relying on local cache.
- */
 data class SavedRouteDocument(
     val routeId: String = "",
-    val type: String = "",             // "liked" or "saved"
+    val type: String = "",
     val destName: String = "",
     val routeName: String = "",
     val routeSubtitle: String = "",
@@ -28,15 +21,11 @@ data class SavedRouteDocument(
     val savedAt: Long = System.currentTimeMillis()
 )
 
-/**
- * Embedded stop entry inside SavedRouteDocument.
- * Stores all fields needed to reconstruct a RouteStop.
- */
 data class SavedRouteStopEntry(
     val id: String = "",
     val name: String = "",
     val type: String = "",
-    val timeSlot: String = "",         // MATIN, APRES_MIDI, SOIR
+    val timeSlot: String = "",
     val arrivalTime: String = "",
     val duration: String = "",
     val distance: String = "",
