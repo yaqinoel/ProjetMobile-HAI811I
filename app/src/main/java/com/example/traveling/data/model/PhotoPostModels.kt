@@ -40,6 +40,9 @@ data class PhotoPostDocument(
     val reportCount: Int = 0,
     val isLinkedToTravelPath: Boolean = false,
     val travelPathPlaceId: String? = null,
+    val travelPathDestinationId: String? = null,
+    val travelPathDestinationName: String? = null,
+    val travelPathSource: String? = null,
     val status: String = "published"
 )
 

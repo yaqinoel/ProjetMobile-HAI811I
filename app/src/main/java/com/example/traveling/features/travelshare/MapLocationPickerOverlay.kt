@@ -119,7 +119,21 @@ fun MapLocationPickerOverlay(
         selectedCandidate = fallback
         editableName = fallback.name
         placeError = null
-        isResolvingPlace = false
+        isResolvingPlace = true
+        coroutineScope.launch {
+            repository.reverseLookup(latLng)
+                .onSuccess { candidates ->
+                    val resolved = candidates.firstOrNull() ?: fallback
+                    selectedCandidate = resolved
+                    editableName = resolved.name
+                }
+                .onFailure {
+                    selectedCandidate = fallback
+                    editableName = fallback.name
+                    placeError = "Impossible de récupérer la ville pour ce point"
+                }
+            isResolvingPlace = false
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f))) {
@@ -130,7 +144,7 @@ fun MapLocationPickerOverlay(
             properties = mapProperties,
             onMapClick = { latLng -> resolveMapClick(latLng) },
             onPOIClick = { poi ->
-                val candidate = SelectedLocationCandidate(
+                val fallback = SelectedLocationCandidate(
                     name = poi.name,
                     address = null,
                     city = null,
@@ -140,11 +154,28 @@ fun MapLocationPickerOverlay(
                     googlePlaceId = poi.placeId,
                     source = "map_poi"
                 )
-                selectCandidate(candidate)
+                selectCandidate(fallback)
                 coroutineScope.launch {
                     cameraPositionState.animate(
                         CameraUpdateFactory.newLatLngZoom(poi.latLng, 16f)
                     )
+                    isResolvingPlace = true
+                    repository.fetchPlaceDetails(poi.placeId)
+                        .onSuccess { details ->
+                            selectCandidate(details)
+                        }
+                        .onFailure {
+                            repository.reverseLookup(poi.latLng)
+                                .onSuccess { candidates ->
+                                    selectCandidate(candidates.firstOrNull() ?: fallback)
+                                }
+                                .onFailure {
+                                    selectedCandidate = fallback
+                                    editableName = fallback.name
+                                    placeError = "Impossible de récupérer la ville pour ce lieu"
+                                }
+                        }
+                    isResolvingPlace = false
                 }
                 searchQuery = ""
                 predictions = emptyList()

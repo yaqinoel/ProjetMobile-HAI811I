@@ -52,7 +52,8 @@ data class PublishPhotoPostInput(
 class PhotoPostRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
-    private val notificationRepository: NotificationRepository = NotificationRepository()
+    private val notificationRepository: NotificationRepository = NotificationRepository(),
+    private val travelRepository: TravelRepository = TravelRepository()
 ) {
 
     suspend fun publishPhotoPost(input: PublishPhotoPostInput): Result<String> {
@@ -76,6 +77,22 @@ class PhotoPostRepository(
             }
 
             val now = Timestamp.now()
+            val visibleLat = input.displayLatitude ?: input.rawLatitude
+            val visibleLng = input.displayLongitude ?: input.rawLongitude
+            val shouldLinkToTravelPath = input.isLinkedToTravelPath && input.visibility == "public"
+            val travelPathDestination = if (shouldLinkToTravelPath) {
+                travelRepository.ensureTravelPathDestinationForPost(
+                    city = input.city,
+                    country = input.country,
+                    lat = visibleLat,
+                    lng = visibleLng,
+                    imageUrl = uploadedUrls.firstOrNull(),
+                    sourcePostId = postId,
+                    userId = input.authorId
+                )
+            } else {
+                null
+            }
             val post = PhotoPostDocument(
                 postId = postId,
                 authorId = input.authorId,
@@ -111,8 +128,11 @@ class PhotoPostRepository(
                 saveCount = 0,
                 commentCount = 0,
                 reportCount = 0,
-                isLinkedToTravelPath = input.isLinkedToTravelPath,
+                isLinkedToTravelPath = shouldLinkToTravelPath && travelPathDestination != null,
                 travelPathPlaceId = null,
+                travelPathDestinationId = travelPathDestination?.id,
+                travelPathDestinationName = travelPathDestination?.name,
+                travelPathSource = travelPathDestination?.source,
                 status = "published"
             )
 
@@ -608,6 +628,29 @@ class PhotoPostRepository(
         isLinkedToTravelPath: Boolean
     ): Result<Unit> {
         return runCatching {
+            val existingPost = db.collection(FirestoreCollections.PHOTO_POSTS)
+                .document(postId)
+                .get()
+                .awaitResult()
+                .toObject(PhotoPostDocument::class.java)
+
+            val shouldLinkToTravelPath = isLinkedToTravelPath && visibility.lowercase() == "public"
+            val visibleLat = existingPost?.displayLatitude ?: existingPost?.latitude ?: existingPost?.rawLatitude
+            val visibleLng = existingPost?.displayLongitude ?: existingPost?.longitude ?: existingPost?.rawLongitude
+            val travelPathDestination = if (shouldLinkToTravelPath && existingPost != null) {
+                travelRepository.ensureTravelPathDestinationForPost(
+                    city = existingPost.city,
+                    country = existingPost.country,
+                    lat = visibleLat,
+                    lng = visibleLng,
+                    imageUrl = existingPost.imageUrls.firstOrNull(),
+                    sourcePostId = existingPost.postId,
+                    userId = existingPost.authorId
+                )
+            } else {
+                null
+            }
+
             db.collection(FirestoreCollections.PHOTO_POSTS)
                 .document(postId)
                 .update(
@@ -616,7 +659,10 @@ class PhotoPostRepository(
                         "description" to description,
                         "visibility" to visibility,
                         "tags" to tags,
-                        "isLinkedToTravelPath" to isLinkedToTravelPath,
+                        "isLinkedToTravelPath" to (shouldLinkToTravelPath && travelPathDestination != null),
+                        "travelPathDestinationId" to travelPathDestination?.id,
+                        "travelPathDestinationName" to travelPathDestination?.name,
+                        "travelPathSource" to travelPathDestination?.source,
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
                 )

@@ -181,7 +181,7 @@ class TravelViewModel : ViewModel() {
                 TravelPathSeed(
                     sourcePostId = post.postId,
                     placeName = post.locationName,
-                    destinationName = post.city,
+                    destinationName = post.travelPathDestinationName ?: post.city,
                     latitude = post.displayLatitude ?: post.latitude ?: post.rawLatitude,
                     longitude = post.displayLongitude ?: post.longitude ?: post.rawLongitude,
                     placeType = post.placeType,
@@ -314,8 +314,13 @@ class TravelViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             repository.getAttractionsByDestination(dest.id).collect { allAttractions ->
+                val linkedTravelSharePosts = runCatching {
+                    travelBridgeRepository.getLinkedTravelSharePhotosForDestination(dest.id)
+                }.getOrDefault(emptyList())
+                val candidatePosts = (selectedTravelSharePosts.value + linkedTravelSharePosts)
+                    .distinctBy { it.postId }
                 val travelShareCandidates = buildTravelShareAttractionCandidates(
-                    posts = selectedTravelSharePosts.value,
+                    posts = candidatePosts,
                     officialAttractions = allAttractions,
                     destination = dest
                 )
@@ -366,7 +371,8 @@ class TravelViewModel : ViewModel() {
     }
 
     private fun updateTravelSharePhotoSuggestions(cityName: String) {
-        if (cityName.isBlank()) {
+        val dest = _destinations.value.find { it.name.equals(cityName, ignoreCase = true) }
+        if (cityName.isBlank() || dest == null) {
             _travelSharePhotoSuggestions.value = emptyList()
             travelShareSuggestionsJob?.cancel()
             travelShareSuggestionsJob = null
@@ -377,7 +383,10 @@ class TravelViewModel : ViewModel() {
         travelShareSuggestionsJob?.cancel()
         travelShareSuggestionsJob = viewModelScope.launch {
             _isLoadingTravelShareSuggestions.value = true
-            travelBridgeRepository.observeLinkedTravelSharePhotosForDestination(cityName).collect { posts ->
+            travelBridgeRepository.observeLinkedTravelSharePhotosForDestination(
+                destinationId = dest.id,
+                fallbackCity = dest.name
+            ).collect { posts ->
                 _travelSharePhotoSuggestions.value = posts.sortedByDescending { rankTravelShareSuggestion(it) }
                 _isLoadingTravelShareSuggestions.value = false
             }
@@ -468,6 +477,11 @@ class TravelViewModel : ViewModel() {
     ): List<Attraction> {
         return posts
             .filter { it.visibility == "public" && it.status == "published" }
+            .filter {
+                it.travelPathDestinationId.isNullOrBlank() ||
+                    it.travelPathDestinationId == destination.id ||
+                    it.city.equals(destination.name, ignoreCase = true)
+            }
             .filter { it.hasUsableLocation() }
             .filterNot { post ->
                 officialAttractions.any { attr -> isDuplicateTravelSharePlace(post, attr) }

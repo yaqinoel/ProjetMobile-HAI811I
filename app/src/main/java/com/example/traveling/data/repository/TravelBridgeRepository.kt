@@ -3,7 +3,6 @@ package com.example.traveling.data.repository
 import com.example.traveling.data.model.FirestoreCollections
 import com.example.traveling.data.model.PhotoPostDocument
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -18,6 +17,39 @@ class TravelBridgeRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
+    fun observeLinkedTravelSharePhotosForDestination(
+        destinationId: String,
+        fallbackCity: String?
+    ): Flow<List<PhotoPostDocument>> = callbackFlow {
+        if (destinationId.isBlank()) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val listener = db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("visibility", "public")
+            .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
+            .whereEqualTo("travelPathDestinationId", destinationId)
+            .limit(30)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val posts = snapshot?.documents
+                    ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.sortedByDescending { it.createdAt?.seconds ?: 0L }
+                    ?: emptyList()
+
+                trySend(posts)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
     fun observeLinkedTravelSharePhotosForDestination(city: String): Flow<List<PhotoPostDocument>> = callbackFlow {
         if (city.isBlank()) {
             trySend(emptyList())
@@ -30,7 +62,6 @@ class TravelBridgeRepository(
             .whereEqualTo("status", "published")
             .whereEqualTo("isLinkedToTravelPath", true)
             .whereEqualTo("city", city)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(12)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -40,6 +71,7 @@ class TravelBridgeRepository(
 
                 val posts = snapshot?.documents
                     ?.mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+                    ?.sortedByDescending { it.createdAt?.seconds ?: 0L }
                     ?: emptyList()
 
                 trySend(posts)
@@ -74,6 +106,52 @@ class TravelBridgeRepository(
             .whereEqualTo("isLinkedToTravelPath", true)
             .limit(100)
             .get()
+            .await()
+            .documents
+            .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+
+        return posts.filter { post ->
+            val visibleLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
+            val visibleLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
+            if (visibleLat == null || visibleLng == null) return@filter false
+
+            haversineKm(lat, lng, visibleLat, visibleLng) <= radiusKm
+        }
+    }
+
+    suspend fun getLinkedTravelSharePhotosForDestination(destinationId: String): List<PhotoPostDocument> {
+        if (destinationId.isBlank()) return emptyList()
+
+        val posts = db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("visibility", "public")
+            .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
+            .whereEqualTo("travelPathDestinationId", destinationId)
+            .limit(100)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
+
+        return posts.sortedByDescending { it.createdAt?.seconds ?: 0L }
+    }
+
+    suspend fun findNearbyLinkedTravelSharePhotos(
+        destinationId: String?,
+        lat: Double,
+        lng: Double,
+        radiusKm: Double
+    ): List<PhotoPostDocument> {
+        val query = db.collection(FirestoreCollections.PHOTO_POSTS)
+            .whereEqualTo("visibility", "public")
+            .whereEqualTo("status", "published")
+            .whereEqualTo("isLinkedToTravelPath", true)
+            .let { base ->
+                if (destinationId.isNullOrBlank()) base else base.whereEqualTo("travelPathDestinationId", destinationId)
+            }
+            .limit(100)
+
+        val posts = query.get()
             .await()
             .documents
             .mapNotNull { it.toObject(PhotoPostDocument::class.java) }

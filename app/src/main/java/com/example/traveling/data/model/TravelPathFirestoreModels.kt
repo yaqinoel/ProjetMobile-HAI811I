@@ -1,5 +1,7 @@
 package com.example.traveling.data.model
 
+import com.google.firebase.Timestamp
+
 /**
  * Destination (城市/目的地)
  * Firestore collection: "destinations"
@@ -11,7 +13,14 @@ data class Destination(
     val description: String = "",
     val imageUrl: String = "",
     val lat: Double = 0.0,
-    val lng: Double = 0.0
+    val lng: Double = 0.0,
+    val source: String = "official",
+    val normalizedName: String = "",
+    val createdFromPostId: String? = null,
+    val createdByUserId: String? = null,
+    val createdAt: Timestamp? = null,
+    val photoCount: Int = 0,
+    val isVerified: Boolean = false
 )
 
 /**

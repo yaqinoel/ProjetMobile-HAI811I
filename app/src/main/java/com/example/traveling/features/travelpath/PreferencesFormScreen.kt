@@ -34,6 +34,7 @@ internal fun PreferencesForm(
     onLoadingComplete: () -> Unit
 ) {
     val quickCities by travelViewModel.quickCities.collectAsState()
+    val destinations by travelViewModel.destinations.collectAsState()
     val citiesList = quickCities.ifEmpty { TravelPathData.defaultQuickCities }
 
     // -- Form state backed by ViewModel (persists across navigation) --
@@ -75,6 +76,20 @@ internal fun PreferencesForm(
     }
 
     val destinationNotFound by travelViewModel.destinationNotFound.collectAsState()
+    val destinationQuery = destination.trim()
+    val selectedDestinationInfo = destinations.firstOrNull {
+        it.name.equals(destinationQuery, ignoreCase = true)
+    }
+    val destinationMatches = remember(destinationQuery, destinations) {
+        if (destinationQuery.isBlank()) {
+            emptyList()
+        } else {
+            destinations
+                .filter { it.name.contains(destinationQuery, ignoreCase = true) }
+                .take(6)
+        }
+    }
+    val canGenerateRoute = selectedActivities.isNotEmpty() && selectedDestinationInfo != null
 
     LaunchedEffect(destination) {
         travelViewModel.updateSuggestedAttractions(destination)
@@ -130,10 +145,36 @@ internal fun PreferencesForm(
                     onValueChange = { destination = it },
                     placeholder = { Text("Où voulez-vous aller ?", color = StoneLighter) },
                     leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = RedPrimary) },
-                    isError = destinationNotFound && destination.isNotBlank(),
-                    supportingText = if (destinationNotFound && destination.isNotBlank()) {
-                        { Text("Pas de données disponibles pour cette ville!", color = Color(0xFFDC2626), fontSize = 11.sp) }
+                    trailingIcon = if (selectedDestinationInfo != null) {
+                        {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Destination sélectionnée",
+                                tint = Color(0xFF059669)
+                            )
+                        }
                     } else null,
+                    isError = destinationNotFound && destination.isNotBlank(),
+                    supportingText = {
+                        when {
+                            selectedDestinationInfo != null -> {
+                                Text(
+                                    "Destination sélectionnée : ${selectedDestinationInfo.name}",
+                                    color = Color(0xFF059669),
+                                    fontSize = 11.sp
+                                )
+                            }
+                            destinationNotFound && destination.isNotBlank() -> {
+                                Text("Aucune destination disponible pour cette ville.", color = Color(0xFFDC2626), fontSize = 11.sp)
+                            }
+                            destination.isNotBlank() -> {
+                                Text("Choisissez une destination proposée ci-dessous.", color = StoneLighter, fontSize = 11.sp)
+                            }
+                            else -> {
+                                Text("Tapez une ville ou choisissez une destination disponible.", color = StoneLighter, fontSize = 11.sp)
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -146,21 +187,108 @@ internal fun PreferencesForm(
                     ),
                     singleLine = true
                 )
+                if (selectedDestinationInfo != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFECFDF5),
+                        border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Destination active", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF047857))
+                                Text(
+                                    listOfNotNull(
+                                        selectedDestinationInfo.name,
+                                        selectedDestinationInfo.country.takeIf { it.isNotBlank() }
+                                    ).joinToString(", "),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = StoneText
+                                )
+                            }
+                            if (selectedDestinationInfo.source == "travelshare") {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color.White,
+                                    contentColor = RedPrimary
+                                ) {
+                                    Text(
+                                        "Partagé",
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (destinationMatches.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Correspondances :", fontSize = 11.sp, color = StoneLighter)
+                    Spacer(Modifier.height(6.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(destinationMatches) { match ->
+                            Surface(
+                                onClick = { destination = match.name },
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF5F5F4),
+                                contentColor = StoneMuted,
+                                border = BorderStroke(1.dp, Color(0xFFE7E5E4))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(match.name, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                    if (match.source == "travelshare") {
+                                        Text("Partagé", fontSize = 9.sp, color = RedPrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Spacer(Modifier.height(12.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(citiesList) { city ->
                         val selected = destination == city
+                        val cityDestination = destinations.firstOrNull { it.name.equals(city, ignoreCase = true) }
+                        val isTravelShareCity = cityDestination?.source == "travelshare"
                         Surface(
                             onClick = { destination = city },
                             shape = RoundedCornerShape(8.dp),
                             color = if (selected) RedPrimary else Color(0xFFF5F5F4),
                             contentColor = if (selected) Color.White else StoneMuted
                         ) {
-                            Text(
-                                city,
+                            Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                fontSize = 12.sp, fontWeight = FontWeight.Medium
-                            )
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(city, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                if (isTravelShareCity) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (selected) Color.White.copy(alpha = 0.18f) else Color(0xFFFEF2F2),
+                                        contentColor = if (selected) Color.White else RedPrimary
+                                    ) {
+                                        Text(
+                                            "Partagé",
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -530,7 +658,7 @@ internal fun PreferencesForm(
                     )
                     onGenerate()
                 },
-                enabled = selectedActivities.isNotEmpty() && destination.isNotBlank() && !destinationNotFound,
+                enabled = canGenerateRoute,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -545,7 +673,7 @@ internal fun PreferencesForm(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            if (selectedActivities.isNotEmpty() && destination.isNotBlank() && !destinationNotFound)
+                            if (canGenerateRoute)
                                 Brush.horizontalGradient(listOf(RedPrimary, RedDark))
                             else Brush.horizontalGradient(listOf(Color(0xFFD6D3D1), Color(0xFFD6D3D1)))
                         ),
