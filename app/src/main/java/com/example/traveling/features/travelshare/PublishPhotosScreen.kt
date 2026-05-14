@@ -765,6 +765,9 @@ fun PublishPhotosScreen(
                 InfoLine("Note vocale", if (voiceNoteUri != null) "Ajoutée" else "Aucune")
                 InfoLine("Tags", selectedTags.ifEmpty { listOf("Voyage") }.joinToString(", ") { "#$it" })
                 InfoLine("TravelPath", if (isLinkedToPath) "Étape TravelPath" else "Non lié")
+                if (isLinkedToPath) {
+                    InfoLine("Coût TravelPath", expense.toIntOrNull()?.let { "$it EUR" } ?: "Non spécifié")
+                }
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = {
@@ -780,7 +783,8 @@ fun PublishPhotosScreen(
                             selectedGroup = selectedGroup,
                             tags = selectedTags.ifEmpty { listOf("Voyage") },
                             placeType = selectedCategory?.lowercase() ?: "street",
-                            isLinkedToTravelPath = isLinkedToPath
+                            isLinkedToTravelPath = isLinkedToPath,
+                            travelPathCost = if (isLinkedToPath) expense.toIntOrNull() else null
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),

@@ -92,7 +92,8 @@ class PublishPhotosViewModel(
         selectedGroup: UserJoinedGroupDocument?,
         tags: List<String>,
         placeType: String,
-        isLinkedToTravelPath: Boolean
+        isLinkedToTravelPath: Boolean,
+        travelPathCost: Int? = null
     ) {
         val currentUser = auth.currentUser
         if (currentUser == null) {
@@ -144,7 +145,8 @@ class PublishPhotosViewModel(
                 visibility = visibility,
                 groupId = if (visibility == "group") selectedGroup?.groupId else null,
                 groupName = if (visibility == "group") selectedGroup?.name else null,
-                isLinkedToTravelPath = isLinkedToTravelPath
+                isLinkedToTravelPath = isLinkedToTravelPath,
+                travelPathCost = travelPathCost
             )
 
             photoPostRepository.publishPhotoPost(input)

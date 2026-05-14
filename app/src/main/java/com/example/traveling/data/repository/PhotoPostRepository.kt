@@ -47,7 +47,8 @@ data class PublishPhotoPostInput(
     val visibility: String,
     val groupId: String?,
     val groupName: String?,
-    val isLinkedToTravelPath: Boolean
+    val isLinkedToTravelPath: Boolean,
+    val travelPathCost: Int? = null
 )
 
 class PhotoPostRepository(
@@ -140,7 +141,7 @@ class PhotoPostRepository(
             val userRef = db.collection(FirestoreCollections.USERS).document(input.authorId)
             val batch = db.batch()
             batch.set(postRef, post)
-            buildTravelShareAttraction(post)?.let { attraction ->
+            buildTravelShareAttraction(post, input.travelPathCost)?.let { attraction ->
                 batch.set(
                     db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
                     attraction,
@@ -722,7 +723,10 @@ class PhotoPostRepository(
         }
     }
 
-    private fun buildTravelShareAttraction(post: PhotoPostDocument): TravelShareAttractionDocument? {
+    private fun buildTravelShareAttraction(
+        post: PhotoPostDocument,
+        costOverride: Int? = null
+    ): TravelShareAttractionDocument? {
         if (!post.isLinkedToTravelPath || post.visibility != "public" || post.status != "published") return null
         val destinationId = post.travelPathDestinationId ?: return null
         val destinationName = post.travelPathDestinationName ?: post.city ?: return null
@@ -730,13 +734,15 @@ class PhotoPostRepository(
         val lng = post.displayLongitude ?: post.longitude ?: post.rawLongitude ?: return null
         val name = post.locationName.ifBlank { post.title }.ifBlank { return null }
         val now = Timestamp.now()
+        val attractionType = mapPlaceTypeToAttractionType(post.placeType, post.tags)
 
         return TravelShareAttractionDocument(
             id = "photo_${post.postId}",
             destinationId = destinationId,
             name = name,
-            type = mapPlaceTypeToAttractionType(post.placeType, post.tags),
-            cost = 0,
+            type = attractionType,
+            cost = costOverride?.coerceAtLeast(0)
+                ?: estimateTravelShareCost(attractionType, post.placeType, post.tags),
             duration = 45,
             rating = 4.2 + minOf(post.likeCount, 50) / 100.0,
             description = post.description.ifBlank { post.title },
@@ -772,6 +778,21 @@ class PhotoPostRepository(
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
             terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
             else -> "Photo"
+        }
+    }
+
+    private fun estimateTravelShareCost(type: String, placeType: String, tags: List<String>): Int {
+        val terms = (listOf(type, placeType) + tags).joinToString(" ").lowercase()
+        return when {
+            terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
+                terms.contains("cafe") || terms.contains("café") -> 25
+            terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> 20
+            terms.contains("museum") || terms.contains("musée") || terms.contains("culture") -> 12
+            terms.contains("monument") || terms.contains("architecture") -> 10
+            terms.contains("leisure") || terms.contains("loisirs") -> 18
+            terms.contains("nature") || terms.contains("park") || terms.contains("parc") ||
+                terms.contains("beach") || terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> 0
+            else -> 5
         }
     }
 

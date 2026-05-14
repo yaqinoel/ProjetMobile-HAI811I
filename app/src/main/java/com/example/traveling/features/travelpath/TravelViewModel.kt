@@ -501,12 +501,13 @@ class TravelViewModel : ViewModel() {
     private fun PhotoPostDocument.toAttractionCandidate(destinationId: String): Attraction {
         val resolvedLat = displayLatitude ?: latitude ?: rawLatitude ?: 0.0
         val resolvedLng = displayLongitude ?: longitude ?: rawLongitude ?: 0.0
+        val attractionType = mapPlaceTypeToAttractionType(placeType, tags)
         return Attraction(
             id = "photo_$postId",
             destinationId = destinationId,
             name = locationName.ifBlank { title.ifBlank { "Lieu TravelShare" } },
-            type = mapPlaceTypeToAttractionType(placeType, tags),
-            cost = 0,
+            type = attractionType,
+            cost = estimateTravelShareCost(attractionType, placeType, tags),
             duration = 45,
             rating = 4.2 + minOf(likeCount, 50) / 100.0,
             description = description.ifBlank { title },
@@ -540,7 +541,7 @@ class TravelViewModel : ViewModel() {
             destinationId = destinationId,
             name = name,
             type = type.ifBlank { "Photo" },
-            cost = cost,
+            cost = cost.takeIf { it > 0 } ?: estimateTravelShareCost(type, type, tags),
             duration = duration,
             rating = rating,
             description = description,
@@ -571,6 +572,21 @@ class TravelViewModel : ViewModel() {
             terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
             terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
             else -> "Photo"
+        }
+    }
+
+    private fun estimateTravelShareCost(type: String, placeType: String, tags: List<String>): Int {
+        val terms = (listOf(type, placeType) + tags).joinToString(" ").lowercase()
+        return when {
+            terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
+                terms.contains("cafe") || terms.contains("café") -> 25
+            terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> 20
+            terms.contains("museum") || terms.contains("musée") || terms.contains("culture") -> 12
+            terms.contains("monument") || terms.contains("architecture") -> 10
+            terms.contains("leisure") || terms.contains("loisirs") -> 18
+            terms.contains("nature") || terms.contains("park") || terms.contains("parc") ||
+                terms.contains("beach") || terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> 0
+            else -> 5
         }
     }
 
