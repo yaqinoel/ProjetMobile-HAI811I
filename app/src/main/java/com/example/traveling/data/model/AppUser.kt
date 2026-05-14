@@ -49,6 +49,7 @@ data class NotificationSettingsDocument(
     val notifyByPlaces: Boolean = true,
     val notifyComments: Boolean = true,
     val notifyLikes: Boolean = true,
+    val notifySaves: Boolean = true,
     val followedTags: List<String> = emptyList(),
     val followedPlaceTypes: List<String> = emptyList(),
     val followedGroupIds: List<String> = emptyList(),

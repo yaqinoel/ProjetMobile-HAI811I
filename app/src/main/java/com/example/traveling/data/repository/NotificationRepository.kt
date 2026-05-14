@@ -310,6 +310,27 @@ class NotificationRepository(
             )
         ).map { Unit }
     }
+
+    suspend fun createSaveNotificationIfNeeded(
+        post: PhotoPostDocument,
+        actorUserId: String,
+        actorName: String
+    ): Result<Unit> {
+        if (post.authorId == actorUserId) return Result.success(Unit)
+        val settings = getNotificationSettings(post.authorId) ?: NotificationSettingsDocument()
+        if (!settings.notifySaves) return Result.success(Unit)
+
+        return createNotification(
+            CreateNotificationInput(
+                receiverId = post.authorId,
+                type = "save",
+                title = actorName.ifBlank { "Un voyageur" },
+                message = "a enregistré votre publication \"${post.title.ifBlank { post.locationName }}\"",
+                relatedPostId = post.postId,
+                relatedUserId = actorUserId
+            )
+        ).map { Unit }
+    }
 }
 
 private suspend fun <T> Task<T>.awaitResult(): T = suspendCancellableCoroutine { cont ->

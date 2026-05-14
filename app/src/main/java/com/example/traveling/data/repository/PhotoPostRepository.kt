@@ -520,7 +520,7 @@ class PhotoPostRepository(
 
     suspend fun savePost(userId: String, postId: String, collectionName: String?): Result<Unit> {
         return runCatching {
-            db.runTransaction { transaction ->
+            val didSave = db.runTransaction { transaction ->
                 val postSaveRef = db.collection(FirestoreCollections.PHOTO_POSTS)
                     .document(postId)
                     .collection(FirestoreCollections.SAVES)
@@ -533,7 +533,7 @@ class PhotoPostRepository(
                 val userRef = db.collection(FirestoreCollections.USERS).document(userId)
 
                 val alreadySaved = transaction.get(postSaveRef).exists()
-                if (alreadySaved) return@runTransaction Unit
+                if (alreadySaved) return@runTransaction false
 
                 transaction.set(
                     postSaveRef,
@@ -554,8 +554,31 @@ class PhotoPostRepository(
                 )
                 transaction.update(postRef, "saveCount", FieldValue.increment(1))
                 transaction.set(userRef, mapOf("savedCount" to FieldValue.increment(1)), SetOptions.merge())
-                Unit
+                true
             }.awaitResult()
+
+            if (didSave) {
+                runCatching {
+                    val post = db.collection(FirestoreCollections.PHOTO_POSTS)
+                        .document(postId)
+                        .get()
+                        .awaitResult()
+                        .toObject(PhotoPostDocument::class.java)
+                    val actorName = db.collection(FirestoreCollections.USERS)
+                        .document(userId)
+                        .get()
+                        .awaitResult()
+                        .getString("displayName")
+                        .orEmpty()
+                    if (post != null) {
+                        notificationRepository.createSaveNotificationIfNeeded(
+                            post = post,
+                            actorUserId = userId,
+                            actorName = actorName
+                        )
+                    }
+                }
+            }
         }
     }
 

@@ -24,5 +24,6 @@ object NotificationTypes {
     const val PLACE_TYPE_MATCH = "place_type_match"
     const val LIKE = "like"
     const val COMMENT = "comment"
+    const val SAVE = "save"
     const val SYSTEM = "system"
 }

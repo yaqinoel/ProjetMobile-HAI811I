@@ -8,19 +8,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DoneAll
@@ -147,7 +152,7 @@ fun NotificationsScreen(
                 val filteredList = notifications.filter { n ->
                     when (currentFilter) {
                         "unread" -> !n.isRead
-                        "users" -> n.type == "user_publish" || n.type == "like" || n.type == "comment"
+                        "users" -> n.type == "user_publish" || n.type == "like" || n.type == "comment" || n.type == "save"
                         "groups" -> n.type == "group_publish"
                         "places" -> n.type == "place_type_match"
                         "tags" -> n.type == "tag_match"
@@ -320,6 +325,7 @@ fun NotificationsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun NotificationSettingsPanel(
     settings: NotificationSettingsDocument,
@@ -338,7 +344,11 @@ private fun NotificationSettingsPanel(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 460.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Gérer les suivis", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
@@ -374,8 +384,12 @@ private fun NotificationSettingsPanel(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Suivis actifs", fontSize = 11.sp, color = Stone500, fontWeight = FontWeight.SemiBold)
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Tags suivis", fontSize = 11.sp, color = Stone500, fontWeight = FontWeight.SemiBold)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 settings.followedTags.forEach { tag ->
                     RemovableFollowChip(
                         icon = Icons.Default.Tag,
@@ -387,36 +401,48 @@ private fun NotificationSettingsPanel(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Text("Suivis actifs", fontSize = 11.sp, color = Stone500, fontWeight = FontWeight.SemiBold)
             NotificationToggleCard(
-                "Auteurs",
-                "Nouveaux posts suivis",
-                Icons.Default.Person,
-                settings.notifyFromFollowedUsers,
-                Modifier.fillMaxWidth(),
+                title = "Auteurs",
+                icon = Icons.Default.Person,
+                checked = settings.notifyFromFollowedUsers,
+                modifier = Modifier.fillMaxWidth(),
                 onCheckedChange = { onUpdate(settings.copy(notifyFromFollowedUsers = it)) }
             )
             NotificationToggleCard(
-                "Groupes",
-                "Publications de groupes",
-                Icons.Default.Group,
-                settings.notifyFromGroups,
-                Modifier.fillMaxWidth(),
+                title = "Groupes",
+                icon = Icons.Default.Group,
+                checked = settings.notifyFromGroups,
+                modifier = Modifier.fillMaxWidth(),
                 onCheckedChange = { onUpdate(settings.copy(notifyFromGroups = it)) }
             )
             NotificationToggleCard(
-                "Tags",
-                "Tags suivis",
-                Icons.Default.Tag,
-                settings.notifyByTags,
-                Modifier.fillMaxWidth(),
+                title = "Posts",
+                icon = Icons.Default.NotificationsActive,
+                checked = settings.notifyLikes || settings.notifyComments || settings.notifySaves,
+                modifier = Modifier.fillMaxWidth(),
+                onCheckedChange = {
+                    onUpdate(
+                        settings.copy(
+                            notifyLikes = it,
+                            notifyComments = it,
+                            notifySaves = it
+                        )
+                    )
+                }
+            )
+            NotificationToggleCard(
+                title = "Tags",
+                icon = Icons.Default.Tag,
+                checked = settings.notifyByTags,
+                modifier = Modifier.fillMaxWidth(),
                 onCheckedChange = { onUpdate(settings.copy(notifyByTags = it)) }
             )
             NotificationToggleCard(
-                "Lieux",
-                "Types de lieu suivis",
-                Icons.Default.LocationOn,
-                settings.notifyByPlaces,
-                Modifier.fillMaxWidth(),
+                title = "Lieux",
+                icon = Icons.Default.LocationOn,
+                checked = settings.notifyByPlaces,
+                modifier = Modifier.fillMaxWidth(),
                 onCheckedChange = { onUpdate(settings.copy(notifyByPlaces = it)) }
             )
         }
@@ -516,7 +542,6 @@ private fun RemovableFollowChip(
 @Composable
 private fun NotificationToggleCard(
     title: String,
-    subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
     modifier: Modifier = Modifier,
@@ -541,7 +566,6 @@ private fun NotificationToggleCard(
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Stone800)
-                Text(subtitle, fontSize = 10.sp, color = Stone400)
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
@@ -557,6 +581,7 @@ private fun NotificationCard(
     val badgeColor = when (notif.type) {
         "like" -> Color(0xFFEF4444)
         "comment" -> Color(0xFF3B82F6)
+        "save" -> Color(0xFF8B5CF6)
         "group_publish" -> Color(0xFFF97316)
         "tag_match" -> Color(0xFF14B8A6)
         "place_type_match" -> Color(0xFFF59E0B)
@@ -569,6 +594,7 @@ private fun NotificationCard(
         "place_type_match" -> Icons.Default.LocationOn
         "comment" -> Icons.Default.NotificationsActive
         "like" -> Icons.Default.Notifications
+        "save" -> Icons.Default.Bookmark
         else -> Icons.Default.Person
     }
 
