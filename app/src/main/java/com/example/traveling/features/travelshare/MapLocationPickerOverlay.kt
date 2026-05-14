@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import com.example.traveling.data.repository.PlacePredictionUi
 import com.example.traveling.data.repository.PlaceSearchRepository
 import com.example.traveling.data.repository.SelectedLocationCandidate
@@ -189,10 +191,20 @@ fun MapLocationPickerOverlay(
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding(),
-            color = CardBg.copy(alpha = 0.97f)
+            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+            color = CardBg.copy(alpha = 0.98f)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = statusBarTop + 6.dp,
+                        bottom = 8.dp
+                    )
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Stone800)
@@ -254,13 +266,20 @@ fun MapLocationPickerOverlay(
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+            shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp),
             color = CardBg,
             shadowElevation = 8.dp
         ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Lieu sélectionné", color = Stone800, style = MaterialTheme.typography.titleMedium)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 220.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Lieu sélectionné", color = Stone800, style = MaterialTheme.typography.titleSmall)
 
                 OutlinedTextField(
                     value = editableName,
@@ -269,7 +288,7 @@ fun MapLocationPickerOverlay(
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.LocationOn, null, tint = RedPrimary) },
                     label = { Text("Nom du lieu") },
-                    placeholder = { Text("Ex : Cité Interdite, Musée Fabre...") },
+                    placeholder = { Text("Ex : Musée Fabre...") },
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = RedPrimary,
@@ -280,13 +299,8 @@ fun MapLocationPickerOverlay(
                 )
 
                 selectedCandidate.address?.let {
-                    Text(it, color = Stone500, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(it, color = Stone500, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Text(
-                    "%.5f, %.5f".format(selectedLatLng.latitude, selectedLatLng.longitude),
-                    color = Stone400,
-                    fontSize = 11.sp
-                )
 
                 if (isResolvingPlace) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = RedPrimary)

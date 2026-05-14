@@ -944,11 +944,20 @@ fun PublishPhotosScreen(
     }
 
     if (publishPreview) {
+        val previewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { publishPreview = false },
+            sheetState = previewSheetState,
             containerColor = CardBg
         ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp).padding(bottom = 32.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.92f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+                    .padding(bottom = 32.dp)
+            ) {
                 Text("Résumé de publication", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Stone800)
                 Spacer(Modifier.height(8.dp))
                 Text("Vérifiez les informations avant publication.", fontSize = 13.sp, color = Stone500)
