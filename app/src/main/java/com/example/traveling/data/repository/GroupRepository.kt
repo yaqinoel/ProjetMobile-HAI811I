@@ -98,6 +98,22 @@ class GroupRepository(
             }
     }
 
+    fun observeGroup(
+        groupId: String,
+        onChanged: (GroupDocument?) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        return db.collection(FirestoreCollections.GROUPS)
+            .document(groupId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+                onChanged(snapshot?.toObject(GroupDocument::class.java))
+            }
+    }
+
     fun observeDiscoverGroups(
         userId: String,
         onChanged: (List<GroupDocument>) -> Unit,

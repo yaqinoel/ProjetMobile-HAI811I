@@ -515,7 +515,7 @@ private fun HeaderBar(
                     singleLine = true,
                     decorationBox = { innerTextField ->
                         if (searchQuery.isBlank()) {
-                            Text("Description, lieu, thème, auteur...", color = StoneMuted, fontSize = 14.sp)
+                            Text("Lieu, thème, auteur...", color = StoneMuted, fontSize = 14.sp)
                         }
                         innerTextField()
                     }
@@ -696,7 +696,6 @@ private fun NearbyFilterCard(
                     value = radiusKm,
                     onValueChange = { onRadiusChanged(it.roundToInt().coerceIn(1, 50).toFloat()) },
                     valueRange = 1f..50f,
-                    steps = 48,
                     modifier = Modifier.weight(1f),
                     colors = SliderDefaults.colors(
                         thumbColor = RedPrimary,
@@ -932,17 +931,24 @@ private fun NearbyMapPickerOverlay(
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding(),
+            modifier = Modifier.fillMaxWidth(),
             color = CardBg.copy(alpha = 0.96f)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .height(60.dp)
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Fermer", tint = StoneText)
                 }
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text("Choisir le centre", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = StoneText)
                     Text("Déplacez la carte ou touchez un point", fontSize = 11.sp, color = StoneMuted)
                 }

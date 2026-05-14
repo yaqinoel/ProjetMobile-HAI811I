@@ -319,10 +319,9 @@ private fun PhotoPostDetailContent(
                                         }
                                         innerTextField()
                                     }
-                                )
-                                Icon(Icons.Outlined.Mic, contentDescription = "Voice", tint = Stone400, modifier = Modifier.size(16.dp))
-                            }
-                        }
+	                                )
+	                            }
+	                        }
 
                         // 发送按钮 (红色方形)
                         Surface(
@@ -483,8 +482,8 @@ private fun PhotoPostDetailContent(
 
                 Spacer(Modifier.height(16.dp))
 
-                // ─── 5. 导航操作双按钮 ───
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // ─── 5. 导航操作按钮 ───
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
                         onClick = {
                             val opened = openNavigationToPlace(
@@ -499,35 +498,28 @@ private fun PhotoPostDetailContent(
                                 }
                             }
                         },
-                        modifier = Modifier.weight(1f).height(44.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = RedDark)
                     ) {
                         Icon(Icons.Outlined.NearMe, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Google Maps", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("Google Maps", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                     Button(
-                        onClick = {
-                            onAddToTravelPath(
-                                TravelPathSeed(
-                                    sourcePostId = photo.id,
-                                    placeName = photo.location,
-                                    destinationName = photo.city.takeIf { it.isNotBlank() },
-                                    latitude = photo.lat,
-                                    longitude = photo.lng,
-                                    placeType = photo.placeType,
-                                    tags = photo.tags
-                                )
-                            )
-                        },
-                        modifier = Modifier.weight(1f).height(44.dp),
+                        onClick = { onFindSimilarPhotos(photo.id) },
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)) // Amber
                     ) {
-                        Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.Collections, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("TravelPath", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Photos similaires",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
                     }
                 }
 
@@ -542,8 +534,11 @@ private fun PhotoPostDetailContent(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Connexion avec TravelPath", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
                         Text("Ce lieu peut être ajouté comme étape obligatoire lors de la génération d'un parcours.", fontSize = 12.sp, color = Stone500, lineHeight = 18.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AssistChip(
+	                        Row(
+	                            modifier = Modifier.fillMaxWidth(),
+	                            horizontalArrangement = Arrangement.Center
+	                        ) {
+	                            AssistChip(
                                 onClick = {
                                     onAddToTravelPath(
                                         TravelPathSeed(
@@ -559,11 +554,6 @@ private fun PhotoPostDetailContent(
                                 },
                                 label = { Text("Utiliser ce lieu") },
                                 leadingIcon = { Icon(Icons.Outlined.Route, null, modifier = Modifier.size(16.dp)) }
-                            )
-                            AssistChip(
-                                onClick = { onFindSimilarPhotos(photo.id) },
-                                label = { Text("Photos similaires") },
-                                leadingIcon = { Icon(Icons.Outlined.Collections, null, modifier = Modifier.size(16.dp)) }
                             )
                         }
                     }
@@ -594,12 +584,6 @@ private fun PhotoPostDetailContent(
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 Text(comment.text, fontSize = 13.sp, color = Stone600, lineHeight = 18.sp)
-                                Spacer(Modifier.height(6.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
-                                    Icon(Icons.Outlined.ThumbUp, null, tint = Stone400, modifier = Modifier.size(12.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("${comment.likes}", fontSize = 11.sp, color = Stone400)
-                                }
                             }
                         }
                     }

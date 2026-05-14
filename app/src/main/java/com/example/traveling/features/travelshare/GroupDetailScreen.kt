@@ -39,6 +39,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.traveling.data.model.PhotoPostDocument
+import com.example.traveling.data.model.GroupDocument
+import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.features.travelshare.toPhotoPostUi
 import com.example.traveling.ui.theme.CardBg
@@ -54,31 +56,62 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface GroupDetailUiState {
     data object Loading : GroupDetailUiState
-    data class Success(val posts: List<PhotoPostDocument>) : GroupDetailUiState
+    data class Success(
+        val group: GroupDocument?,
+        val posts: List<PhotoPostDocument>
+    ) : GroupDetailUiState
     data class Error(val message: String) : GroupDetailUiState
 }
 
 class GroupDetailViewModel(
+    private val groupRepository: GroupRepository = GroupRepository(),
     private val repository: PhotoPostRepository = PhotoPostRepository()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<GroupDetailUiState>(GroupDetailUiState.Loading)
     val uiState: StateFlow<GroupDetailUiState> = _uiState.asStateFlow()
 
-    private var listener: ListenerRegistration? = null
+    private var groupListener: ListenerRegistration? = null
+    private var postsListener: ListenerRegistration? = null
+    private var currentGroup: GroupDocument? = null
+    private var currentPosts: List<PhotoPostDocument>? = null
 
     fun observe(groupId: String) {
-        listener?.remove()
+        groupListener?.remove()
+        postsListener?.remove()
+        currentGroup = null
+        currentPosts = null
         _uiState.value = GroupDetailUiState.Loading
-        listener = repository.observeGroupPublishedPosts(
+        groupListener = groupRepository.observeGroup(
             groupId = groupId,
-            onChanged = { _uiState.value = GroupDetailUiState.Success(it) },
+            onChanged = {
+                currentGroup = it
+                publishSuccessIfReady()
+            },
+            onError = { _uiState.value = GroupDetailUiState.Error(it.localizedMessage ?: "Erreur de chargement du groupe") }
+        )
+        postsListener = repository.observeGroupPublishedPosts(
+            groupId = groupId,
+            onChanged = {
+                currentPosts = it
+                publishSuccessIfReady()
+            },
             onError = { _uiState.value = GroupDetailUiState.Error(it.localizedMessage ?: "Erreur de chargement") }
         )
     }
 
+    private fun publishSuccessIfReady() {
+        val posts = currentPosts ?: return
+        _uiState.value = GroupDetailUiState.Success(
+            group = currentGroup,
+            posts = posts
+        )
+    }
+
     override fun onCleared() {
-        listener?.remove()
-        listener = null
+        groupListener?.remove()
+        postsListener?.remove()
+        groupListener = null
+        postsListener = null
         super.onCleared()
     }
 }
@@ -108,9 +141,27 @@ fun GroupDetailScreen(
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                 }
+                val success = state as? GroupDetailUiState.Success
+                val group = success?.group
                 Column {
-                    Text("Groupe", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Stone800)
-                    Text(groupId, fontSize = 11.sp, color = Stone500)
+                    Text(
+                        group?.name?.takeIf { it.isNotBlank() } ?: "Groupe",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Stone800
+                    )
+                    Text(
+                        group?.description?.takeIf { it.isNotBlank() }
+                            ?: "Publications des membres du groupe",
+                        fontSize = 11.sp,
+                        color = Stone500,
+                        maxLines = 2
+                    )
+                    Text(
+                        "${success?.posts?.size ?: 0} publication${if ((success?.posts?.size ?: 0) > 1) "s" else ""} partagée${if ((success?.posts?.size ?: 0) > 1) "s" else ""} par les membres",
+                        fontSize = 10.sp,
+                        color = Stone400
+                    )
                 }
             }
 
@@ -128,13 +179,32 @@ fun GroupDetailScreen(
                 is GroupDetailUiState.Success -> {
                     if (ui.posts.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Aucune publication dans ce groupe.", color = Stone500)
+                            Text("Aucune publication partagée par les membres de ce groupe.", color = Stone500)
                         }
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            item {
+                                Surface(
+                                    color = CardBg,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Group, null, tint = RedPrimary, modifier = Modifier.size(18.dp))
+                                        Column {
+                                            Text("Publications du groupe", color = Stone800, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text("Photos partagées par les membres dans ce groupe.", color = Stone500, fontSize = 11.sp)
+                                        }
+                                    }
+                                }
+                            }
                             items(ui.posts, key = { it.postId }) { post ->
                                 val item = post.toPhotoPostUi(isLiked = false, isSaved = false)
                                 Row(

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.text.BasicTextField
@@ -163,10 +164,9 @@ fun NotificationsScreen(
                 Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                     Surface(
                         color = HeaderBg,
-                        border = BorderStroke(1.dp, Color(0x1478350F)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column {
+                        Column(modifier = Modifier.statusBarsPadding()) {
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
