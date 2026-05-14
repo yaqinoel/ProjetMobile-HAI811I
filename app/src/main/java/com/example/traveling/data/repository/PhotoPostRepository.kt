@@ -6,6 +6,7 @@ import com.example.traveling.data.model.PhotoCommentDocument
 import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.PostLikeDocument
 import com.example.traveling.data.model.PostSaveDocument
+import com.example.traveling.data.model.TravelShareAttractionDocument
 import com.example.traveling.data.model.UserLikedPostDocument
 import com.example.traveling.data.model.UserSavedPostDocument
 import com.google.android.gms.tasks.Task
@@ -129,7 +130,7 @@ class PhotoPostRepository(
                 commentCount = 0,
                 reportCount = 0,
                 isLinkedToTravelPath = shouldLinkToTravelPath && travelPathDestination != null,
-                travelPathPlaceId = null,
+                travelPathPlaceId = if (shouldLinkToTravelPath && travelPathDestination != null) "photo_$postId" else null,
                 travelPathDestinationId = travelPathDestination?.id,
                 travelPathDestinationName = travelPathDestination?.name,
                 travelPathSource = travelPathDestination?.source,
@@ -139,6 +140,13 @@ class PhotoPostRepository(
             val userRef = db.collection(FirestoreCollections.USERS).document(input.authorId)
             val batch = db.batch()
             batch.set(postRef, post)
+            buildTravelShareAttraction(post)?.let { attraction ->
+                batch.set(
+                    db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
+                    attraction,
+                    SetOptions.merge()
+                )
+            }
             batch.update(userRef, "postCount", FieldValue.increment(1))
             if (input.visibility == "group" && !input.groupId.isNullOrBlank()) {
                 val groupRef = db.collection(FirestoreCollections.GROUPS).document(input.groupId)
@@ -609,6 +617,14 @@ class PhotoPostRepository(
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
                 )
+                transaction.set(
+                    db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document("photo_${post.postId}"),
+                    mapOf(
+                        "status" to "inactive",
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
                 transaction.set(userRef, mapOf("postCount" to FieldValue.increment(-1)), SetOptions.merge())
                 if (post.visibility == "group" && !post.groupId.isNullOrBlank()) {
                     val groupRef = db.collection(FirestoreCollections.GROUPS).document(post.groupId)
@@ -650,23 +666,112 @@ class PhotoPostRepository(
             } else {
                 null
             }
-
-            db.collection(FirestoreCollections.PHOTO_POSTS)
-                .document(postId)
-                .update(
-                    mapOf(
-                        "title" to title,
-                        "description" to description,
-                        "visibility" to visibility,
-                        "tags" to tags,
-                        "isLinkedToTravelPath" to (shouldLinkToTravelPath && travelPathDestination != null),
-                        "travelPathDestinationId" to travelPathDestination?.id,
-                        "travelPathDestinationName" to travelPathDestination?.name,
-                        "travelPathSource" to travelPathDestination?.source,
-                        "updatedAt" to FieldValue.serverTimestamp()
+            val updatedPostForPlace = existingPost?.copy(
+                title = title,
+                description = description,
+                tags = tags,
+                visibility = visibility,
+                isLinkedToTravelPath = shouldLinkToTravelPath && travelPathDestination != null,
+                travelPathPlaceId = if (shouldLinkToTravelPath && travelPathDestination != null) "photo_$postId" else null,
+                travelPathDestinationId = travelPathDestination?.id,
+                travelPathDestinationName = travelPathDestination?.name,
+                travelPathSource = travelPathDestination?.source
+            )
+            val updateValues = mutableMapOf<String, Any?>(
+                "title" to title,
+                "description" to description,
+                "visibility" to visibility,
+                "tags" to tags,
+                "isLinkedToTravelPath" to (shouldLinkToTravelPath && travelPathDestination != null),
+                "travelPathPlaceId" to if (shouldLinkToTravelPath && travelPathDestination != null) "photo_$postId" else null,
+                "travelPathDestinationId" to travelPathDestination?.id,
+                "travelPathDestinationName" to travelPathDestination?.name,
+                "travelPathSource" to travelPathDestination?.source,
+                "updatedAt" to FieldValue.serverTimestamp()
+            )
+            val attraction = updatedPostForPlace?.let { buildTravelShareAttraction(it) }
+            if (attraction != null) {
+                db.batch().apply {
+                    update(
+                        db.collection(FirestoreCollections.PHOTO_POSTS).document(postId),
+                        updateValues
                     )
+                    set(
+                        db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
+                        attraction,
+                        SetOptions.merge()
+                    )
+                }.commit().awaitResult()
+                return@runCatching
+            }
+
+            db.batch().apply {
+                update(
+                    db.collection(FirestoreCollections.PHOTO_POSTS).document(postId),
+                    updateValues
                 )
-                .awaitResult()
+                set(
+                    db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document("photo_$postId"),
+                    mapOf(
+                        "status" to "inactive",
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    SetOptions.merge()
+                )
+            }.commit().awaitResult()
+        }
+    }
+
+    private fun buildTravelShareAttraction(post: PhotoPostDocument): TravelShareAttractionDocument? {
+        if (!post.isLinkedToTravelPath || post.visibility != "public" || post.status != "published") return null
+        val destinationId = post.travelPathDestinationId ?: return null
+        val destinationName = post.travelPathDestinationName ?: post.city ?: return null
+        val lat = post.displayLatitude ?: post.latitude ?: post.rawLatitude ?: return null
+        val lng = post.displayLongitude ?: post.longitude ?: post.rawLongitude ?: return null
+        val name = post.locationName.ifBlank { post.title }.ifBlank { return null }
+        val now = Timestamp.now()
+
+        return TravelShareAttractionDocument(
+            id = "photo_${post.postId}",
+            destinationId = destinationId,
+            name = name,
+            type = mapPlaceTypeToAttractionType(post.placeType, post.tags),
+            cost = 0,
+            duration = 45,
+            rating = 4.2 + minOf(post.likeCount, 50) / 100.0,
+            description = post.description.ifBlank { post.title },
+            imageUrl = post.imageUrls.firstOrNull().orEmpty(),
+            lat = lat,
+            lng = lng,
+            openHours = "Horaires non renseignés",
+            closedDay = "",
+            effortLevel = 1,
+            weatherType = "both",
+            bestTimeSlots = listOf("apres-midi"),
+            tags = (post.tags + "TravelShare").distinct(),
+            imageUrls = post.imageUrls,
+            source = "travelshare",
+            sourcePostId = post.postId,
+            destinationName = destinationName,
+            authorId = post.authorId,
+            createdAt = post.createdAt ?: now,
+            updatedAt = now,
+            status = "active"
+        )
+    }
+
+    private fun mapPlaceTypeToAttractionType(placeType: String, tags: List<String>): String {
+        val terms = (listOf(placeType) + tags).joinToString(" ").lowercase()
+        return when {
+            terms.contains("museum") || terms.contains("musée") || terms.contains("culture") || terms.contains("cultural") -> "Culture"
+            terms.contains("monument") || terms.contains("architecture") || terms.contains("street") || terms.contains("rue") -> "Monument"
+            terms.contains("nature") || terms.contains("park") || terms.contains("parc") || terms.contains("beach") ||
+                terms.contains("mountain") || terms.contains("lake") || terms.contains("forest") -> "Nature"
+            terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
+                terms.contains("cafe") || terms.contains("café") -> "Gastronomie"
+            terms.contains("shop") || terms.contains("shopping") || terms.contains("market") || terms.contains("magasin") -> "Shopping"
+            terms.contains("leisure") || terms.contains("loisirs") -> "Loisirs"
+            else -> "Photo"
         }
     }
 

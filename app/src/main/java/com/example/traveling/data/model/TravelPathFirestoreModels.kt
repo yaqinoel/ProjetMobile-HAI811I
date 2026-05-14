@@ -45,7 +45,38 @@ data class Attraction(
     val weatherType: String = "both",// indoor / outdoor / both
     val bestTimeSlots: List<String> = emptyList(), // matin, apres-midi, soir
     val tags: List<String> = emptyList(),
-    val imageUrls: List<String> = emptyList()
+    val imageUrls: List<String> = emptyList(),
+    val source: String = "official",
+    val sourcePostId: String? = null
+)
+
+/** travelShareAttractions/{id} */
+data class TravelShareAttractionDocument(
+    val id: String = "",
+    val destinationId: String = "",
+    val name: String = "",
+    val type: String = "",
+    val cost: Int = 0,
+    val duration: Int = 45,
+    val rating: Double = 4.2,
+    val description: String = "",
+    val imageUrl: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val openHours: String = "Horaires non renseignés",
+    val closedDay: String = "",
+    val effortLevel: Int = 1,
+    val weatherType: String = "both",
+    val bestTimeSlots: List<String> = listOf("apres-midi"),
+    val tags: List<String> = emptyList(),
+    val imageUrls: List<String> = emptyList(),
+    val source: String = "travelshare",
+    val sourcePostId: String = "",
+    val destinationName: String = "",
+    val authorId: String = "",
+    val createdAt: Timestamp? = null,
+    val updatedAt: Timestamp? = null,
+    val status: String = "active"
 )
 
 /**

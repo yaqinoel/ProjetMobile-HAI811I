@@ -8,6 +8,7 @@ object FirestoreCollections {
     const val REPORTS = "reports"
     const val DESTINATIONS = "destinations"
     const val ATTRACTIONS = "attractions"
+    const val TRAVEL_SHARE_ATTRACTIONS = "travelShareAttractions"
 
     const val COMMENTS = "comments"
     const val LIKES = "likes"

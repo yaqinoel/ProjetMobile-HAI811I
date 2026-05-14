@@ -2,6 +2,7 @@ package com.example.traveling.data.repository
 
 import com.example.traveling.data.model.FirestoreCollections
 import com.example.traveling.data.model.PhotoPostDocument
+import com.example.traveling.data.model.TravelShareAttractionDocument
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -134,6 +135,21 @@ class TravelBridgeRepository(
             .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
 
         return posts.sortedByDescending { it.createdAt?.seconds ?: 0L }
+    }
+
+    suspend fun getTravelShareAttractionsForDestination(destinationId: String): List<TravelShareAttractionDocument> {
+        if (destinationId.isBlank()) return emptyList()
+
+        val attractions = db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS)
+            .whereEqualTo("destinationId", destinationId)
+            .whereEqualTo("status", "active")
+            .limit(100)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { it.toObject(TravelShareAttractionDocument::class.java) }
+
+        return attractions.sortedByDescending { it.createdAt?.seconds ?: 0L }
     }
 
     suspend fun findNearbyLinkedTravelSharePhotos(

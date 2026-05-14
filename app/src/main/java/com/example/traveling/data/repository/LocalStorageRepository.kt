@@ -214,6 +214,8 @@ class LocalStorageRepository(context: Context) {
         put("rating", s.rating.toDouble()); put("openHours", s.openHours)
         put("lat", s.lat); put("lng", s.lng)
         put("polylineToNext", s.polylineToNext ?: "")
+        put("source", s.source)
+        put("sourcePostId", s.sourcePostId ?: "")
     }
 
     private fun jsonToStop(j: JSONObject) = RouteStop(
@@ -229,7 +231,9 @@ class LocalStorageRepository(context: Context) {
         } ?: listOf(j.getString("imageUrl")).filter { it.isNotBlank() },
         rating = j.getDouble("rating").toFloat(), openHours = j.getString("openHours"),
         lat = j.getDouble("lat"), lng = j.getDouble("lng"),
-        polylineToNext = j.optString("polylineToNext").ifBlank { null }
+        polylineToNext = j.optString("polylineToNext").ifBlank { null },
+        source = j.optString("source", "official"),
+        sourcePostId = j.optString("sourcePostId").ifBlank { null }
     )
 
     private fun cacheCompressedMedia(url: String, key: String): String? {

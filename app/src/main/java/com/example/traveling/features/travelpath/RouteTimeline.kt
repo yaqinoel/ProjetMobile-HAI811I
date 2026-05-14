@@ -269,6 +269,30 @@ private fun StopExpandedDetail(
                     }
                 }
 
+                if (stop.source == "travelshare" && !stop.sourcePostId.isNullOrBlank()) {
+                    Surface(
+                        onClick = { onOpenPhotoDetail(stop.sourcePostId) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFECFDF5),
+                        border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.TravelExplore, null, tint = Color(0xFF047857), modifier = Modifier.size(14.dp))
+                            Text(
+                                "Voir la publication TravelShare",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF047857)
+                            )
+                        }
+                    }
+                }
+
                 if (travelSharePhotos.isNotEmpty()) {
                     Text(
                         "Photos partagées par les voyageurs",

@@ -10,6 +10,7 @@ import com.example.traveling.data.model.PhotoPostDocument
 import com.example.traveling.data.model.RouteStop
 import com.example.traveling.data.model.TimeSlot
 import com.example.traveling.data.model.TravelRoute
+import com.example.traveling.data.model.TravelShareAttractionDocument
 import com.example.traveling.data.repository.LocalStorageRepository
 import com.example.traveling.data.repository.OpenMeteoService
 import com.example.traveling.data.repository.PdfExportService
@@ -317,14 +318,22 @@ class TravelViewModel : ViewModel() {
                 val linkedTravelSharePosts = runCatching {
                     travelBridgeRepository.getLinkedTravelSharePhotosForDestination(dest.id)
                 }.getOrDefault(emptyList())
+                val linkedTravelShareAttractions = runCatching {
+                    travelBridgeRepository.getTravelShareAttractionsForDestination(dest.id)
+                }.getOrDefault(emptyList())
                 val candidatePosts = (selectedTravelSharePosts.value + linkedTravelSharePosts)
                     .distinctBy { it.postId }
-                val travelShareCandidates = buildTravelShareAttractionCandidates(
+                val travelShareCandidates = buildTravelSharePhotoAttractionCandidates(
                     posts = candidatePosts,
                     officialAttractions = allAttractions,
                     destination = dest
                 )
-                val mergedAttractions = allAttractions + travelShareCandidates
+                val travelShareAttractionCandidates = buildTravelShareStoredAttractionCandidates(
+                    attractions = linkedTravelShareAttractions,
+                    officialAttractions = allAttractions + travelShareCandidates,
+                    destination = dest
+                )
+                val mergedAttractions = allAttractions + travelShareCandidates + travelShareAttractionCandidates
 
                 _attractions.value = mergedAttractions
                 val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
@@ -470,7 +479,7 @@ class TravelViewModel : ViewModel() {
         }
     }
 
-    private fun buildTravelShareAttractionCandidates(
+    private fun buildTravelSharePhotoAttractionCandidates(
         posts: List<PhotoPostDocument>,
         officialAttractions: List<Attraction>,
         destination: Destination
@@ -505,7 +514,48 @@ class TravelViewModel : ViewModel() {
             lat = resolvedLat,
             lng = resolvedLng,
             tags = (tags + "TravelShare").distinct(),
-            imageUrls = imageUrls
+            imageUrls = imageUrls,
+            source = "travelshare",
+            sourcePostId = postId
+        )
+    }
+
+    private fun buildTravelShareStoredAttractionCandidates(
+        attractions: List<TravelShareAttractionDocument>,
+        officialAttractions: List<Attraction>,
+        destination: Destination
+    ): List<Attraction> {
+        return attractions
+            .filter { it.status == "active" && it.destinationId == destination.id }
+            .filter { it.name.isNotBlank() && it.lat != 0.0 && it.lng != 0.0 }
+            .filterNot { travelShareAttraction ->
+                officialAttractions.any { attr -> isDuplicateTravelShareAttraction(travelShareAttraction, attr) }
+            }
+            .map { it.toAttractionCandidate() }
+    }
+
+    private fun TravelShareAttractionDocument.toAttractionCandidate(): Attraction {
+        return Attraction(
+            id = id,
+            destinationId = destinationId,
+            name = name,
+            type = type.ifBlank { "Photo" },
+            cost = cost,
+            duration = duration,
+            rating = rating,
+            description = description,
+            imageUrl = imageUrl,
+            lat = lat,
+            lng = lng,
+            openHours = openHours,
+            closedDay = closedDay,
+            effortLevel = effortLevel,
+            weatherType = weatherType,
+            bestTimeSlots = bestTimeSlots,
+            tags = (tags + "TravelShare").distinct(),
+            imageUrls = imageUrls.ifEmpty { listOf(imageUrl).filter { it.isNotBlank() } },
+            source = source,
+            sourcePostId = sourcePostId
         )
     }
 
@@ -532,6 +582,14 @@ class TravelViewModel : ViewModel() {
             if (distanceKm <= 0.2) return true
         }
         return areNamesSimilar(post.locationName, attraction.name)
+    }
+
+    private fun isDuplicateTravelShareAttraction(travelShareAttraction: TravelShareAttractionDocument, attraction: Attraction): Boolean {
+        if (travelShareAttraction.lat != 0.0 && travelShareAttraction.lng != 0.0 && attraction.lat != 0.0 && attraction.lng != 0.0) {
+            val distanceKm = haversine(travelShareAttraction.lat, travelShareAttraction.lng, attraction.lat, attraction.lng)
+            if (distanceKm <= 0.2) return true
+        }
+        return areNamesSimilar(travelShareAttraction.name, attraction.name)
     }
 
     private fun areNamesSimilar(a: String, b: String): Boolean {
@@ -878,7 +936,9 @@ class TravelViewModel : ViewModel() {
                 rating = attr.rating.toFloat(),
                 openHours = attr.openHours,
                 lat = attr.lat,
-                lng = attr.lng
+                lng = attr.lng,
+                source = attr.source,
+                sourcePostId = attr.sourcePostId
             )
 
             // Avancer l'heure : UNIQUEMENT la durée de la visite

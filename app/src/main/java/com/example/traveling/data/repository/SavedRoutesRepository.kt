@@ -70,7 +70,9 @@ class SavedRoutesRepository {
                     imageUrl = s.imageUrl, rating = s.rating.toDouble(),
                     imageUrls = s.imageUrls,
                     openHours = s.openHours, lat = s.lat, lng = s.lng,
-                    polylineToNext = s.polylineToNext ?: ""
+                    polylineToNext = s.polylineToNext ?: "",
+                    source = s.source,
+                    sourcePostId = s.sourcePostId
                 )
             },
             savedAt = System.currentTimeMillis()
@@ -150,7 +152,9 @@ class SavedRoutesRepository {
                 imageUrls = s.imageUrls.ifEmpty { listOf(s.imageUrl).filter { it.isNotBlank() } },
                 rating = s.rating.toFloat(),
                 openHours = s.openHours, lat = s.lat, lng = s.lng,
-                polylineToNext = s.polylineToNext.ifBlank { null }
+                polylineToNext = s.polylineToNext.ifBlank { null },
+                source = s.source,
+                sourcePostId = s.sourcePostId
             )
         }
         return route to stops

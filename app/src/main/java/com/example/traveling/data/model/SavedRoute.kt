@@ -49,5 +49,7 @@ data class SavedRouteStopEntry(
     val openHours: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
-    val polylineToNext: String = ""
+    val polylineToNext: String = "",
+    val source: String = "official",
+    val sourcePostId: String? = null
 )
