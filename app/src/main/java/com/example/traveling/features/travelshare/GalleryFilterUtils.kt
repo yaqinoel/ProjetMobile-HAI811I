@@ -64,7 +64,51 @@ private fun searchableText(post: PhotoPostUi): String {
 }
 
 private fun matchesPlaceType(post: PhotoPostUi, placeType: String): Boolean {
-    return placeType == "all" || post.placeType.equals(placeType, ignoreCase = true)
+    if (placeType == "all") return true
+
+    val expectedTerms = placeTypeAliases(placeType)
+    val postTerms = buildSet {
+        add(normalizeFilterTerm(post.placeType))
+        post.tags.forEach { add(normalizeFilterTerm(it)) }
+        searchableText(post)
+            .split(' ', ',', ';', '#', '.', '/', '-', '_')
+            .mapTo(this) { normalizeFilterTerm(it) }
+    }.filter { it.isNotBlank() }.toSet()
+
+    return expectedTerms.any { expected -> expected in postTerms }
+}
+
+private fun placeTypeAliases(placeType: String): Set<String> {
+    return when (normalizeFilterTerm(placeType)) {
+        "nature" -> setOf("nature", "park", "parc", "garden", "jardin", "beach", "plage", "mountain", "montagne", "forest", "foret", "lac", "lake")
+        "museum" -> setOf("museum", "musee", "culture", "cultural", "art", "gallery", "galerie", "exposition")
+        "street" -> setOf("street", "rue", "avenue", "boulevard", "road", "route", "place", "square", "quartier")
+        "shop" -> setOf("shop", "shopping", "magasin", "market", "marche", "mall", "boutique", "store")
+        "monument" -> setOf("monument", "landmark", "historic", "historique", "statue", "temple", "church", "eglise", "cathedral", "cathedrale")
+        "architecture" -> setOf("architecture", "architectural", "building", "batiment", "design")
+        else -> setOf(normalizeFilterTerm(placeType))
+    }
+}
+
+private fun normalizeFilterTerm(value: String): String {
+    return value
+        .trim()
+        .lowercase()
+        .replace("é", "e")
+        .replace("è", "e")
+        .replace("ê", "e")
+        .replace("ë", "e")
+        .replace("à", "a")
+        .replace("â", "a")
+        .replace("ä", "a")
+        .replace("î", "i")
+        .replace("ï", "i")
+        .replace("ô", "o")
+        .replace("ö", "o")
+        .replace("ù", "u")
+        .replace("û", "u")
+        .replace("ü", "u")
+        .replace("ç", "c")
 }
 
 private fun matchesPeriod(post: PhotoPostUi, filter: GalleryFilter): Boolean {
