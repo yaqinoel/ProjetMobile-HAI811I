@@ -58,9 +58,7 @@
 // Présenter en une page maximum le projet, son contexte, ses deux modules principaux et le résultat final.
 // Ne pas détailler toutes les fonctionnalités ici : garder les détails pour la section 5.
 
-Le projet *Traveling* est une application mobile Android dédiée au voyage. Elle regroupe deux services principaux : *TravelShare*, qui permet aux utilisateurs de publier, rechercher et consulter des photos de voyage, et *TravelPath*, qui permet de générer des parcours de visite personnalisés à partir des préférences de l'utilisateur.
-
-L'application intègre également une passerelle entre les deux services. Les lieux partagés dans TravelShare peuvent être utilisés comme inspirations ou comme candidats de visite dans TravelPath. Cette liaison permet de construire une application cohérente, où les contenus publiés par les voyageurs enrichissent progressivement les possibilités de génération de parcours.
+Dans ce projet, nous avons développé une application Android autour du thème du voyage. Le travail est séparé en deux grandes parties. La première partie, *TravelShare*, concerne le partage et la consultation de photos de voyage. Elle permet notamment de publier des photos, de les rechercher, de les commenter, de les aimer ou de les enregistrer. La deuxième partie, *TravelPath*, concerne la création de parcours de visite à partir des préférences de l'utilisateur, comme la destination, le budget, la durée ou les types d'activités souhaités. L'application a été développée en Kotlin avec Jetpack Compose, Firebase et une architecture MVVM.
 
 // À compléter :
 // - Résumer le niveau de réalisation final.
@@ -134,7 +132,7 @@ com.example.traveling/
 
 == Kotlin et Jetpack Compose
 
-L'application est développée en *Kotlin*. L'interface utilisateur est construite avec *Jetpack Compose*.
+L'application est développée en Kotlin. L'interface utilisateur est construite avec Jetpack Compose.
 
 == Firebase
 
@@ -150,7 +148,7 @@ L'application utilise plusieurs services Google et Android liés au contexte de 
 
 - *Google Maps SDK / Maps Compose* pour afficher les cartes dans l'application, notamment dans la galerie et dans l'aperçu des parcours TravelPath ;
 - *Google Places API* pour la recherche et la sélection de lieux lors de la création ou de la localisation d'une publication ;
-- *Google Directions API* pour calculer les distances, durées de marche et polylines entre les étapes d'un parcours. Le service `GoogleDirectionsService` interroge l'API en mode `walking`, puis fournit à TravelPath des informations plus réalistes que les estimations locales ;
+- *Google Directions API* pour calculer les distances, durées de marche et polylines entre les étapes d'un parcours. Le service GoogleDirectionsService interroge l'API en mode walking, puis fournit à TravelPath des informations plus réalistes que les estimations locales ;
 - *Google Maps Intents* pour ouvrir un itinéraire vers un lieu dans une application de cartographie externe ;
 - *ML Kit Image Labeling* pour aider à l'annotation automatique des photos publiées dans TravelShare.
 
@@ -158,7 +156,8 @@ L'application s'appuie aussi sur des API Android natives : recherche vocale, cap
 
 == Open-Meteo API
 
-TravelPath utilise également le service *Open-Meteo* afin d'obtenir la météo courante d'une destination. Le service `OpenMeteoService` récupère la température et le code météo à partir des coordonnées GPS de la destination, puis transforme ces données en description lisible, icône et conseil utilisateur.
+TravelPath utilise également le service Open-Meteo afin d'obtenir la météo courante d'une destination. Le service OpenMeteoService
+ récupère la température et le code météo à partir des coordonnées GPS de la destination, puis transforme ces données en description lisible, icône et conseil utilisateur.
 
 Ces informations sont utilisées à deux niveaux :
 
@@ -167,7 +166,7 @@ Ces informations sont utilisées à deux niveaux :
 
 == Chargement d'images et médias
 
-Les images distantes sont affichées avec *Coil Compose*, ce qui simplifie le chargement asynchrone dans les écrans Compose. Les médias sont stockés dans *Firebase Storage* pour les publications TravelShare et pour les images TravelPath migrées. 
+Les images distantes sont affichées avec Coil Compose, ce qui simplifie le chargement asynchrone dans les écrans Compose. Les médias sont stockés dans Firebase Storage pour les publications TravelShare et pour les images TravelPath migrées. 
 
 // ─────────────────────────────────────
 = Modèle de données Firebase
@@ -430,4 +429,4 @@ La passerelle permet de relier les contenus publiés dans TravelShare avec la g�
 = Utilisation d'IA
 // ─────────────────────────────────────
 
-L'intelligence artificielle a été utilisée comme un outil d'assistance. Pendant la phase de prototypage, nous avons utilisé le mode *Make* de Figma pour explorer des idées d'interface. Au début du projet, l'IA nous a aidés à rechercher et comparer des choix techniques, notamment le langage, l'architecture, la base de données et les services backend. Pendant le développement, elle a aussi servi d'aide ponctuelle pour résoudre des problèmes de mise en page, comprendre certaines API ou services, réfléchir à des ajustements d'architecture et diagnostiquer des erreurs ou bugs. Les choix finaux, l'intégration dans le projet et la validation des fonctionnalités sont restés réalisés par les membres du groupe.
+L'intelligence artificielle a été utilisée comme un outil d'assistance. Pendant la phase de prototypage, nous avons utilisé le mode Make de Figma pour explorer des idées d'interface. Au début du projet, l'IA nous a aidés à rechercher et comparer des choix techniques, notamment le langage, l'architecture, la base de données et les services backend. Pendant le développement, elle a aussi servi d'aide ponctuelle pour résoudre des problèmes de mise en page, comprendre certaines API ou services, réfléchir à des ajustements d'architecture et diagnostiquer des erreurs ou bugs. Les choix finaux, l'intégration dans le projet et la validation des fonctionnalités sont restés réalisés par les membres du groupe.
