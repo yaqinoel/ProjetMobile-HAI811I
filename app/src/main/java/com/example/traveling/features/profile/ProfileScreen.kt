@@ -70,6 +70,7 @@ fun ProfileScreen(
         AnonymousProfileView(
             onLogin = onNavigateLogin,
             onRegister = onNavigateRegister,
+            onReturnHome = onLogout,
             onOpenLikedPosts = onOpenLikedPosts,
             onOpenSavedPosts = onOpenSavedPosts,
             onOpenLikedRoutes = onOpenLikedRoutes,
@@ -135,6 +136,7 @@ fun ProfileScreen(
 private fun AnonymousProfileView(
     onLogin: () -> Unit,
     onRegister: () -> Unit,
+    onReturnHome: () -> Unit,
     onOpenLikedPosts: () -> Unit,
     onOpenSavedPosts: () -> Unit,
     onOpenLikedRoutes: () -> Unit,
@@ -231,6 +233,18 @@ private fun AnonymousProfileView(
             shape = RoundedCornerShape(8.dp)
         ) {
             Text("Créer un compte", color = StoneText, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = onReturnHome,
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.Transparent),
+            border = BorderStroke(1.dp, StoneBorder),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text("Accueil", color = StoneMuted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
