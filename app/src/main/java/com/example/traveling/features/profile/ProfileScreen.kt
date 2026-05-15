@@ -71,7 +71,9 @@ fun ProfileScreen(
             onLogin = onNavigateLogin,
             onRegister = onNavigateRegister,
             onOpenLikedPosts = onOpenLikedPosts,
-            onOpenSavedPosts = onOpenSavedPosts
+            onOpenSavedPosts = onOpenSavedPosts,
+            onOpenLikedRoutes = onOpenLikedRoutes,
+            onOpenSavedRoutes = onOpenSavedRoutes
         )
     } else {
         val profileViewModel: ProfileViewModel = viewModel()
@@ -134,10 +136,16 @@ private fun AnonymousProfileView(
     onLogin: () -> Unit,
     onRegister: () -> Unit,
     onOpenLikedPosts: () -> Unit,
-    onOpenSavedPosts: () -> Unit
+    onOpenSavedPosts: () -> Unit,
+    onOpenLikedRoutes: () -> Unit,
+    onOpenSavedRoutes: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().background(ProfilePageBg).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ProfilePageBg)
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -168,18 +176,32 @@ private fun AnonymousProfileView(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             AnonymousProfileAction(
-                label = "Posts aimés",
+                label = "Photos aimés",
                 subtitle = "Photos que vous avez aimées",
                 icon = Icons.Default.Favorite,
                 iconColor = Color(0xFFDC2626),
                 onClick = onOpenLikedPosts
             )
             AnonymousProfileAction(
-                label = "Posts enregistrés",
+                label = "Photos enregistrés",
                 subtitle = "Photos sauvegardées pour plus tard",
                 icon = Icons.Default.Bookmark,
                 iconColor = Color(0xFFD97706),
                 onClick = onOpenSavedPosts
+            )
+            AnonymousProfileAction(
+                label = "Itinéraires aimés",
+                subtitle = "Routes TravelPath que vous avez aimées",
+                icon = Icons.Default.FavoriteBorder,
+                iconColor = Color(0xFFE11D48),
+                onClick = onOpenLikedRoutes
+            )
+            AnonymousProfileAction(
+                label = "Itinéraires enregistrés",
+                subtitle = "Routes TravelPath sauvegardées",
+                icon = Icons.Default.BookmarkBorder,
+                iconColor = Color(0xFFCA8A04),
+                onClick = onOpenSavedRoutes
             )
         }
 

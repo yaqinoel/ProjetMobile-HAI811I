@@ -339,6 +339,8 @@ fun AppNavigation() {
                 onNavigateToMyPublishedPosts = { navController.navigate("login") },
                 onNavigateToLikedPosts = { navController.navigate("liked_posts") },
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
+                onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail_anonymous/$photoId")
                 },
@@ -368,6 +370,8 @@ fun AppNavigation() {
                 onNavigateToMyPublishedPosts = { navController.navigate("login") },
                 onNavigateToLikedPosts = { navController.navigate("liked_posts") },
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
+                onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
                 onNavigateToPhotoDetail = { detailPhotoId ->
                     navController.navigate("photo_detail_anonymous/$detailPhotoId")
                 },
@@ -424,6 +428,8 @@ fun AppNavigation() {
                 onNavigateToMyPublishedPosts = { navController.navigate("login") },
                 onNavigateToLikedPosts = { navController.navigate("liked_posts") },
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
+                onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
+                onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
                 onNavigateToPhotoDetail = { detailPhotoId ->
                     navController.navigate("photo_detail_anonymous/$detailPhotoId")
                 },

@@ -6,7 +6,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
@@ -199,42 +198,6 @@ fun LaunchScreen(
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val colors = listOf(Color(0xFFB91C1C), Color(0xFFD97706), Color(0xFF7C3AED), Color(0xFF0D9488))
-                    val names = listOf("赵", "钱", "孙", "李")
-
-                    Box(modifier = Modifier.height(28.dp).width(88.dp)) {
-                        names.forEachIndexed { index, name ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(start = (index * 20).dp)
-                                    .size(28.dp)
-                                    .background(colors[index], shape = CircleShape)
-                                    .border(2.dp, Color(0x4D000000), shape = CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(name, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(SpanStyle(color = Color(0xE6FDE047), fontWeight = FontWeight.Bold)) {
-                                append("2,4k+ ")
-                            }
-                            append("voyageurs actifs")
-                        },
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp
-                    )
-                }
             }
         }
     }
