@@ -505,7 +505,7 @@ internal fun PreferencesForm(
                 Slider(
                     value = budget,
                     onValueChange = { budget = it },
-                    valueRange = 0f..2500f,
+                    valueRange = 20f..400f,
                     colors = SliderDefaults.colors(
                         thumbColor = RedPrimary,
                         activeTrackColor = RedPrimary,
@@ -513,8 +513,8 @@ internal fun PreferencesForm(
                     )
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("0 EUR", fontSize = 10.sp, color = StoneLighter)
-                    Text("2500 EUR", fontSize = 10.sp, color = StoneLighter)
+                    Text("20 EUR", fontSize = 10.sp, color = StoneLighter)
+                    Text("400 EUR", fontSize = 10.sp, color = StoneLighter)
                 }
             }
 

@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.io.File
+import kotlin.math.abs
 
 class TravelViewModel : ViewModel() {
 
@@ -95,7 +96,7 @@ class TravelViewModel : ViewModel() {
 
     val formDestination = MutableStateFlow("")
     val formActivities = MutableStateFlow(setOf<String>())
-    val formBudget = MutableStateFlow(600f)
+    val formBudget = MutableStateFlow(150f)
     val formDuration = MutableStateFlow(5f)
     val formEffort = MutableStateFlow(3f)
     val formFavoritePlaces = MutableStateFlow(listOf<String>())
@@ -705,22 +706,30 @@ class TravelViewModel : ViewModel() {
         val maxWalkingKm = maxWalkingDistanceForEffort(effort)
         val wantedTypes = savedActivities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
-        val usedIds = mutableSetOf<String>()
-        val favoriteAttractionIds = (filtered + allAttractions)
-            .filter { matchesFavoritePlace(it) }
-            .map { it.id }
-            .toSet()
-
+        val cheapBudget = (budget * 0.6).toInt().coerceAtLeast(50)
+        val balancedBudget = budget.coerceAtLeast(80)
+        val premiumBudget = (budget * 1.5).toInt().coerceAtLeast(140)
         val cheapPool = filtered.sortedBy { it.cost }
-        val cheapAttractions = selectWithinConstraints(cheapPool, budget, maxMinutes, maxWalkingKm, wantedTypes, usedIds)
-        usedIds.addAll(cheapAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
+        val cheapAttractions = selectWithinConstraints(cheapPool, cheapBudget, maxMinutes, maxWalkingKm, wantedTypes)
 
-        val balancedPool = filtered.sortedByDescending { it.rating / (it.cost.coerceAtLeast(1).toDouble()) }
-        val balancedAttractions = selectWithinConstraints(balancedPool, budget, maxMinutes, maxWalkingKm, wantedTypes, usedIds)
-        usedIds.addAll(balancedAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
+        val balancedTargetCost = (balancedBudget / 4).coerceIn(15, 90)
+        val balancedPool = filtered.sortedWith(
+            compareBy<Attraction> { abs(it.cost - balancedTargetCost) }
+                .thenByDescending { it.rating }
+        )
+        val balancedAttractions = selectWithinConstraints(balancedPool, balancedBudget, maxMinutes, maxWalkingKm, wantedTypes)
 
-        val premiumPool = allAttractions.sortedByDescending { it.rating }
-        val premiumAttractions = selectWithinConstraints(premiumPool, (budget * 1.5).toInt(), (maxMinutes * 1.3).toInt(), maxWalkingKm, wantedTypes, usedIds)
+        val premiumPool = allAttractions.sortedWith(
+            compareByDescending<Attraction> { it.rating + (it.cost.coerceAtMost(250) / 100.0) }
+                .thenByDescending { it.cost }
+        )
+        val premiumAttractions = selectWithinConstraints(
+            premiumPool,
+            premiumBudget,
+            (maxMinutes * 1.3).toInt(),
+            maxWalkingKm,
+            wantedTypes
+        )
 
         routeAttractionsMap = mapOf(
             "${dest.id}_eco" to cheapAttractions,
@@ -749,7 +758,8 @@ class TravelViewModel : ViewModel() {
         maxMinutes: Int,
         maxWalkingKm: Double,
         wantedTypes: Set<String>,
-        excludeIds: Set<String>
+        excludeIds: Set<String> = emptySet(),
+        minStops: Int = 3
     ): List<Attraction> {
 
         val available = sorted.filter { it.id !in excludeIds }
@@ -758,60 +768,75 @@ class TravelViewModel : ViewModel() {
         var totalCost = 0
         var totalMinutes = 0
         var totalWalkingKm = 0.0
-        var hasPrefMatch = false
+        val maxStops = when {
+            maxMinutes <= 240 -> 4
+            maxMinutes <= 420 -> 6
+            else -> 8
+        }
+        val effectiveMinStops = minStops.coerceAtMost(maxStops)
 
-        for (attr in available.filter { matchesFavoritePlace(it) }) {
+        fun addCandidate(attr: Attraction, relaxed: Boolean = false): Boolean {
+            if (attr in selected || selected.size >= maxStops) return false
             val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), attr)
             val transitTime = walkingMinutes(additionalWalkingKm)
             val newTotalMinutes = totalMinutes + attr.duration + transitTime
             val newTotalCost = totalCost + attr.cost
             val newWalkingKm = totalWalkingKm + additionalWalkingKm
+            val allowedBudget = if (relaxed) (maxBudget * 1.15).toInt().coerceAtLeast(maxBudget + 20) else maxBudget
+            val allowedMinutes = if (relaxed) (maxMinutes * 1.15).toInt() else maxMinutes
+            val allowedWalkingKm = if (relaxed) maxWalkingKm * 1.2 else maxWalkingKm
 
-            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
+            return if (newTotalCost <= allowedBudget && newTotalMinutes <= allowedMinutes && newWalkingKm <= allowedWalkingKm) {
                 selected.add(attr)
                 totalCost = newTotalCost
                 totalMinutes = newTotalMinutes
                 totalWalkingKm = newWalkingKm
-                if (attr.type in wantedTypes) hasPrefMatch = true
+                true
+            } else {
+                false
             }
+        }
+
+        for (attr in available.filter { matchesFavoritePlace(it) }) {
+            addCandidate(attr)
         }
 
         if (wantedTypes.isNotEmpty()) {
             val prefFirst = available.firstOrNull { it.type in wantedTypes && it !in selected }
             if (prefFirst != null) {
-                val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), prefFirst)
-                val transitTime = walkingMinutes(additionalWalkingKm)
-                val newTotalMinutes = totalMinutes + prefFirst.duration + transitTime
-                val newTotalCost = totalCost + prefFirst.cost
-                val newWalkingKm = totalWalkingKm + additionalWalkingKm
+                addCandidate(prefFirst)
+            }
+        }
 
-                if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
-                    selected.add(prefFirst)
-                    totalCost = newTotalCost
-                    totalMinutes = newTotalMinutes
-                    totalWalkingKm = newWalkingKm
-                    hasPrefMatch = true
-                }
+        val targetSlots = if (maxMinutes >= 360) {
+            listOf("matin", "apres-midi", "soir")
+        } else {
+            listOf("matin", "apres-midi")
+        }
+        for (slot in targetSlots) {
+            if (selected.any { slot in it.bestTimeSlots }) continue
+            val slotCandidate = available.firstOrNull { attr ->
+                attr !in selected &&
+                    slot in attr.bestTimeSlots &&
+                    (wantedTypes.isEmpty() || attr.type in wantedTypes || selected.any { it.type in wantedTypes })
+            } ?: available.firstOrNull { attr ->
+                attr !in selected && slot in attr.bestTimeSlots
+            }
+            if (slotCandidate != null) {
+                addCandidate(slotCandidate)
             }
         }
 
         for (attr in available) {
-            if (attr in selected) continue
-            val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), attr)
-            val transitTime = walkingMinutes(additionalWalkingKm)
-            val newTotalMinutes = totalMinutes + attr.duration + transitTime
-            val newTotalCost = totalCost + attr.cost
-            val newWalkingKm = totalWalkingKm + additionalWalkingKm
+            addCandidate(attr)
+            if (selected.size >= maxStops) break
+        }
 
-            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
-                selected.add(attr)
-                totalCost = newTotalCost
-                totalMinutes = newTotalMinutes
-                totalWalkingKm = newWalkingKm
-                if (attr.type in wantedTypes) hasPrefMatch = true
+        if (selected.size < effectiveMinStops) {
+            for (attr in available) {
+                addCandidate(attr, relaxed = true)
+                if (selected.size >= effectiveMinStops) break
             }
-
-            if (selected.size >= 8) break
         }
 
         return selected
@@ -1148,7 +1173,7 @@ class TravelViewModel : ViewModel() {
         val currentAttractions = routeAttractionsMap[routeId] ?: return
         viewModelScope.launch {
             _isLoading.value = true
-            val targetCount = currentAttractions.size.coerceAtLeast(1)
+            val targetCount = currentAttractions.size.coerceAtLeast(3)
             val candidatePool = _attractions.value.ifEmpty { currentAttractions }
             val adjusted = when (adjustment) {
                 RegenerationAdjustment.INDOOR -> candidatePool.sortedByDescending {
