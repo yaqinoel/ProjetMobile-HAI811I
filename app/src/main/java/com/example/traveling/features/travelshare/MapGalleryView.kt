@@ -1,5 +1,12 @@
 package com.example.traveling.features.travelshare
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -56,17 +64,61 @@ fun MapView(
 
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    var hasLocationPermission by remember { mutableStateOf(context.hasLocationPermission()) }
 
-    val chinaCenter = LatLng(35.8617, 104.1954)
+    val fallbackCenter = LatLng(43.6108, 3.8767)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(chinaCenter, 4f)
+        position = CameraPosition.fromLatLngZoom(fallbackCenter, 12f)
     }
 
     val uiSettings by remember {
         mutableStateOf(MapUiSettings(zoomControlsEnabled = false, mapToolbarEnabled = false))
     }
-    val mapProperties by remember {
-        mutableStateOf(MapProperties(mapType = MapType.NORMAL))
+    val mapProperties = MapProperties(
+        mapType = MapType.NORMAL,
+        isMyLocationEnabled = hasLocationPermission
+    )
+
+    fun moveToCurrentLocation() {
+        val location = context.lastKnownLocationOrNull() ?: return
+        coroutineScope.launch {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(
+                    LatLng(location.latitude, location.longitude),
+                    13f
+                ),
+                650
+            )
+        }
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        val granted = grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        hasLocationPermission = granted
+        if (granted) {
+            moveToCurrentLocation()
+        }
+    }
+
+    fun requestOrMoveToCurrentLocation() {
+        if (context.hasLocationPermission()) {
+            hasLocationPermission = true
+            moveToCurrentLocation()
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        requestOrMoveToCurrentLocation()
     }
 
     Box(
@@ -161,14 +213,12 @@ fun MapView(
             }
             FloatingActionButton(
                 onClick = {
-                    coroutineScope.launch {
-                        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(chinaCenter, 4f))
-                    }
+                    requestOrMoveToCurrentLocation()
                 },
                 modifier = Modifier.size(40.dp),
                 containerColor = Color.White.copy(alpha = 0.9f)
             ) {
-                Icon(Icons.Default.MyLocation, "Reset", tint = StoneText)
+                Icon(Icons.Default.MyLocation, "Ma position", tint = StoneText)
             }
         }
 
@@ -294,4 +344,29 @@ fun MapView(
             }
         }
     }
+}
+
+private fun Context.hasLocationPermission(): Boolean {
+    val hasFine = ContextCompat.checkSelfPermission(
+        this,
+        Manifest.permission.ACCESS_FINE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    val hasCoarse = ContextCompat.checkSelfPermission(
+        this,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+    ) == PackageManager.PERMISSION_GRANTED
+    return hasFine || hasCoarse
+}
+
+private fun Context.lastKnownLocationOrNull(): Location? {
+    val locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return null
+    val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+    return providers
+        .filter { provider -> runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false) }
+        .mapNotNull { provider ->
+            runCatching {
+                locationManager.getLastKnownLocation(provider)
+            }.getOrNull()
+        }
+        .maxByOrNull { it.time }
 }
