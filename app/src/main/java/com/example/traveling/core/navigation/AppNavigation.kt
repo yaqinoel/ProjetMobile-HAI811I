@@ -15,7 +15,6 @@ import com.example.traveling.features.auth.ForgotPasswordScreen
 import com.example.traveling.features.auth.RegisterScreen
 import com.example.traveling.features.profile.LikedPostsScreen
 import com.example.traveling.features.profile.LikedRoutesScreen
-import com.example.traveling.features.profile.ImageMigrationScreen
 import com.example.traveling.features.profile.FollowingManagementScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
@@ -188,10 +187,6 @@ fun AppNavigation() {
                 onOpenPhotoDetail = { photoId -> navController.navigate("photo_detail/$photoId") }
             )
         }
-        composable("image_migration") {
-            ImageMigrationScreen(onBack = { navController.popBackStack() })
-        }
-
         composable(
             route = "author_profile/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
@@ -253,7 +248,6 @@ fun AppNavigation() {
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
                 onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
-                onNavigateToImageMigration = { navController.navigate("image_migration") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { detailPhotoId ->
                     navController.navigate("photo_detail/$detailPhotoId")
@@ -285,7 +279,6 @@ fun AppNavigation() {
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
                 onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
-                onNavigateToImageMigration = { navController.navigate("image_migration") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { detailPhotoId ->
                     navController.navigate("photo_detail/$detailPhotoId")
@@ -312,7 +305,6 @@ fun AppNavigation() {
                 onNavigateToSavedPosts = { navController.navigate("saved_posts") },
                 onNavigateToLikedRoutes = { navController.navigate("liked_routes") },
                 onNavigateToSavedRoutes = { navController.navigate("saved_routes") },
-                onNavigateToImageMigration = { navController.navigate("image_migration") },
                 onNavigateToPublish = { navController.navigate("publish_photos") },
                 onNavigateToPhotoDetail = { photoId ->
                     navController.navigate("photo_detail/$photoId")

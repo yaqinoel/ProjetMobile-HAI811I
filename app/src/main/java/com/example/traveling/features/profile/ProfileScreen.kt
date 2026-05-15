@@ -63,7 +63,6 @@ fun ProfileScreen(
     onOpenSavedPosts: () -> Unit = {},
     onOpenLikedRoutes: () -> Unit = {},
     onOpenSavedRoutes: () -> Unit = {},
-    onOpenImageMigration: () -> Unit = {},
     onOpenFollowing: () -> Unit = {}
 ) {
     if (isAnonymous) {
@@ -121,7 +120,6 @@ fun ProfileScreen(
                     onOpenSavedPosts = onOpenSavedPosts,
                     onOpenLikedRoutes = onOpenLikedRoutes,
                     onOpenSavedRoutes = onOpenSavedRoutes,
-                    onOpenImageMigration = onOpenImageMigration,
                     onOpenFollowing = onOpenFollowing
                 )
             }
@@ -258,7 +256,6 @@ private fun AuthenticatedProfileView(
     onOpenSavedPosts: () -> Unit,
     onOpenLikedRoutes: () -> Unit,
     onOpenSavedRoutes: () -> Unit,
-    onOpenImageMigration: () -> Unit,
     onOpenFollowing: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -267,8 +264,7 @@ private fun AuthenticatedProfileView(
         ProfileMenuItem("Mes groupes", "Créer, rejoindre et gérer vos groupes", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
         ProfileMenuItem("Notifications", "Préférences et alertes", Icons.Default.Notifications, Color(0xFF10B981), action = onOpenNotifications),
         ProfileMenuItem("Itinéraires aimés", "Routes que vous avez aimées", Icons.Default.FavoriteBorder, Color(0xFFE11D48), action = onOpenLikedRoutes),
-        ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes),
-        ProfileMenuItem("Migration images", "Remplacer les anciennes URLs par Firebase Storage", Icons.Default.CloudUpload, Color(0xFF2563EB), action = onOpenImageMigration)
+        ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes)
     )
 
     val stats = listOf(
@@ -415,7 +411,6 @@ fun ProfileScreenPreview() {
         onOpenSavedPosts = {},
         onOpenLikedRoutes = {},
         onOpenSavedRoutes = {},
-        onOpenImageMigration = {},
         onOpenFollowing = {}
     )
 }
