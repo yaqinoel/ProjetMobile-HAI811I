@@ -60,12 +60,12 @@ internal fun LoadingScreen() {
         }
         Spacer(Modifier.height(24.dp))
         Text(
-            "Planification Intelligente en Cours...",
+            "Planification en cours...",
             fontSize = 18.sp, fontWeight = FontWeight.Bold, color = StoneText
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "L'IA génère le meilleur itinéraire\nselon vos préférences",
+            "L'application génère le meilleur itinéraire\nselon vos préférences",
             fontSize = 14.sp, color = StoneLighter,
             lineHeight = 20.sp,
             textAlign = TextAlign.Center

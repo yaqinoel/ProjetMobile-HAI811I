@@ -105,28 +105,6 @@ internal fun ResultsScreen(
                     onViewDetail = { onViewDetail(route.id) }
                 )
             }
-
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = AmberLight,
-                border = BorderStroke(1.dp, Color(0x80FDE68A))
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(Icons.Default.WifiOff, null, tint = StoneLighter, modifier = Modifier.size(20.dp))
-                    Column {
-                        Text("Mode Hors Ligne", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneMuted)
-                        Text(
-                            "Téléchargez l'itinéraire pour consulter sans Internet",
-                            fontSize = 11.sp, color = StoneLighter
-                        )
-                    }
-                }
-            }
-
             Spacer(Modifier.height(80.dp))
         }
     }
@@ -285,10 +263,10 @@ internal fun RouteCard(
 
                 Spacer(Modifier.height(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row {
                     Button(
                         onClick = onViewDetail,
-                        modifier = Modifier.weight(1f).height(40.dp),
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                         contentPadding = PaddingValues()
@@ -306,16 +284,6 @@ internal fun RouteCard(
                                 Text("Voir Détails", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                                 Icon(Icons.Default.ChevronRight, null, tint = Color.White, modifier = Modifier.size(16.dp))
                             }
-                        }
-                    }
-                    Surface(
-                        onClick = { },
-                        modifier = Modifier.size(40.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFF5F5F4)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Download, null, tint = StoneMuted, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
