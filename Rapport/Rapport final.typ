@@ -146,12 +146,32 @@ Firebase est utilisé comme backend principal de l'application :
 
 == Google Maps et services Android
 
-L'application utilise des fonctionnalités Android liées au contexte de voyage :
+L'application utilise plusieurs services Google et Android liés au contexte de voyage :
 
-- sélection d'un lieu sur carte ;
-- ouverture d'un itinéraire vers un lieu via une application de cartographie ;
-- recherche vocale ;
-- enregistrement et lecture de notes vocales.
+- *Google Maps SDK / Maps Compose* pour afficher les cartes dans l'application, notamment dans la galerie et dans l'aperçu des parcours TravelPath ;
+- *Google Places API* pour la recherche et la sélection de lieux lors de la création ou de la localisation d'une publication ;
+- *Google Directions API* pour calculer les distances, durées de marche et polylines entre les étapes d'un parcours. Le service `GoogleDirectionsService` interroge l'API en mode `walking`, puis fournit à TravelPath des informations plus réalistes que les estimations locales ;
+- *Google Maps Intents* pour ouvrir un itinéraire vers un lieu dans une application de cartographie externe ;
+- *ML Kit Image Labeling* pour aider à l'annotation automatique des photos publiées dans TravelShare.
+
+L'application s'appuie aussi sur des API Android natives : recherche vocale, capture ou sélection d'images, enregistrement et lecture de notes vocales, partage de contenu, génération de PDF et ouverture de fichiers.
+
+== Open-Meteo API
+
+TravelPath utilise également le service *Open-Meteo* afin d'obtenir la météo courante d'une destination. Le service `OpenMeteoService` récupère la température et le code météo à partir des coordonnées GPS de la destination, puis transforme ces données en description lisible, icône et conseil utilisateur.
+
+Ces informations sont utilisées à deux niveaux :
+
+- affichage d'un résumé météo dans le détail d'un parcours ;
+- adaptation de l'algorithme de génération selon les tolérances météo indiquées par l'utilisateur : éviter la pluie, éviter les fortes chaleurs ou éviter le froid. Lorsque la météo est défavorable, l'algorithme favorise les lieux intérieurs ou mixtes.
+
+== Chargement d'images et médias
+
+Les images distantes sont affichées avec *Coil Compose*, ce qui simplifie le chargement asynchrone dans les écrans Compose. Les médias sont stockés dans *Firebase Storage* pour les publications TravelShare et pour les images TravelPath migrées. Une aide de migration permet de remplacer les anciennes URLs externes par des URLs Firebase Storage sous une racine dédiée `travelpath/`, afin de mieux contrôler la disponibilité des images des destinations et attractions.
+
+== Coroutines et appels réseau
+
+Les appels réseau et les opérations longues sont exécutés avec les *Kotlin Coroutines* sur des contextes adaptés. Les services externes simples, comme Open-Meteo et Google Directions, sont appelés avec `HttpURLConnection` et analysés en JSON. Les opérations Firebase utilisent les bibliothèques Firebase Android et les extensions coroutines lorsque c'est nécessaire.
 
 == Architecture MVVM et Repository Pattern
 
@@ -201,6 +221,16 @@ Les notifications sont utilisées pour signaler les événements importants à l
 TravelPath utilise principalement les collections liées aux destinations, attractions et itinéraires. Les destinations peuvent provenir de données officielles ou être créées à partir de TravelShare.
 
 Les lieux issus de TravelShare ne sont pas directement mélangés aux attractions officielles. Ils sont stockés comme contributions utilisateur, par exemple dans une collection dédiée aux attractions TravelShare, avec une indication de source.
+
+Les modèles principaux utilisés par TravelPath sont :
+
+- `Destination` : ville ou zone de visite, avec nom, coordonnées, description et image principale ;
+- `Attraction` : lieu visitable associé à une destination, avec type, coût, durée, note, coordonnées, horaires, niveau météo, tags et images ;
+- `TravelRoute` : proposition de parcours affichée à l'utilisateur, avec budget total, durée, effort réel, nombre d'arrêts, image et points forts ;
+- `RouteStop` : étape détaillée du parcours, avec horaire, durée, distance depuis l'étape précédente, temps de marche, image principale, galerie d'images et polyline éventuelle ;
+- `SavedRoute` : version persistée d'un parcours aimé ou enregistré par l'utilisateur.
+
+Le champ `imageUrls` a été ajouté aux attractions et aux étapes de parcours afin de gérer plusieurs images par lieu. Cela évite d'afficher des images génériques répétées et permet de conserver une galerie spécifique pour chaque attraction.
 
 // ─────────────────────────────────────
 = Fonctionnalités implémentées
@@ -317,47 +347,62 @@ Les lieux issus de TravelShare ne sont pas directement mélangés aux attraction
 
 == TravelPath
 
-// À compléter avec les fonctionnalités réellement réalisées par le module TravelPath.
-
 === Saisie des préférences
 
-- saisie des préférences de voyage ;
-- sélection d'une destination ;
-- sélection des activités souhaitées ;
-- ajout de lieux favoris ou obligatoires ;
-- prise en compte du budget, de la durée et du niveau d'effort.
+- sélection d'une destination parmi les villes disponibles dans Firestore ;
+- sélection des catégories d'activités souhaitées : culture, gastronomie, nature, loisirs, shopping, vie nocturne, sport et photo ;
+- ajout de lieux favoris ou obligatoires, avec suggestions d'attractions existantes et suggestions issues de TravelShare ;
+- prise en compte du budget maximal et de la durée souhaitée ;
+- prise en compte de l'effort physique comme tolérance de marche maximale. Le niveau choisi par l'utilisateur limite la longueur du parcours : très facile, facile, modéré, élevé ou intense ;
+- prise en compte des tolérances météo : éviter la pluie, éviter les fortes chaleurs et éviter le froid.
 
 === Génération des parcours
 
-- génération de plusieurs propositions de parcours ;
-- calcul de parcours selon différentes stratégies ;
-- prise en compte des attractions officielles et des lieux issus de TravelShare lorsque ceux-ci sont disponibles ;
-- organisation des étapes selon les contraintes de durée et de préférences.
+- génération de plusieurs propositions de parcours pour une même destination ;
+- calcul de trois stratégies principales : parcours économique, parcours équilibré et parcours premium ;
+- combinaison des attractions officielles avec des lieux issus de TravelShare lorsque ceux-ci sont liés à la destination ou sélectionnés par l'utilisateur ;
+- filtrage par budget, activités, lieux favoris, météo et contraintes de durée ;
+- contrôle de la longueur du parcours à partir de la distance de marche estimée entre les étapes ;
+- calcul automatique du niveau d'effort réel d'une route à partir de la distance totale, du nombre d'étapes, de la durée et du type de lieux visités ;
+- adaptation des propositions lorsque la météo est défavorable, en favorisant les lieux intérieurs ou partiellement couverts.
 
 === Présentation des résultats
 
 - affichage de plusieurs options de parcours ;
 - présentation des métriques principales : budget, durée, effort et nombre d'étapes ;
-- comparaison rapide des propositions générées.
+- comparaison rapide des propositions générées ;
+- affichage d'une carte visuelle, d'une image représentative et d'un résumé des arrêts principaux.
 
 === Détail d'un parcours
 
 - consultation du détail d'un parcours ;
 - affichage des étapes et des métriques du parcours ;
-- présentation de l'ordre des visites ;
-- affichage des informations utiles pour chaque étape.
+- présentation de l'ordre des visites par créneaux : matin, après-midi et soir ;
+- affichage des informations utiles pour chaque étape : horaire d'arrivée, type d'activité, durée, coût, note, horaires d'ouverture, distance depuis l'étape précédente et temps de marche ;
+- affichage d'une mini-carte du parcours ;
+- récupération des distances, durées de marche et polylines avec Google Directions API lorsque les coordonnées sont disponibles ;
+- affichage de plusieurs images par attraction grâce au champ `imageUrls` ;
+- affichage de photos TravelShare liées aux lieux du parcours lorsque des publications correspondantes existent ;
+- affichage d'un résumé météo et de conseils de visite.
 
 === Interactions avec les parcours
 
-- interactions avec les parcours selon les fonctionnalités implémentées ;
-- sauvegarde ou mise en favori des parcours si l'utilisateur est connecté ;
-- consultation des parcours associés depuis le profil utilisateur.
+- mise en favori et enregistrement des parcours ;
+- consultation des itinéraires aimés ou enregistrés depuis le profil utilisateur ;
+- partage d'un parcours sous forme de texte ;
+- export d'un parcours en PDF ;
+- régénération avec ajustements : privilégier les lieux intérieurs, réduire le coût, réduire la marche ou générer une variante plus surprenante ;
+- mode hors-ligne léger : cache des données essentielles du parcours et compression locale des médias utilisés par les étapes ;
+- navigation vers une étape via une application cartographique externe.
 
 === Données et extensibilité
 
 - utilisation de destinations et attractions stockées dans Firestore ;
-- distinction entre données officielles et contributions issues de TravelShare ;
-- possibilité d'étendre progressivement les lieux disponibles grâce aux publications TravelShare.
+- distinction entre données officielles et contributions issues de TravelShare grâce à un champ de source ;
+- stockage des images des destinations et attractions dans Firebase Storage après migration ;
+- gestion de plusieurs images par attraction afin d'éviter les images génériques ou répétées ;
+- possibilité d'étendre progressivement les lieux disponibles grâce aux publications TravelShare ;
+- conservation locale de parcours pour permettre une consultation partielle sans connexion.
 
 == Passerelle entre TravelShare et TravelPath
 
@@ -416,9 +461,29 @@ La passerelle permet de relier les contenus publiés dans TravelShare avec la g�
 
 == Gestion des contributions TravelShare dans TravelPath
 
-// À compléter :
-// Expliquer pourquoi les lieux TravelShare sont marqués comme source utilisateur.
-// Expliquer que les données officielles TravelPath ne sont pas mélangées directement avec les contributions utilisateur.
+Les lieux issus de TravelShare sont marqués comme contributions utilisateur grâce à un champ de source. Ce choix permet de les exploiter dans la génération de parcours sans les confondre avec les attractions officielles. Il devient ainsi possible d'enrichir TravelPath avec les publications des voyageurs tout en conservant une traçabilité claire des données.
+
+Lors de la génération, le ViewModel construit une liste de candidats à partir de trois sources : les attractions officielles, les photos TravelShare sélectionnées ou liées à la destination, et les attractions TravelShare explicitement créées. Une logique de déduplication compare les noms et les coordonnées afin d'éviter d'ajouter deux fois le même lieu.
+
+== Algorithme de génération TravelPath
+
+L'algorithme TravelPath est volontairement déterministe et explicable. Il filtre d'abord les lieux selon la destination, le budget, les types d'activités, les lieux favoris et la météo. Il construit ensuite plusieurs variantes de parcours : économique, équilibrée et premium.
+
+Les contraintes principales sont appliquées pendant la sélection des étapes :
+
+- budget total maximal ;
+- durée totale du parcours ;
+- distance de marche maximale selon l'effort physique choisi ;
+- présence prioritaire des lieux favoris ;
+- préférence pour les activités sélectionnées.
+
+L'effort physique affiché pour une route n'est pas un champ fixe. Il est recalculé à partir de la distance de marche estimée entre les étapes, du nombre d'arrêts, de la durée totale et du caractère plus ou moins extérieur du parcours. Cette approche rend l'indicateur plus cohérent avec l'expérience réelle de l'utilisateur.
+
+== Météo et adaptation des parcours
+
+Le service Open-Meteo fournit la température et le code météo courant pour la destination. Ces données sont utilisées pour afficher un conseil de visite et pour adapter les parcours lorsque l'utilisateur indique une sensibilité à la pluie, à la chaleur ou au froid.
+
+Lorsque les conditions sont défavorables, les attractions de type intérieur ou mixte sont mieux classées. Cela permet de générer des parcours plus réalistes, par exemple en privilégiant des musées, restaurants ou lieux couverts en cas de pluie.
 
 // ─────────────────────────────────────
 = Difficultés rencontrées et solutions
