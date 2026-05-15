@@ -302,42 +302,6 @@ private fun StopExpandedDetail(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(
-                        onClick = { },
-                        modifier = Modifier.weight(1f).height(32.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFFFEF2F2),
-                        border = BorderStroke(1.dp, Color(0xFFFECACA))
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(Icons.Default.CameraAlt, null, tint = RedPrimary, modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Photos", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = RedPrimary)
-                        }
-                    }
-                    Surface(
-                        onClick = { },
-                        modifier = Modifier.weight(1f).height(32.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = AmberLight,
-                        border = BorderStroke(1.dp, Color(0xFFFDE68A))
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(Icons.Default.Navigation, null, tint = Color(0xFFB45309), modifier = Modifier.size(14.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Navigation", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFB45309))
-                        }
-                    }
-                }
             }
         }
     }
