@@ -281,13 +281,14 @@ fun NotificationsScreen(
                                 }
                             }
 
-                            AnimatedVisibility(visible = showSettingsPanel, enter = fadeIn(), exit = fadeOut()) {
-                                NotificationSettingsPanel(settings = settings, onUpdate = { viewModel.updateSettings(it) })
-                            }
                         }
                     }
 
-                    if (filteredList.isEmpty()) {
+                    if (showSettingsPanel) {
+                        AnimatedVisibility(visible = showSettingsPanel, enter = fadeIn(), exit = fadeOut()) {
+                            NotificationSettingsPanel(settings = settings, onUpdate = { viewModel.updateSettings(it) })
+                        }
+                    } else if (filteredList.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxSize().padding(top = 80.dp),
                             horizontalAlignment = Alignment.CenterHorizontally

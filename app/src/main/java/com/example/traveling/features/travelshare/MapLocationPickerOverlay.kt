@@ -267,16 +267,23 @@ fun MapLocationPickerOverlay(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding(),
+                .imePadding(),
             shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp),
             color = CardBg,
             shadowElevation = 8.dp
         ) {
+            val navigationBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 220.dp)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .heightIn(max = 320.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = 10.dp,
+                        bottom = navigationBarBottom + 16.dp
+                    ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text("Lieu sélectionné", color = Stone800, style = MaterialTheme.typography.titleSmall)
