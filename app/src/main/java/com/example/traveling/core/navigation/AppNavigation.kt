@@ -19,7 +19,6 @@ import com.example.traveling.features.profile.FollowingManagementScreen
 import com.example.traveling.features.profile.MyPublishedPostsScreen
 import com.example.traveling.features.profile.SavedPostsScreen
 import com.example.traveling.features.profile.SavedRoutesScreen
-import com.example.traveling.features.profile.TravelPathImageStorageScreen
 import com.example.traveling.features.travelshare.AuthorProfileScreen
 import com.example.traveling.features.travelshare.PhotoPostDetailScreen
 import com.example.traveling.features.travelshare.GroupDetailScreen
@@ -177,11 +176,6 @@ fun AppNavigation() {
                 onOpenRoute = { routeId -> navController.navigate("route_detail_cached/$routeId") }
             )
         }
-        composable("travelpath_image_storage") {
-            TravelPathImageStorageScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
         composable(
             route = "route_detail_cached/{routeId}",
             arguments = listOf(navArgument("routeId") { type = NavType.StringType })
@@ -260,8 +254,7 @@ fun AppNavigation() {
                 },
                 onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
                 onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
-                onNavigateToFollowing = { navController.navigate("following") },
-                onOpenTravelPathImages = { navController.navigate("travelpath_image_storage") }
+                onNavigateToFollowing = { navController.navigate("following") }
             )
         }
 
@@ -292,8 +285,7 @@ fun AppNavigation() {
                 },
                 onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
                 onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
-                onNavigateToFollowing = { navController.navigate("following") },
-                onOpenTravelPathImages = { navController.navigate("travelpath_image_storage") }
+                onNavigateToFollowing = { navController.navigate("following") }
             )
         }
 
@@ -319,8 +311,7 @@ fun AppNavigation() {
                 },
                 onNavigateToAuthorProfile = { userId -> navController.navigate("author_profile/$userId") },
                 onNavigateToGroupDetail = { groupId -> navController.navigate("group_detail/$groupId") },
-                onNavigateToFollowing = { navController.navigate("following") },
-                onOpenTravelPathImages = { navController.navigate("travelpath_image_storage") }
+                onNavigateToFollowing = { navController.navigate("following") }
             )
         }
 

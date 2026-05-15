@@ -94,6 +94,37 @@ class TravelViewModel : ViewModel() {
     fun setStep(step: String) { _currentStep.value = step }
     fun setCurrentRouteId(id: String?) { _currentRouteId.value = id }
 
+    fun resetPlanningState() {
+        _currentStep.value = "preferences"
+        _currentRouteId.value = null
+        _selectedDestination.value = null
+        _selectedRoute.value = null
+        _routes.value = emptyList()
+        _routeStops.value = emptyList()
+        _stopTravelSharePhotos.value = emptyMap()
+        _pdfExportPath.value = null
+        routeAttractionsMap = emptyMap()
+
+        formDestination.value = ""
+        formActivities.value = emptySet()
+        formBudget.value = 150f
+        formDuration.value = 5f
+        formEffort.value = 3f
+        formFavoritePlaces.value = emptyList()
+        formAvoidRain.value = false
+        formAvoidHeat.value = false
+        formAvoidCold.value = false
+        formTravelShareSourcePostId.value = null
+        formTravelSharePlaceName.value = ""
+        formTravelShareTags.value = emptyList()
+        selectedTravelSharePosts.value = emptyList()
+        savedFavoritePlaces = emptyList()
+        savedActivities = emptySet()
+        savedAvoidRain = false
+        savedAvoidHeat = false
+        savedAvoidCold = false
+    }
+
     val formDestination = MutableStateFlow("")
     val formActivities = MutableStateFlow(setOf<String>())
     val formBudget = MutableStateFlow(150f)
@@ -229,6 +260,7 @@ class TravelViewModel : ViewModel() {
         formTravelShareSourcePostId.value = null
         formTravelSharePlaceName.value = ""
         formTravelShareTags.value = emptyList()
+        selectedTravelSharePosts.value = emptyList()
     }
 
     private fun inferActivitiesFromTravelShareSeed(seed: TravelPathSeed): Set<String> {

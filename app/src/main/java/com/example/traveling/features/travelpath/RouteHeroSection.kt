@@ -25,10 +25,7 @@ internal fun RouteHeroSection(
     routeSubtitle: String,
     routeRating: Float,
     routeReviews: Int,
-    liked: Boolean,
-    onBack: () -> Unit,
-    onToggleLike: () -> Unit,
-    onShare: () -> Unit
+    onBack: () -> Unit
 ) {
     Box(modifier = Modifier.height(208.dp).fillMaxWidth()) {
         AsyncImage(
@@ -61,19 +58,7 @@ internal fun RouteHeroSection(
             IconButtonGlass(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButtonGlass(onClick = onToggleLike) {
-                    Icon(
-                        if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        null,
-                        tint = if (liked) Color(0xFFEF4444) else Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                IconButtonGlass(onClick = onShare) {
-                    Icon(Icons.Default.Share, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-            }
+            Spacer(Modifier.size(40.dp))
         }
 
         Column(

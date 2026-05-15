@@ -9,16 +9,25 @@ fun TravelPathScreen(
     isAnonymous: Boolean = false,
     initialDestination: String? = null,
     initialTravelSharePostId: String? = null,
+    resetOnEnterToken: Int = 0,
+    onTravelShareSeedConsumed: () -> Unit = {},
     onOpenPhotoDetail: (String) -> Unit = {},
     travelViewModel: TravelViewModel = viewModel()
 ) {
     val step by travelViewModel.currentStep.collectAsState()
     val selectedRouteId by travelViewModel.currentRouteId.collectAsState()
 
+    LaunchedEffect(resetOnEnterToken) {
+        if (resetOnEnterToken > 0 && initialTravelSharePostId.isNullOrBlank()) {
+            travelViewModel.resetPlanningState()
+        }
+    }
+
     LaunchedEffect(initialTravelSharePostId) {
         if (!initialTravelSharePostId.isNullOrBlank()) {
             travelViewModel.applyTravelSharePostSeed(initialTravelSharePostId)
             travelViewModel.setStep("preferences")
+            onTravelShareSeedConsumed()
         }
     }
 
@@ -36,21 +45,23 @@ fun TravelPathScreen(
         step == "loading" -> LoadingScreen()
         step == "results" -> ResultsScreen(
             travelViewModel = travelViewModel,
-            onBack = { travelViewModel.setStep("preferences") },
+            onBack = { travelViewModel.resetPlanningState() },
             onViewDetail = { id ->
                 travelViewModel.selectRoute(id)
                 travelViewModel.setCurrentRouteId(id)
                 travelViewModel.setStep("detail")
             }
         )
-        else -> PreferencesForm(
-            initialDestination = initialDestination,
-            travelViewModel = travelViewModel,
-            onGenerate = {
-                travelViewModel.setStep("loading")
-            },
-            onLoadingComplete = { travelViewModel.setStep("results") }
-        )
+        else -> key(resetOnEnterToken) {
+            PreferencesForm(
+                initialDestination = initialDestination,
+                travelViewModel = travelViewModel,
+                onGenerate = {
+                    travelViewModel.setStep("loading")
+                },
+                onLoadingComplete = { travelViewModel.setStep("results") }
+            )
+        }
     }
 
     if (step == "loading") {

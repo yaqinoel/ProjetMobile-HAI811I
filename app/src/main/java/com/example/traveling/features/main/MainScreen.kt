@@ -53,20 +53,32 @@ fun MainScreen(
     onNavigateToPhotoDetail: (String) -> Unit = {},
     onNavigateToAuthorProfile: (String) -> Unit = {},
     onNavigateToGroupDetail: (String) -> Unit = {},
-    onNavigateToFollowing: () -> Unit = {},
-    onOpenTravelPathImages: () -> Unit = {}
+    onNavigateToFollowing: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
+    var travelPathResetToken by rememberSaveable { mutableStateOf(0) }
+    var pendingTravelPathPostId by rememberSaveable { mutableStateOf(initialTravelPathPostId) }
 
     LaunchedEffect(initialTravelPathPostId) {
         if (!initialTravelPathPostId.isNullOrBlank()) {
+            pendingTravelPathPostId = initialTravelPathPostId
             selectedTab = MainTab.PARCOURS
         }
     }
 
     Scaffold(
         containerColor = PageBg,
-        bottomBar = { BottomNavBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it }) },
+        bottomBar = {
+            BottomNavBar(
+                selectedTab = selectedTab,
+                onTabSelected = { tab ->
+                    if (tab == MainTab.PARCOURS && selectedTab != MainTab.PARCOURS) {
+                        travelPathResetToken++
+                    }
+                    selectedTab = tab
+                }
+            )
+        },
         floatingActionButton = {
             if (selectedTab == MainTab.PHOTOS && !isAnonymous) {
                 FloatingActionButton(
@@ -94,7 +106,9 @@ fun MainScreen(
                 )
                 MainTab.PARCOURS -> TravelPathScreen(
                     isAnonymous = isAnonymous,
-                    initialTravelSharePostId = initialTravelPathPostId,
+                    initialTravelSharePostId = pendingTravelPathPostId,
+                    resetOnEnterToken = travelPathResetToken,
+                    onTravelShareSeedConsumed = { pendingTravelPathPostId = null },
                     onOpenPhotoDetail = onNavigateToPhotoDetail
                 )
                 MainTab.PROFIL -> ProfileScreen(
@@ -109,8 +123,7 @@ fun MainScreen(
                     onOpenSavedPosts = onNavigateToSavedPosts,
                     onOpenLikedRoutes = onNavigateToLikedRoutes,
                     onOpenSavedRoutes = onNavigateToSavedRoutes,
-                    onOpenFollowing = onNavigateToFollowing,
-                    onOpenTravelPathImages = onOpenTravelPathImages
+                    onOpenFollowing = onNavigateToFollowing
                 )
             }
         }
