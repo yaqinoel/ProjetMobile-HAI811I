@@ -321,10 +321,10 @@ class TravelViewModel : ViewModel() {
                 val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
                 _weather.value = currentWeather
 
-                val filtered = filterAttractions(mergedAttractions, budget, activities, effort, currentWeather)
+                val filtered = filterAttractions(mergedAttractions, budget, activities, currentWeather)
                 val weatherAdjustedAll = applyWeatherPreferences(mergedAttractions, currentWeather)
 
-                _routes.value = generateRoutes(filtered, weatherAdjustedAll, dest, budget, durationHours)
+                _routes.value = generateRoutes(filtered, weatherAdjustedAll, dest, budget, durationHours, effort)
 
                 if (_routes.value.isNotEmpty()) {
                     val firstRouteAttractions = routeAttractionsMap[_routes.value[0].id] ?: emptyList()
@@ -622,7 +622,6 @@ class TravelViewModel : ViewModel() {
         all: List<Attraction>,
         budget: Int,
         activities: Set<String>,
-        effort: Int,
         weather: WeatherInfo?
     ): List<Attraction> {
 
@@ -630,14 +629,12 @@ class TravelViewModel : ViewModel() {
 
         var result = all.filter { attr ->
             (wantedTypes.isEmpty() || attr.type in wantedTypes) &&
-            attr.cost <= budget &&
-            attr.effortLevel <= effort + 1
+            attr.cost <= budget
         }
 
         if (result.size < 3) {
             result = all.filter { attr ->
-                attr.cost <= budget &&
-                attr.effortLevel <= effort + 2
+                attr.cost <= budget
             }
         }
 
@@ -699,11 +696,13 @@ class TravelViewModel : ViewModel() {
         allAttractions: List<Attraction>,
         dest: Destination,
         budget: Int,
-        durationHours: Int
+        durationHours: Int,
+        effort: Int
     ): List<TravelRoute> {
         if (filtered.isEmpty()) return emptyList()
 
         val maxMinutes = durationHours * 60
+        val maxWalkingKm = maxWalkingDistanceForEffort(effort)
         val wantedTypes = savedActivities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
         val usedIds = mutableSetOf<String>()
@@ -713,15 +712,15 @@ class TravelViewModel : ViewModel() {
             .toSet()
 
         val cheapPool = filtered.sortedBy { it.cost }
-        val cheapAttractions = selectWithinConstraints(cheapPool, budget, maxMinutes, wantedTypes, usedIds)
+        val cheapAttractions = selectWithinConstraints(cheapPool, budget, maxMinutes, maxWalkingKm, wantedTypes, usedIds)
         usedIds.addAll(cheapAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
         val balancedPool = filtered.sortedByDescending { it.rating / (it.cost.coerceAtLeast(1).toDouble()) }
-        val balancedAttractions = selectWithinConstraints(balancedPool, budget, maxMinutes, wantedTypes, usedIds)
+        val balancedAttractions = selectWithinConstraints(balancedPool, budget, maxMinutes, maxWalkingKm, wantedTypes, usedIds)
         usedIds.addAll(balancedAttractions.map { it.id }.filterNot { it in favoriteAttractionIds })
 
         val premiumPool = allAttractions.sortedByDescending { it.rating }
-        val premiumAttractions = selectWithinConstraints(premiumPool, (budget * 1.5).toInt(), (maxMinutes * 1.3).toInt(), wantedTypes, usedIds)
+        val premiumAttractions = selectWithinConstraints(premiumPool, (budget * 1.5).toInt(), (maxMinutes * 1.3).toInt(), maxWalkingKm, wantedTypes, usedIds)
 
         routeAttractionsMap = mapOf(
             "${dest.id}_eco" to cheapAttractions,
@@ -732,16 +731,13 @@ class TravelViewModel : ViewModel() {
         val routes = mutableListOf<TravelRoute>()
 
         if (cheapAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("${dest.id}_eco", "Route Économique", "Budget maîtrisé", cheapAttractions, dest,
-                "Modéré", 3, Pair(0xFF10B981, 0xFF0D9488)))
+            routes.add(buildTravelRoute("${dest.id}_eco", "Route Économique", "Budget maîtrisé", cheapAttractions, dest, Pair(0xFF10B981, 0xFF0D9488)))
         }
         if (balancedAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("${dest.id}_bal", "Route Équilibrée", "Meilleur rapport qualité-prix", balancedAttractions, dest,
-                "Facile", 2, Pair(0xFFB91C1C, 0xFF991B1B)))
+            routes.add(buildTravelRoute("${dest.id}_bal", "Route Équilibrée", "Meilleur rapport qualité-prix", balancedAttractions, dest, Pair(0xFFB91C1C, 0xFF991B1B)))
         }
         if (premiumAttractions.isNotEmpty()) {
-            routes.add(buildTravelRoute("${dest.id}_pre", "Route Premium", "Expérience haut de gamme", premiumAttractions, dest,
-                "Très facile", 1, Pair(0xFFF59E0B, 0xFFB45309)))
+            routes.add(buildTravelRoute("${dest.id}_pre", "Route Premium", "Expérience haut de gamme", premiumAttractions, dest, Pair(0xFFF59E0B, 0xFFB45309)))
         }
 
         return routes
@@ -751,6 +747,7 @@ class TravelViewModel : ViewModel() {
         sorted: List<Attraction>,
         maxBudget: Int,
         maxMinutes: Int,
+        maxWalkingKm: Double,
         wantedTypes: Set<String>,
         excludeIds: Set<String>
     ): List<Attraction> {
@@ -760,17 +757,21 @@ class TravelViewModel : ViewModel() {
         val selected = mutableListOf<Attraction>()
         var totalCost = 0
         var totalMinutes = 0
+        var totalWalkingKm = 0.0
         var hasPrefMatch = false
 
         for (attr in available.filter { matchesFavoritePlace(it) }) {
-            val transitTime = if (selected.isEmpty()) 0 else 15
+            val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), attr)
+            val transitTime = walkingMinutes(additionalWalkingKm)
             val newTotalMinutes = totalMinutes + attr.duration + transitTime
             val newTotalCost = totalCost + attr.cost
+            val newWalkingKm = totalWalkingKm + additionalWalkingKm
 
-            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes) {
+            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
                 selected.add(attr)
                 totalCost = newTotalCost
                 totalMinutes = newTotalMinutes
+                totalWalkingKm = newWalkingKm
                 if (attr.type in wantedTypes) hasPrefMatch = true
             }
         }
@@ -778,14 +779,17 @@ class TravelViewModel : ViewModel() {
         if (wantedTypes.isNotEmpty()) {
             val prefFirst = available.firstOrNull { it.type in wantedTypes && it !in selected }
             if (prefFirst != null) {
-                val transitTime = if (selected.isEmpty()) 0 else 15
+                val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), prefFirst)
+                val transitTime = walkingMinutes(additionalWalkingKm)
                 val newTotalMinutes = totalMinutes + prefFirst.duration + transitTime
                 val newTotalCost = totalCost + prefFirst.cost
+                val newWalkingKm = totalWalkingKm + additionalWalkingKm
 
-                if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes) {
+                if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
                     selected.add(prefFirst)
                     totalCost = newTotalCost
                     totalMinutes = newTotalMinutes
+                    totalWalkingKm = newWalkingKm
                     hasPrefMatch = true
                 }
             }
@@ -793,14 +797,17 @@ class TravelViewModel : ViewModel() {
 
         for (attr in available) {
             if (attr in selected) continue
-            val transitTime = if (selected.isEmpty()) 0 else 15
+            val additionalWalkingKm = additionalWalkingDistanceKm(selected.lastOrNull(), attr)
+            val transitTime = walkingMinutes(additionalWalkingKm)
             val newTotalMinutes = totalMinutes + attr.duration + transitTime
             val newTotalCost = totalCost + attr.cost
+            val newWalkingKm = totalWalkingKm + additionalWalkingKm
 
-            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes) {
+            if (newTotalCost <= maxBudget && newTotalMinutes <= maxMinutes && newWalkingKm <= maxWalkingKm) {
                 selected.add(attr)
                 totalCost = newTotalCost
                 totalMinutes = newTotalMinutes
+                totalWalkingKm = newWalkingKm
                 if (attr.type in wantedTypes) hasPrefMatch = true
             }
 
@@ -808,6 +815,87 @@ class TravelViewModel : ViewModel() {
         }
 
         return selected
+    }
+
+    private fun maxWalkingDistanceForEffort(effort: Int): Double {
+        return when (effort.coerceIn(1, 5)) {
+            1 -> 2.0
+            2 -> 5.0
+            3 -> 9.0
+            4 -> 14.0
+            else -> 30.0
+        }
+    }
+
+    private fun routeWalkingDistanceKm(attractions: List<Attraction>): Double {
+        val ordered = orderAttractionsForRoute(attractions)
+        return ordered.zipWithNext().sumOf { (from, to) -> additionalWalkingDistanceKm(from, to) }
+    }
+
+    private fun additionalWalkingDistanceKm(from: Attraction?, to: Attraction): Double {
+        if (from == null) return 0.0
+        return if (from.lat != 0.0 && from.lng != 0.0 && to.lat != 0.0 && to.lng != 0.0) {
+            haversine(from.lat, from.lng, to.lat, to.lng)
+        } else {
+            2.0
+        }
+    }
+
+    private fun walkingMinutes(distanceKm: Double): Int {
+        if (distanceKm <= 0.0) return 0
+        return (distanceKm * 12).toInt().coerceAtLeast(5)
+    }
+
+    private fun inferRouteEffortLevel(
+        walkingKm: Double,
+        stopsCount: Int,
+        totalMinutes: Int,
+        attractions: List<Attraction>
+    ): Int {
+        val base = when {
+            walkingKm < 2.0 -> 1
+            walkingKm < 5.0 -> 2
+            walkingKm < 9.0 -> 3
+            walkingKm < 14.0 -> 4
+            else -> 5
+        }
+        val outdoorCount = attractions.count { it.weatherType == "outdoor" || it.type in listOf("Nature", "Monument") }
+        val restCount = attractions.count { it.weatherType == "indoor" || it.type in listOf("Gastronomie", "Shopping") }
+        val outdoorPenalty = if (outdoorCount >= 3) 1 else 0
+        val restBonus = if (restCount >= 2) 1 else 0
+        return (base +
+            if (stopsCount >= 5) 1 else 0 +
+            if (totalMinutes >= 8 * 60) 1 else 0 +
+            outdoorPenalty -
+            restBonus
+        ).coerceIn(1, 5)
+    }
+
+    private fun effortLabel(level: Int): String {
+        return when (level.coerceIn(1, 5)) {
+            1 -> "Très facile"
+            2 -> "Facile"
+            3 -> "Modéré"
+            4 -> "Élevé"
+            else -> "Intense"
+        }
+    }
+
+    private fun routeDurationLabel(totalMinutes: Int): String {
+        val hours = totalMinutes / 60
+        val mins = totalMinutes % 60
+        return if (mins > 0) "${hours}h${"%02d".format(mins)}" else "${hours}h"
+    }
+
+    private fun orderAttractionsForRoute(attractions: List<Attraction>): List<Attraction> {
+        return attractions.sortedBy { attr ->
+            when {
+                attr.bestTimeSlots.contains("matin") -> 0
+                attr.bestTimeSlots.contains("apres-midi") -> 1
+                attr.bestTimeSlots.contains("soir") -> 2
+                else -> 1
+            }
+        }
     }
 
     private fun matchesFavoritePlace(attr: Attraction): Boolean {
@@ -821,19 +909,18 @@ class TravelViewModel : ViewModel() {
     private fun buildTravelRoute(
         id: String, name: String, subtitle: String,
         attractions: List<Attraction>, dest: Destination,
-        effort: String, effortLevel: Int, colors: Pair<Long, Long>
+        colors: Pair<Long, Long>
     ): TravelRoute {
-        val totalMinutes = attractions.sumOf { it.duration } + (attractions.size - 1).coerceAtLeast(0) * 15
-        val hours = totalMinutes / 60
-        val mins = totalMinutes % 60
-        val durationStr = if (mins > 0) "${hours}h${"%02d".format(mins)}" else "${hours}h"
+        val walkingKm = routeWalkingDistanceKm(attractions)
+        val totalMinutes = attractions.sumOf { it.duration } + walkingMinutes(walkingKm)
+        val effortLevel = inferRouteEffortLevel(walkingKm, attractions.size, totalMinutes, attractions)
 
         return TravelRoute(
             id = id, name = name, subtitle = subtitle,
             destName = dest.name,
             budget = attractions.sumOf { it.cost },
-            duration = durationStr,
-            effort = effort, effortLevel = effortLevel,
+            duration = routeDurationLabel(totalMinutes),
+            effort = effortLabel(effortLevel), effortLevel = effortLevel,
             stops = attractions.size,
             rating = (attractions.map { it.rating }.average() * 10).toInt() / 10f,
             reviews = (50..300).random(),
@@ -856,14 +943,7 @@ class TravelViewModel : ViewModel() {
     private suspend fun generateStops(attractions: List<Attraction>): List<RouteStop> {
         if (attractions.isEmpty()) return emptyList()
 
-        val ordered = attractions.sortedBy { attr ->
-            when {
-                attr.bestTimeSlots.contains("matin") -> 0
-                attr.bestTimeSlots.contains("apres-midi") -> 1
-                attr.bestTimeSlots.contains("soir") -> 2
-                else -> 1
-            }
-        }
+        val ordered = orderAttractionsForRoute(attractions)
 
         var currentHour = 9
         var currentMinute = 0
@@ -1087,8 +1167,14 @@ class TravelViewModel : ViewModel() {
             val adjustedStops = generateStops(adjusted)
             routeAttractionsMap = routeAttractionsMap + (routeId to adjusted)
             _routeStops.value = adjustedStops
+            val walkingKm = routeWalkingDistanceKm(adjusted)
+            val totalMinutes = adjusted.sumOf { it.duration } + walkingMinutes(walkingKm)
+            val effortLevel = inferRouteEffortLevel(walkingKm, adjusted.size, totalMinutes, adjusted)
             _selectedRoute.value = route.copy(
                 budget = adjusted.sumOf { it.cost },
+                duration = routeDurationLabel(totalMinutes),
+                effort = effortLabel(effortLevel),
+                effortLevel = effortLevel,
                 stops = adjusted.size,
                 imageUrl = adjusted.firstOrNull()?.imageUrl ?: route.imageUrl,
                 highlights = adjusted.take(3).map { it.name }
