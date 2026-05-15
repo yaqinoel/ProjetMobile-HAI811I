@@ -170,20 +170,14 @@ fun GalleryScreen(
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
         }
 
-        if (intent.resolveActivity(context.packageManager) == null) {
-            coroutineScope.launch {
-                snackbarHostState.showSnackbar("Recherche vocale indisponible sur cet appareil.")
-            }
-        } else {
-            isVoiceSearchActive = true
-            runCatching { voiceSearchLauncher.launch(intent) }
-                .onFailure {
-                    isVoiceSearchActive = false
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Recherche vocale indisponible sur cet appareil.")
-                    }
+        isVoiceSearchActive = true
+        runCatching { voiceSearchLauncher.launch(intent) }
+            .onFailure {
+                isVoiceSearchActive = false
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Recherche vocale indisponible sur cet appareil.")
                 }
-        }
+            }
         Unit
     }
 
