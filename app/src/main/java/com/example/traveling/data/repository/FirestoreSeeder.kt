@@ -8,6 +8,7 @@ object FirestoreSeeder {
 
     private val db = FirebaseFirestore.getInstance()
     private const val TAG = "FirestoreSeeder"
+    private val oldChineseDestinationIds = setOf("pekin", "xian", "hangzhou", "chengdu", "guilin")
 
     fun seedAll(clearFirst: Boolean = false) {
         if (clearFirst) {
@@ -22,21 +23,21 @@ object FirestoreSeeder {
     private fun seedDestinations() {
         val destinations = listOf(
 
-            Destination("pekin", "Pékin", "Chine",
-                "Capitale millénaire, cœur politique et culturel de la Chine avec ses palais impériaux et ses hutongs.",
-                "https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=800", 39.9042, 116.4074),
-            Destination("xian", "Xi'an", "Chine",
-                "Ancienne capitale de la Route de la Soie, célèbre pour l'Armée de Terre Cuite et les remparts Ming.",
-                "https://images.unsplash.com/photo-1591017403286-fd8493524e1e?w=800", 34.3416, 108.9398),
-            Destination("hangzhou", "Hangzhou", "Chine",
-                "Ville du Lac de l'Ouest, paradis terrestre célébré par Marco Polo, capitale du thé Longjing.",
-                "https://images.unsplash.com/photo-1598887142487-3c854d51eabb?w=800", 30.2741, 120.1551),
-            Destination("chengdu", "Chengdu", "Chine",
-                "Capitale du Sichuan, patrie des pandas géants et de la cuisine épicée, ville classée UNESCO.",
-                "https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=800", 30.5728, 104.0668),
-            Destination("guilin", "Guilin", "Chine",
-                "Paysages karstiques iconiques de la rivière Li, montagnes en pain de sucre et rizières en terrasses.",
-                "https://images.unsplash.com/photo-1529921879218-f99546d03a24?w=800", 25.2744, 110.2990),
+            Destination("montpellier", "Montpellier", "France",
+                "Ville mediterraneenne jeune et ensoleillee, entre ecusson medieval, architecture contemporaine et plages proches.",
+                "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800", 43.6108, 3.8767),
+            Destination("toulouse", "Toulouse", "France",
+                "La Ville Rose, capitale aeronautique et occitane, connue pour ses briques, ses quais et son art de vivre.",
+                "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800", 43.6047, 1.4442),
+            Destination("strasbourg", "Strasbourg", "France",
+                "Capitale alsacienne et europeenne, entre cathedrale gothique, Petite France et canaux historiques.",
+                "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800", 48.5734, 7.7521),
+            Destination("nantes", "Nantes", "France",
+                "Ville creative sur la Loire, entre chateau, Machines de l'Ile, patrimoine maritime et quartiers artistiques.",
+                "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=800", 47.2184, -1.5536),
+            Destination("lille", "Lille", "France",
+                "Metropole chaleureuse du Nord, celebre pour sa Grand-Place, le Vieux-Lille et ses musees.",
+                "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800", 50.6292, 3.0573),
 
             Destination("paris", "Paris", "France",
                 "Ville Lumière, capitale de l'art, de la mode et de la gastronomie, iconique pour la Tour Eiffel et le Louvre.",
@@ -68,18 +69,19 @@ object FirestoreSeeder {
     private fun seedAttractions() {
         val attractions = buildList {
 
-            addAll(pekinAttractions())
-            addAll(xianAttractions())
-            addAll(hangzhouAttractions())
-            addAll(chengduAttractions())
-            addAll(guilinAttractions())
+            addAll(montpellierAttractions())
+            addAll(toulouseAttractions())
+            addAll(strasbourgAttractions())
+            addAll(nantesAttractions())
+            addAll(lilleAttractions())
 
             addAll(parisAttractions())
             addAll(lyonAttractions())
             addAll(niceAttractions())
             addAll(marseilleAttractions())
             addAll(bordeauxAttractions())
-        }
+            addAll(supplementalAttractions().filterNot { it.destinationId in oldChineseDestinationIds })
+        }.map { it.withGooglePlaceImages() }
 
         val batches = attractions.chunked(400)
         batches.forEachIndexed { idx, chunk ->
@@ -93,6 +95,61 @@ object FirestoreSeeder {
                 .addOnFailureListener { Log.e(TAG, "Erreur attractions batch ${idx + 1}", it) }
         }
     }
+
+    private fun montpellierAttractions() = listOf(
+        quickAttraction("mtp_comedie", "montpellier", "Place de la Comedie", "Monument", 0, 45, 4.7, 43.6085, 3.8796, "matin", "outdoor"),
+        quickAttraction("mtp_ecusson", "montpellier", "Ecusson medieval", "Culture", 0, 90, 4.6, 43.6114, 3.8767, "matin", "outdoor"),
+        quickAttraction("mtp_fabre", "montpellier", "Musee Fabre", "Culture", 9, 105, 4.6, 43.6119, 3.8804, "apres-midi", "indoor"),
+        quickAttraction("mtp_jardin_plantes", "montpellier", "Jardin des Plantes", "Nature", 0, 60, 4.5, 43.6145, 3.8711, "apres-midi", "outdoor"),
+        quickAttraction("mtp_arc_triomphe", "montpellier", "Arc de Triomphe", "Monument", 0, 45, 4.5, 43.6118, 3.8728, "apres-midi", "outdoor"),
+        quickAttraction("mtp_antigone", "montpellier", "Quartier Antigone", "Photo", 0, 60, 4.3, 43.6082, 3.8903, "soir", "outdoor"),
+        quickAttraction("mtp_marches_lelez", "montpellier", "Marches du Lez", "Gastronomie", 35, 90, 4.4, 43.6038, 3.9128, "soir", "both"),
+        quickAttraction("mtp_aquarium", "montpellier", "Planet Ocean Montpellier", "Loisirs", 19, 120, 4.4, 43.6033, 3.9160, "apres-midi", "indoor")
+    )
+
+    private fun toulouseAttractions() = listOf(
+        quickAttraction("tl_capitole", "toulouse", "Place du Capitole", "Monument", 0, 60, 4.8, 43.6045, 1.4440, "matin", "outdoor"),
+        quickAttraction("tl_basilique", "toulouse", "Basilique Saint-Sernin", "Culture", 0, 60, 4.7, 43.6086, 1.4419, "matin", "indoor"),
+        quickAttraction("tl_jacobins", "toulouse", "Couvent des Jacobins", "Culture", 5, 60, 4.6, 43.6032, 1.4380, "apres-midi", "indoor"),
+        quickAttraction("tl_garonne", "toulouse", "Quais de Garonne", "Nature", 0, 75, 4.5, 43.5995, 1.4360, "apres-midi", "outdoor"),
+        quickAttraction("tl_cite_espace", "toulouse", "Cite de l'Espace", "Loisirs", 26, 180, 4.6, 43.5861, 1.4930, "apres-midi", "both"),
+        quickAttraction("tl_halles_victor_hugo", "toulouse", "Halles Victor Hugo", "Gastronomie", 35, 75, 4.6, 43.6074, 1.4471, "matin", "indoor"),
+        quickAttraction("tl_carmes", "toulouse", "Quartier des Carmes", "Shopping", 50, 90, 4.4, 43.5976, 1.4440, "soir", "both"),
+        quickAttraction("tl_ponts_neufs", "toulouse", "Pont Neuf", "Photo", 0, 45, 4.5, 43.5990, 1.4392, "soir", "outdoor")
+    )
+
+    private fun strasbourgAttractions() = listOf(
+        quickAttraction("st_cathedrale", "strasbourg", "Cathedrale Notre-Dame", "Monument", 0, 90, 4.9, 48.5819, 7.7506, "matin", "indoor"),
+        quickAttraction("st_petite_france", "strasbourg", "Petite France", "Photo", 0, 90, 4.8, 48.5794, 7.7399, "matin", "outdoor"),
+        quickAttraction("st_barrage_vauban", "strasbourg", "Barrage Vauban", "Monument", 0, 60, 4.6, 48.5791, 7.7375, "apres-midi", "outdoor"),
+        quickAttraction("st_musee_alsacien", "strasbourg", "Musee Alsacien", "Culture", 7, 90, 4.5, 48.5795, 7.7508, "apres-midi", "indoor"),
+        quickAttraction("st_parc_orangerie", "strasbourg", "Parc de l'Orangerie", "Nature", 0, 90, 4.6, 48.5924, 7.7763, "apres-midi", "outdoor"),
+        quickAttraction("st_parlement", "strasbourg", "Parlement europeen", "Culture", 0, 75, 4.4, 48.5975, 7.7680, "matin", "indoor"),
+        quickAttraction("st_winstub", "strasbourg", "Winstub alsacienne", "Gastronomie", 38, 90, 4.5, 48.5822, 7.7455, "soir", "indoor"),
+        quickAttraction("st_krutenau", "strasbourg", "Krutenau", "Shopping", 45, 75, 4.3, 48.5780, 7.7563, "soir", "both")
+    )
+
+    private fun nantesAttractions() = listOf(
+        quickAttraction("na_chateau", "nantes", "Chateau des Ducs de Bretagne", "Culture", 9, 120, 4.6, 47.2163, -1.5495, "matin", "both"),
+        quickAttraction("na_machines", "nantes", "Machines de l'Ile", "Loisirs", 9, 120, 4.7, 47.2062, -1.5644, "apres-midi", "both"),
+        quickAttraction("na_passage_pommeraye", "nantes", "Passage Pommeraye", "Shopping", 0, 45, 4.7, 47.2135, -1.5603, "matin", "indoor"),
+        quickAttraction("na_jardin_plantes", "nantes", "Jardin des Plantes", "Nature", 0, 75, 4.6, 47.2190, -1.5423, "apres-midi", "outdoor"),
+        quickAttraction("na_lieu_unique", "nantes", "Lieu Unique", "Culture", 0, 75, 4.4, 47.2153, -1.5458, "soir", "indoor"),
+        quickAttraction("na_ile_versailles", "nantes", "Ile de Versailles", "Nature", 0, 60, 4.5, 47.2261, -1.5537, "apres-midi", "outdoor"),
+        quickAttraction("na_talusac", "nantes", "Marche de Talensac", "Gastronomie", 28, 75, 4.5, 47.2204, -1.5582, "matin", "indoor"),
+        quickAttraction("na_graslin", "nantes", "Quartier Graslin", "Photo", 0, 60, 4.4, 47.2133, -1.5622, "soir", "outdoor")
+    )
+
+    private fun lilleAttractions() = listOf(
+        quickAttraction("li_grand_place", "lille", "Grand-Place", "Monument", 0, 60, 4.7, 50.6372, 3.0633, "matin", "outdoor"),
+        quickAttraction("li_vieux_lille", "lille", "Vieux-Lille", "Shopping", 45, 90, 4.7, 50.6407, 3.0647, "matin", "both"),
+        quickAttraction("li_palais_beaux_arts", "lille", "Palais des Beaux-Arts", "Culture", 7, 120, 4.6, 50.6300, 3.0627, "apres-midi", "indoor"),
+        quickAttraction("li_citadelle", "lille", "Parc de la Citadelle", "Nature", 0, 90, 4.5, 50.6422, 3.0457, "apres-midi", "outdoor"),
+        quickAttraction("li_hospice_comtesse", "lille", "Musee de l'Hospice Comtesse", "Culture", 5, 75, 4.4, 50.6415, 3.0638, "apres-midi", "indoor"),
+        quickAttraction("li_wazemmes", "lille", "Marche de Wazemmes", "Gastronomie", 25, 75, 4.4, 50.6266, 3.0505, "matin", "both"),
+        quickAttraction("li_gare_saint_sauveur", "lille", "Gare Saint Sauveur", "Loisirs", 0, 75, 4.3, 50.6269, 3.0740, "soir", "indoor"),
+        quickAttraction("li_opera", "lille", "Opera de Lille", "Photo", 0, 45, 4.5, 50.6378, 3.0646, "soir", "outdoor")
+    )
 
     private fun pekinAttractions() = listOf(
         Attraction("pk_cite_interdite", "pekin", "Cité Interdite", "Culture",
@@ -596,6 +653,114 @@ object FirestoreSeeder {
             44.8490, -0.5792, "7:00-21:00", "", 1, "outdoor",
             listOf("matin", "apres-midi"), listOf("jardin", "parc", "détente")),
     )
+
+    private fun supplementalAttractions() = listOf(
+        quickAttraction("pk_lama_temple", "pekin", "Temple des Lamas", "Culture", 25, 75, 4.6, 39.9475, 116.4172, "matin", "both"),
+        quickAttraction("pk_798_art", "pekin", "Quartier d'Art 798", "Photo", 0, 90, 4.4, 39.9841, 116.4950, "apres-midi", "both"),
+        quickAttraction("pk_beihai", "pekin", "Parc Beihai", "Nature", 10, 75, 4.5, 39.9255, 116.3896, "apres-midi", "outdoor"),
+        quickAttraction("pk_wangfujing", "pekin", "Wangfujing", "Shopping", 80, 90, 4.3, 39.9138, 116.4117, "soir", "both"),
+
+        quickAttraction("xa_bell_tower", "xian", "Tour de la Cloche", "Monument", 30, 60, 4.6, 34.2610, 108.9424, "matin", "both"),
+        quickAttraction("xa_yongxingfang", "xian", "Yongxingfang", "Gastronomie", 45, 75, 4.4, 34.2712, 108.9622, "apres-midi", "both"),
+        quickAttraction("xa_tang_paradise", "xian", "Tang Paradise", "Loisirs", 120, 120, 4.5, 34.2159, 108.9865, "soir", "outdoor"),
+        quickAttraction("xa_huaqing", "xian", "Palais Huaqing", "Culture", 120, 120, 4.5, 34.3596, 109.2142, "matin", "outdoor"),
+
+        quickAttraction("hz_xixi", "hangzhou", "Zone Humide Xixi", "Nature", 80, 150, 4.6, 30.2670, 120.0606, "matin", "outdoor"),
+        quickAttraction("hz_tea_museum", "hangzhou", "Musee National du The", "Culture", 0, 75, 4.5, 30.2366, 120.1074, "apres-midi", "both"),
+        quickAttraction("hz_qinghefang", "hangzhou", "Rue Qinghefang", "Shopping", 50, 90, 4.3, 30.2445, 120.1712, "soir", "both"),
+        quickAttraction("hz_grand_canal", "hangzhou", "Grand Canal", "Loisirs", 60, 90, 4.4, 30.3175, 120.1414, "soir", "outdoor"),
+
+        quickAttraction("cd_people_park", "chengdu", "Parc du Peuple", "Loisirs", 20, 75, 4.5, 30.6597, 104.0631, "matin", "outdoor"),
+        quickAttraction("cd_kuanzhai", "chengdu", "Ruelles Kuan Zhai", "Shopping", 40, 90, 4.4, 30.6694, 104.0570, "apres-midi", "both"),
+        quickAttraction("cd_opera_sichuan", "chengdu", "Opera du Sichuan", "Culture", 160, 90, 4.7, 30.6580, 104.0648, "soir", "indoor"),
+        quickAttraction("cd_taikoo", "chengdu", "Taikoo Li", "Shopping", 120, 90, 4.5, 30.6535, 104.0808, "soir", "both"),
+
+        quickAttraction("gl_elephant_hill", "guilin", "Colline de la Trompe d'Elephant", "Nature", 55, 75, 4.5, 25.2650, 110.2950, "matin", "outdoor"),
+        quickAttraction("gl_reed_flute", "guilin", "Grotte de la Flute de Roseau", "Nature", 90, 90, 4.4, 25.3057, 110.2767, "apres-midi", "indoor"),
+        quickAttraction("gl_two_rivers", "guilin", "Deux Rivieres et Quatre Lacs", "Loisirs", 120, 90, 4.6, 25.2760, 110.2920, "soir", "outdoor"),
+        quickAttraction("gl_east_west_alley", "guilin", "East West Alley", "Gastronomie", 45, 75, 4.3, 25.2822, 110.2960, "soir", "both"),
+
+        quickAttraction("pa_orsay", "paris", "Musee d'Orsay", "Culture", 16, 120, 4.8, 48.8600, 2.3266, "matin", "indoor"),
+        quickAttraction("pa_luxembourg", "paris", "Jardin du Luxembourg", "Nature", 0, 60, 4.7, 48.8462, 2.3372, "apres-midi", "outdoor"),
+        quickAttraction("pa_sainte_chapelle", "paris", "Sainte-Chapelle", "Monument", 13, 60, 4.8, 48.8554, 2.3450, "apres-midi", "indoor"),
+        quickAttraction("pa_canal_saint_martin", "paris", "Canal Saint-Martin", "Loisirs", 35, 90, 4.4, 48.8708, 2.3650, "soir", "outdoor"),
+
+        quickAttraction("ly_parc_tete_or", "lyon", "Parc de la Tete d'Or", "Nature", 0, 90, 4.7, 45.7772, 4.8555, "matin", "outdoor"),
+        quickAttraction("ly_halles_bocuse", "lyon", "Halles Paul Bocuse", "Gastronomie", 35, 75, 4.6, 45.7637, 4.8506, "apres-midi", "indoor"),
+        quickAttraction("ly_theatre_romain", "lyon", "Theatres Romains", "Monument", 0, 60, 4.5, 45.7599, 4.8199, "apres-midi", "outdoor"),
+        quickAttraction("ly_presquile", "lyon", "Presqu'ile", "Shopping", 70, 90, 4.4, 45.7605, 4.8357, "soir", "both"),
+
+        quickAttraction("ni_chateau", "nice", "Colline du Chateau", "Nature", 0, 75, 4.8, 43.6957, 7.2800, "matin", "outdoor"),
+        quickAttraction("ni_cours_saleya", "nice", "Cours Saleya", "Gastronomie", 25, 75, 4.5, 43.6955, 7.2760, "matin", "both"),
+        quickAttraction("ni_matisse", "nice", "Musee Matisse", "Culture", 10, 90, 4.4, 43.7195, 7.2760, "apres-midi", "indoor"),
+        quickAttraction("ni_port_lympia", "nice", "Port Lympia", "Loisirs", 45, 75, 4.4, 43.6974, 7.2850, "soir", "outdoor"),
+
+        quickAttraction("ma_panier", "marseille", "Le Panier", "Photo", 0, 75, 4.5, 43.2992, 5.3674, "matin", "outdoor"),
+        quickAttraction("ma_longchamp", "marseille", "Palais Longchamp", "Monument", 8, 90, 4.6, 43.3049, 5.3941, "apres-midi", "both"),
+        quickAttraction("ma_noailles", "marseille", "Noailles", "Gastronomie", 30, 75, 4.3, 43.2962, 5.3800, "apres-midi", "both"),
+        quickAttraction("ma_corniche", "marseille", "Corniche Kennedy", "Nature", 35, 90, 4.6, 43.2808, 5.3560, "soir", "outdoor"),
+
+        quickAttraction("bo_musee_aquitaine", "bordeaux", "Musee d'Aquitaine", "Culture", 8, 90, 4.5, 44.8351, -0.5752, "matin", "indoor"),
+        quickAttraction("bo_sainte_catherine", "bordeaux", "Rue Sainte-Catherine", "Shopping", 60, 90, 4.3, 44.8390, -0.5740, "apres-midi", "both"),
+        quickAttraction("bo_quais", "bordeaux", "Quais de Garonne", "Loisirs", 0, 75, 4.6, 44.8460, -0.5650, "soir", "outdoor"),
+        quickAttraction("bo_bassin_lumieres", "bordeaux", "Bassins des Lumieres", "Culture", 16, 90, 4.7, 44.8655, -0.5585, "soir", "indoor")
+    )
+
+    private fun quickAttraction(
+        id: String,
+        destinationId: String,
+        name: String,
+        type: String,
+        cost: Int,
+        duration: Int,
+        rating: Double,
+        lat: Double,
+        lng: Double,
+        slot: String,
+        weatherType: String
+    ) = Attraction(
+        id, destinationId, name, type,
+        cost, duration, rating,
+        "Point d'interet supplementaire pour diversifier les itineraires par prix, duree et moment de la journee.",
+        imageForType(type),
+        lat, lng, "9:00-21:00", "", 1, weatherType,
+        listOf(slot), listOf(type.lowercase(), slot, "supplementaire")
+    )
+
+    private fun imageForType(type: String): String {
+        return when (type) {
+            "Culture" -> "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?w=400"
+            "Gastronomie" -> "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400"
+            "Nature" -> "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=400"
+            "Shopping" -> "https://images.unsplash.com/photo-1519567770579-c2fc5436bcf9?w=400"
+            "Photo" -> "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=400"
+            else -> "https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=400"
+        }
+    }
+
+    private fun Attraction.withGooglePlaceImages(): Attraction {
+        val images = googleStreetViewImages(lat, lng)
+        return copy(
+            imageUrl = images.firstOrNull() ?: imageUrl,
+            imageUrls = images.ifEmpty { imageUrls.ifEmpty { listOf(imageUrl).filter { it.isNotBlank() } } }
+        )
+    }
+
+    private fun googleStreetViewImages(lat: Double, lng: Double): List<String> {
+        if (lat == 0.0 && lng == 0.0) return emptyList()
+        val apiKey = com.example.traveling.BuildConfig.MAPS_API_KEY
+        if (apiKey.isBlank()) return emptyList()
+        return listOf(0, 120, 240).map { heading ->
+            "https://maps.googleapis.com/maps/api/streetview" +
+                "?size=900x600" +
+                "&location=$lat,$lng" +
+                "&heading=$heading" +
+                "&pitch=5" +
+                "&fov=80" +
+                "&source=outdoor" +
+                "&key=$apiKey"
+        }
+    }
 
     private fun clearCollection(name: String, onComplete: () -> Unit) {
         db.collection(name).get()

@@ -53,7 +53,8 @@ fun MainScreen(
     onNavigateToPhotoDetail: (String) -> Unit = {},
     onNavigateToAuthorProfile: (String) -> Unit = {},
     onNavigateToGroupDetail: (String) -> Unit = {},
-    onNavigateToFollowing: () -> Unit = {}
+    onNavigateToFollowing: () -> Unit = {},
+    onOpenTravelPathImages: () -> Unit = {}
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.PHOTOS) }
 
@@ -108,7 +109,8 @@ fun MainScreen(
                     onOpenSavedPosts = onNavigateToSavedPosts,
                     onOpenLikedRoutes = onNavigateToLikedRoutes,
                     onOpenSavedRoutes = onNavigateToSavedRoutes,
-                    onOpenFollowing = onNavigateToFollowing
+                    onOpenFollowing = onNavigateToFollowing,
+                    onOpenTravelPathImages = onOpenTravelPathImages
                 )
             }
         }
