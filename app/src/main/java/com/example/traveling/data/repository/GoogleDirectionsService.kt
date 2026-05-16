@@ -21,12 +21,14 @@ class GoogleDirectionsService {
     ): List<DirectionStepResult> = withContext(Dispatchers.IO) {
         if (stops.size < 2) return@withContext emptyList()
 
+        // on ignore les arrêts qui n'ont pas de coordonnées valides
         val validStops = stops.filter { it.lat != 0.0 && it.lng != 0.0 }
         if (validStops.size < 2) return@withContext emptyList()
 
         val origin = "${validStops.first().lat},${validStops.first().lng}"
         val destination = "${validStops.last().lat},${validStops.last().lng}"
 
+        // les arrêts intermédiaires deviennent des waypoints Google Directions
         val waypoints = if (validStops.size > 2) {
             val wpList = validStops.subList(1, validStops.size - 1)
                 .joinToString("|") { "${it.lat},${it.lng}" }
@@ -54,6 +56,7 @@ class GoogleDirectionsService {
                 val status = jsonObject.optString("status")
 
                 if (status == "OK") {
+                    // on garde distance, durée et polylines pour afficher le trajet
                     val routes = jsonObject.optJSONArray("routes")
                     if (routes != null && routes.length() > 0) {
                         val route = routes.getJSONObject(0)

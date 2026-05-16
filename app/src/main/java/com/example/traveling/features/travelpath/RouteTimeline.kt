@@ -40,6 +40,7 @@ internal fun RouteTimeline(
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // les stops sont déjà groupés par moment de la journée dans le ViewModel
         groups.forEach { (slot, slotStops) ->
             if (slotStops.isEmpty()) return@forEach
             val style = timeSlotStyles[slot] ?: return@forEach
@@ -66,6 +67,7 @@ internal fun RouteTimeline(
                 slotStops.forEachIndexed { idx, stop ->
                     val isExpanded = expandedStopId == stop.id
 
+                    // chaque arrêt peut s'ouvrir pour afficher photos, coût et source
                     Column {
 
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -161,6 +163,7 @@ internal fun RouteTimeline(
                         }
 
                         if (idx < slotStops.size - 1 && slotStops[idx + 1].distance != "Départ") {
+                            // distance affichée entre l'arrêt actuel et le suivant
                             Row(
                                 modifier = Modifier.padding(start = 52.dp, top = 4.dp, bottom = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -196,6 +199,7 @@ private fun StopExpandedDetail(
         border = BorderStroke(1.dp, StoneBorder)
     ) {
         Column {
+            // on garde toutes les images disponibles, sans doublons
             val galleryImages = stop.imageUrls
                 .ifEmpty { listOf(stop.imageUrl) }
                 .filter { it.isNotBlank() }
@@ -262,6 +266,7 @@ private fun StopExpandedDetail(
                 }
 
                 if (stop.source == "travelshare" && !stop.sourcePostId.isNullOrBlank()) {
+                    // un arrêt créé depuis TravelShare peut rouvrir le post original
                     Surface(
                         onClick = { onOpenPhotoDetail(stop.sourcePostId) },
                         shape = RoundedCornerShape(8.dp),
@@ -286,6 +291,7 @@ private fun StopExpandedDetail(
                 }
 
                 if (travelSharePhotos.isNotEmpty()) {
+                    // photos proches ou liées à cet arrêt, sans les mélanger au contenu officiel
                     Text(
                         "Photos partagées par les voyageurs",
                         fontSize = 12.sp,

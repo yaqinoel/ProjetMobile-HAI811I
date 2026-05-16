@@ -79,10 +79,12 @@ fun GroupsScreen(
     var showCreateSheet by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf("all") }
 
+    // les groupes rejoints et à découvrir sont observés ensemble
     LaunchedEffect(Unit) {
         viewModel.observeGroups()
     }
 
+    // les actions groupe renvoient des messages courts dans le snackbar
     LaunchedEffect(Unit) {
         viewModel.events.collect { snackbarHostState.showSnackbar(it) }
     }
@@ -125,6 +127,7 @@ fun GroupsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // filtre local pour ne pas multiplier les écrans de groupes
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 FilterChip(selected = filter == "all", onClick = { filter = "all" }, label = { Text("Tous") })
                 FilterChip(selected = filter == "mine", onClick = { filter = "mine" }, label = { Text("Mes groupes") })
@@ -216,6 +219,7 @@ private fun GroupCard(
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(group.name, color = Stone800, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // un groupe privé reste visible seulement si l'utilisateur y a accès
                 Icon(
                     if (group.visibility == "private") Icons.Default.Lock else Icons.Default.Public,
                     null,
@@ -258,6 +262,7 @@ private fun CreateGroupSheet(
     var description by remember { mutableStateOf("") }
     var isPrivate by remember { mutableStateOf(false) }
 
+    // création rapide: le repository ajoute ensuite le créateur comme membre
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = CardBg) {
         Column(
             modifier = Modifier

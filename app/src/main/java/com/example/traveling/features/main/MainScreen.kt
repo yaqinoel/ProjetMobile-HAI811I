@@ -61,6 +61,7 @@ fun MainScreen(
 
     LaunchedEffect(initialTravelPathPostId) {
         if (!initialTravelPathPostId.isNullOrBlank()) {
+            // une photo peut ouvrir directement l'onglet parcours avec son lieu
             pendingTravelPathPostId = initialTravelPathPostId
             selectedTab = MainTab.PARCOURS
         }
@@ -73,6 +74,7 @@ fun MainScreen(
                 selectedTab = selectedTab,
                 onTabSelected = { tab ->
                     if (tab == MainTab.PARCOURS && selectedTab != MainTab.PARCOURS) {
+                        // retour manuel vers TravelPath: on repart sur un formulaire propre
                         travelPathResetToken++
                     }
                     selectedTab = tab

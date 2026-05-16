@@ -125,6 +125,7 @@ fun NotificationsScreen(
     var showActionsMenu by remember { mutableStateOf(false) }
     var showSettingsPanel by remember { mutableStateOf(false) }
 
+    // l'écran garde un listener actif pour recevoir les alertes en temps réel
     LaunchedEffect(Unit) {
         viewModel.observeNotifications()
     }
@@ -150,6 +151,7 @@ fun NotificationsScreen(
                 val notifications = state.notifications
                 val settings = state.settings
                 val unreadCount = notifications.count { !it.isRead }
+                // les filtres restent locaux: on ne relance pas de requête Firestore
                 val filteredList = notifications.filter { n ->
                     when (currentFilter) {
                         "unread" -> !n.isRead
@@ -286,6 +288,7 @@ fun NotificationsScreen(
 
                     if (showSettingsPanel) {
                         AnimatedVisibility(visible = showSettingsPanel, enter = fadeIn(), exit = fadeOut()) {
+                            // panneau intégré à la page pour éviter un écran réglages séparé
                             NotificationSettingsPanel(settings = settings, onUpdate = { viewModel.updateSettings(it) })
                         }
                     } else if (filteredList.isEmpty()) {
@@ -309,6 +312,7 @@ fun NotificationsScreen(
                                 NotificationCard(
                                     notif = notif,
                                     onClick = {
+                                        // ouvrir la cible suffit aussi à marquer la notification comme lue
                                         viewModel.markAsRead(notif.notificationId)
                                         when {
                                             !notif.relatedPostId.isNullOrBlank() -> notif.relatedPostId?.let(onOpenPhotoDetail)
@@ -335,6 +339,7 @@ private fun NotificationSettingsPanel(
     var tagInput by remember { mutableStateOf("") }
 
     fun addFollowedTag() {
+        // l'utilisateur peut écrire avec ou sans #
         val tag = tagInput.trim().removePrefix("#")
         if (tag.isBlank()) return
         val exists = settings.followedTags.any { it.equals(tag, ignoreCase = true) }
@@ -372,6 +377,7 @@ private fun NotificationSettingsPanel(
                         selected = selected,
                         icon = Icons.Default.LocationOn,
                         onClick = {
+                            // même document settings pour les tags, lieux et interrupteurs
                             val next = if (selected) {
                                 settings.followedPlaceTypes.filterNot { it.equals(id, ignoreCase = true) }
                             } else {
@@ -423,6 +429,7 @@ private fun NotificationSettingsPanel(
                 checked = settings.notifyLikes || settings.notifyComments || settings.notifySaves,
                 modifier = Modifier.fillMaxWidth(),
                 onCheckedChange = {
+                    // un seul bouton regroupe les interactions sur les posts
                     onUpdate(
                         settings.copy(
                             notifyLikes = it,
@@ -579,6 +586,7 @@ private fun NotificationCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // couleur et icône changent selon la cause de la notification
     val badgeColor = when (notif.type) {
         "like" -> Color(0xFFEF4444)
         "comment" -> Color(0xFF3B82F6)
@@ -599,6 +607,7 @@ private fun NotificationCard(
         else -> Icons.Default.Person
     }
 
+    // affichage volontairement relatif pour rester compact dans la liste
     val timeText = notif.createdAt?.toDate()?.let {
         val diffMs = System.currentTimeMillis() - it.time
         val mins = TimeUnit.MILLISECONDS.toMinutes(diffMs)

@@ -19,7 +19,7 @@ import com.example.traveling.data.repository.SavedRoutesRepository
 import com.example.traveling.data.repository.TravelBridgeRepository
 import com.example.traveling.data.repository.TravelRepository
 import com.example.traveling.data.repository.WeatherInfo
-import com.example.traveling.data.model.TravelPathSeed
+import com.example.traveling.core.model.TravelPathSeed
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -192,6 +192,7 @@ class TravelViewModel : ViewModel() {
         viewModelScope.launch {
             val post = photoPostRepository.getPostOnce(postId).getOrNull() ?: return@launch
             addTravelSharePhotoCandidate(post)
+            // on transforme la photo TravelShare en valeurs simples pour préremplir le formulaire
             applyTravelShareSeed(
                 TravelPathSeed(
                     sourcePostId = post.postId,
@@ -330,12 +331,15 @@ class TravelViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             repository.getAttractionsByDestination(dest.id).collect { allAttractions ->
+                // city officielle et city créée par TravelShare utilisent le même destinationId
                 val linkedTravelSharePosts = runCatching {
                     travelBridgeRepository.getLinkedTravelSharePhotosForDestination(dest.id)
                 }.getOrDefault(emptyList())
+                // les attractions stockées ont plus d'infos que les simples photoPosts
                 val linkedTravelShareAttractions = runCatching {
                     travelBridgeRepository.getTravelShareAttractionsForDestination(dest.id)
                 }.getOrDefault(emptyList())
+                // on mélange les lieux officiels avec les lieux proposés depuis TravelShare
                 val candidatePosts = (selectedTravelSharePosts.value + linkedTravelSharePosts)
                     .distinctBy { it.postId }
                 val travelShareCandidates = buildTravelSharePhotoAttractionCandidates(
@@ -348,12 +352,14 @@ class TravelViewModel : ViewModel() {
                     officialAttractions = allAttractions + travelShareCandidates,
                     destination = dest
                 )
+                // même si une ville n'a aucune attraction officielle, les candidates TravelShare suffisent
                 val mergedAttractions = allAttractions + travelShareCandidates + travelShareAttractionCandidates
 
                 _attractions.value = mergedAttractions
                 val currentWeather = weatherService.getWeather(dest.lat, dest.lng)
                 _weather.value = currentWeather
 
+                // les préférences utilisateur réduisent la liste avant de construire les variantes
                 val filtered = filterAttractions(mergedAttractions, budget, activities, currentWeather)
                 val weatherAdjustedAll = applyWeatherPreferences(mergedAttractions, currentWeather)
 
@@ -377,6 +383,7 @@ class TravelViewModel : ViewModel() {
     private fun updateOfficialAttractionSuggestions(cityName: String) {
         val dest = _destinations.value.find { it.name.equals(cityName, ignoreCase = true) }
         if (dest == null) {
+            // tant que la ville n'est pas reconnue, on vide les suggestions officielles
             _suggestedAttractions.value = emptyList()
             suggestedAttractionsJob?.cancel()
             suggestedAttractionsJob = null
@@ -404,6 +411,7 @@ class TravelViewModel : ViewModel() {
         travelShareSuggestionsJob?.cancel()
         travelShareSuggestionsJob = viewModelScope.launch {
             _isLoadingTravelShareSuggestions.value = true
+            // suggestions visibles dans le formulaire, pas encore ajoutées au parcours
             travelBridgeRepository.observeLinkedTravelSharePhotosForDestination(
                 destinationId = dest.id,
                 fallbackCity = dest.name
@@ -427,6 +435,7 @@ class TravelViewModel : ViewModel() {
         stopPhotosJob = viewModelScope.launch {
             val result = mutableMapOf<String, List<PhotoPostDocument>>()
             val selectedPosts = selectedTravelSharePosts.value
+            // on cherche quelques photos liées à chaque arrêt du parcours
             stops.take(8).forEach { stop ->
                 val linkedPoolPhotos = runCatching {
                     travelBridgeRepository.findPhotosForRouteStop(
@@ -441,6 +450,7 @@ class TravelViewModel : ViewModel() {
                 val selectedMatches = selectedPosts.filter { post ->
                     val postLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
                     val postLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
+                    // une photo peut être liée à un arrêt par nom ou par proximité
                     val byName = areNamesSimilar(post.locationName, stop.name)
                     val byDistance = if (
                         postLat != null && postLng != null &&
@@ -471,6 +481,7 @@ class TravelViewModel : ViewModel() {
         val seedTags = formTravelShareTags.value.map { it.lowercase() }
         val postTags = post.tags.map { it.lowercase() }
 
+        // tags communs et type compatible passent avant le simple nombre de likes
         if (postTags.any { seedTags.contains(it) }) score += 4
         if (placeTypeMatchesSelectedActivities(post.placeType, selectedActivities)) score += 3
         score += minOf(post.likeCount, 10)
@@ -496,8 +507,10 @@ class TravelViewModel : ViewModel() {
         officialAttractions: List<Attraction>,
         destination: Destination
     ): List<Attraction> {
+        // on ne garde que les photos qui peuvent devenir un vrai arrêt
         return posts
             .filter { it.visibility == "public" && it.status == "published" }
+            // si le post a déjà un destinationId, il doit correspondre à la ville choisie
             .filter {
                 it.travelPathDestinationId.isNullOrBlank() ||
                     it.travelPathDestinationId == destination.id ||
@@ -505,6 +518,7 @@ class TravelViewModel : ViewModel() {
             }
             .filter { it.hasUsableLocation() }
             .filterNot { post ->
+                // si un lieu officiel est déjà très proche, on évite le doublon
                 officialAttractions.any { attr -> isDuplicateTravelSharePlace(post, attr) }
             }
             .map { it.toAttractionCandidate(destination.id) }
@@ -514,6 +528,7 @@ class TravelViewModel : ViewModel() {
         val resolvedLat = displayLatitude ?: latitude ?: rawLatitude ?: 0.0
         val resolvedLng = displayLongitude ?: longitude ?: rawLongitude ?: 0.0
         val attractionType = mapPlaceTypeToAttractionType(placeType, tags)
+        // candidat temporaire: il participe au calcul sans devenir attraction officielle
         return Attraction(
             id = "photo_$postId",
             destinationId = destinationId,
@@ -541,6 +556,7 @@ class TravelViewModel : ViewModel() {
         return attractions
             .filter { it.status == "active" && it.destinationId == destination.id }
             .filter { it.name.isNotBlank() && it.lat != 0.0 && it.lng != 0.0 }
+            // on évite d'ajouter deux stops pour le même lieu
             .filterNot { travelShareAttraction ->
                 officialAttractions.any { attr -> isDuplicateTravelShareAttraction(travelShareAttraction, attr) }
             }
@@ -574,6 +590,7 @@ class TravelViewModel : ViewModel() {
 
     private fun mapPlaceTypeToAttractionType(placeType: String, tags: List<String>): String {
         val terms = (listOf(placeType) + tags).joinToString(" ").lowercase()
+        // mapping volontairement simple pour rester aligné avec les types TravelPath
         return when {
             terms.contains("museum") || terms.contains("musée") || terms.contains("culture") || terms.contains("cultural") -> "Culture"
             terms.contains("monument") || terms.contains("architecture") || terms.contains("street") || terms.contains("rue") -> "Monument"
@@ -591,6 +608,7 @@ class TravelViewModel : ViewModel() {
 
     private fun estimateTravelShareCost(type: String, placeType: String, tags: List<String>): Int {
         val terms = (listOf(type, placeType) + tags).joinToString(" ").lowercase()
+        // valeur de secours si l'auteur n'a pas renseigné le coût
         return when {
             terms.contains("restaurant") || terms.contains("food") || terms.contains("gastronomie") ||
                 terms.contains("cafe") || terms.contains("café") -> 25
@@ -611,6 +629,7 @@ class TravelViewModel : ViewModel() {
         val postLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
         if (postLat != null && postLng != null && attraction.lat != 0.0 && attraction.lng != 0.0) {
             val distanceKm = haversine(postLat, postLng, attraction.lat, attraction.lng)
+            // environ 200m suffit pour considérer que c'est le même lieu
             if (distanceKm <= 0.2) return true
         }
         return areNamesSimilar(post.locationName, attraction.name)
@@ -660,22 +679,26 @@ class TravelViewModel : ViewModel() {
 
         val wantedTypes = activities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
+        // premier filtre strict: activité demandée et budget utilisateur
         var result = all.filter { attr ->
             (wantedTypes.isEmpty() || attr.type in wantedTypes) &&
             attr.cost <= budget
         }
 
         if (result.size < 3) {
+            // si c'est trop strict, on garde le budget mais on relâche le type
             result = all.filter { attr ->
                 attr.cost <= budget
             }
         }
 
         if (result.size < 3) {
+            // dernier fallback pour pouvoir générer quelque chose
             result = all.sortedByDescending { it.rating }.take(5)
         }
 
         if (savedFavoritePlaces.isNotEmpty()) {
+            // les lieux explicitement choisis passent en priorité dans la liste
             val favorites = result.filter { attr ->
                 savedFavoritePlaces.any { fav ->
                     attr.name.contains(fav, ignoreCase = true) || fav.contains(attr.name, ignoreCase = true)
@@ -694,6 +717,7 @@ class TravelViewModel : ViewModel() {
     ): List<Attraction> {
         if (weather == null || !shouldPreferShelter(weather)) return attractions
 
+        // pluie/chaleur/froid: on préfère les lieux indoor ou mixtes
         val sheltered = attractions.filter { it.weatherType == "indoor" || it.weatherType == "both" }
         return if (sheltered.size >= 3) {
             sheltered.sortedByDescending { weatherScore(it, weather) }
@@ -738,12 +762,14 @@ class TravelViewModel : ViewModel() {
         val maxWalkingKm = maxWalkingDistanceForEffort(effort)
         val wantedTypes = savedActivities.flatMap { activityTypeMapping[it] ?: emptyList() }.toSet()
 
+        // on prépare trois styles de parcours avec des priorités différentes
         val cheapBudget = (budget * 0.6).toInt().coerceAtLeast(50)
         val balancedBudget = budget.coerceAtLeast(80)
         val premiumBudget = (budget * 1.5).toInt().coerceAtLeast(140)
         val cheapPool = filtered.sortedBy { it.cost }
         val cheapAttractions = selectWithinConstraints(cheapPool, cheapBudget, maxMinutes, maxWalkingKm, wantedTypes)
 
+        // équilibré: on vise un coût moyen plutôt qu'un coût minimum
         val balancedTargetCost = (balancedBudget / 4).coerceIn(15, 90)
         val balancedPool = filtered.sortedWith(
             compareBy<Attraction> { abs(it.cost - balancedTargetCost) }
@@ -755,6 +781,7 @@ class TravelViewModel : ViewModel() {
             compareByDescending<Attraction> { it.rating + (it.cost.coerceAtMost(250) / 100.0) }
                 .thenByDescending { it.cost }
         )
+        // premium peut dépasser un peu la durée car il privilégie les expériences mieux notées
         val premiumAttractions = selectWithinConstraints(
             premiumPool,
             premiumBudget,
@@ -800,6 +827,7 @@ class TravelViewModel : ViewModel() {
         var totalCost = 0
         var totalMinutes = 0
         var totalWalkingKm = 0.0
+        // plus la durée disponible est grande, plus on accepte d'arrêts
         val maxStops = when {
             maxMinutes <= 240 -> 4
             maxMinutes <= 420 -> 6
@@ -818,6 +846,7 @@ class TravelViewModel : ViewModel() {
             val allowedMinutes = if (relaxed) (maxMinutes * 1.15).toInt() else maxMinutes
             val allowedWalkingKm = if (relaxed) maxWalkingKm * 1.2 else maxWalkingKm
 
+            // on refuse le candidat s'il casse budget, durée ou effort
             return if (newTotalCost <= allowedBudget && newTotalMinutes <= allowedMinutes && newWalkingKm <= allowedWalkingKm) {
                 selected.add(attr)
                 totalCost = newTotalCost
@@ -829,11 +858,13 @@ class TravelViewModel : ViewModel() {
             }
         }
 
+        // les lieux favoris sont testés avant les autres
         for (attr in available.filter { matchesFavoritePlace(it) }) {
             addCandidate(attr)
         }
 
         if (wantedTypes.isNotEmpty()) {
+            // on force au moins une activité demandée si possible
             val prefFirst = available.firstOrNull { it.type in wantedTypes && it !in selected }
             if (prefFirst != null) {
                 addCandidate(prefFirst)
@@ -847,6 +878,7 @@ class TravelViewModel : ViewModel() {
         }
         for (slot in targetSlots) {
             if (selected.any { slot in it.bestTimeSlots }) continue
+            // on essaie de couvrir matin / après-midi / soir
             val slotCandidate = available.firstOrNull { attr ->
                 attr !in selected &&
                     slot in attr.bestTimeSlots &&
@@ -865,6 +897,7 @@ class TravelViewModel : ViewModel() {
         }
 
         if (selected.size < effectiveMinStops) {
+            // fallback léger pour éviter une route trop vide
             for (attr in available) {
                 addCandidate(attr, relaxed = true)
                 if (selected.size >= effectiveMinStops) break
@@ -909,6 +942,7 @@ class TravelViewModel : ViewModel() {
         totalMinutes: Int,
         attractions: List<Attraction>
     ): Int {
+        // effort basé surtout sur marche, puis ajusté par durée et types d'arrêts
         val base = when {
             walkingKm < 2.0 -> 1
             walkingKm < 5.0 -> 2
@@ -945,6 +979,7 @@ class TravelViewModel : ViewModel() {
     }
 
     private fun orderAttractionsForRoute(attractions: List<Attraction>): List<Attraction> {
+        // ordre simple selon les créneaux préférés de chaque lieu
         return attractions.sortedBy { attr ->
             when {
                 attr.bestTimeSlots.contains("matin") -> 0
@@ -1002,6 +1037,7 @@ class TravelViewModel : ViewModel() {
 
         val ordered = orderAttractionsForRoute(attractions)
 
+        // heure de départ fixe pour garder une timeline facile à lire
         var currentHour = 9
         var currentMinute = 0
 
@@ -1014,6 +1050,7 @@ class TravelViewModel : ViewModel() {
             if (index > 0) {
                 val prev = ordered[index - 1]
                 if (prev.lat != 0.0 && attr.lat != 0.0) {
+                    // estimation locale avant l'appel Google Directions
                     val distKm = haversine(prev.lat, prev.lng, attr.lat, attr.lng)
                     distString = if (distKm < 1.0) "${(distKm * 1000).toInt()} m" else "%.1f km".format(distKm)
                     walkMinutes = (distKm * 12).toInt().coerceAtLeast(5)
@@ -1074,6 +1111,7 @@ class TravelViewModel : ViewModel() {
             val directions = directionsService.getDirections(basicStops, apiKey)
 
             if (directions.size == basicStops.size - 1) {
+                // si Google répond correctement, on remplace les distances estimées
                 return basicStops.mapIndexed { index, stop ->
                     if (index > 0) {
                         val dir = directions[index - 1]
@@ -1120,6 +1158,7 @@ class TravelViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                // on garde aussi une copie Firestore pour retrouver la route après relance
                 if (nowLiked && route != null) {
                     savedRoutesRepo.saveRoute(route, _routeStops.value, destName, "liked")
                 } else {
@@ -1185,6 +1224,7 @@ class TravelViewModel : ViewModel() {
             return true
         }
 
+        // fallback Firestore si le cache local a été vidé
         for (type in listOf("liked", "saved")) {
             val doc = savedRoutesRepo.getRoute(routeId, type)
             if (doc != null) {
@@ -1207,6 +1247,7 @@ class TravelViewModel : ViewModel() {
             _isLoading.value = true
             val targetCount = currentAttractions.size.coerceAtLeast(3)
             val candidatePool = _attractions.value.ifEmpty { currentAttractions }
+            // on regénère avec une règle simple selon le bouton choisi
             val adjusted = when (adjustment) {
                 RegenerationAdjustment.INDOOR -> candidatePool.sortedByDescending {
                     when (it.weatherType) {

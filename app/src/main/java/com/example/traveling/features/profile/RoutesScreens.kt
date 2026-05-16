@@ -37,6 +37,7 @@ fun LikedRoutesScreen(
     val localStorage = remember { LocalStorageRepository(context.applicationContext) }
     val savedRoutesRepo = remember { SavedRoutesRepository() }
     val scope = rememberCoroutineScope()
+    // affichage immédiat depuis le cache local, avec nettoyage Firestore en arrière-plan
     var routes by remember { mutableStateOf(localStorage.getLikedRoutes()) }
 
     Scaffold(
@@ -116,6 +117,7 @@ fun SavedRoutesScreen(
     val localStorage = remember { LocalStorageRepository(context.applicationContext) }
     val savedRoutesRepo = remember { SavedRoutesRepository() }
     val scope = rememberCoroutineScope()
+    // même logique que les likes, mais pour les routes enregistrées
     var routes by remember { mutableStateOf(localStorage.getSavedRoutes()) }
 
     Scaffold(

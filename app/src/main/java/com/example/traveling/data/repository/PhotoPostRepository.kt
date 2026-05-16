@@ -88,6 +88,7 @@ class PhotoPostRepository(
             val visibleLat = input.displayLatitude ?: input.rawLatitude
             val visibleLng = input.displayLongitude ?: input.rawLongitude
             val shouldLinkToTravelPath = input.isLinkedToTravelPath && input.visibility == "public"
+            // on crée la destination TravelPath seulement pour une publication publique
             val travelPathDestination = if (shouldLinkToTravelPath) {
                 travelRepository.ensureTravelPathDestinationForPost(
                     city = input.city,
@@ -147,6 +148,7 @@ class PhotoPostRepository(
             val userRef = db.collection(FirestoreCollections.USERS).document(input.authorId)
             val batch = db.batch()
             batch.set(postRef, post)
+            // si le post est lié à TravelPath, on garde aussi une attraction utilisable par les parcours
             buildTravelShareAttraction(
                 post = post,
                 costOverride = input.travelPathCost,
@@ -212,6 +214,7 @@ class PhotoPostRepository(
         val groupListeners = mutableListOf<ListenerRegistration>()
 
         fun emit() {
+            // galerie connectée: posts publics + posts des groupes rejoints
             if (!publicLoaded || !joinedGroupsLoaded) return
             if (!groupPostsByGroupId.keys.containsAll(currentGroupIds)) return
 
@@ -470,6 +473,7 @@ class PhotoPostRepository(
             }.awaitResult()
 
             runCatching {
+                // la notification est créée après la transaction pour ne pas bloquer le like
                 val post = db.collection(FirestoreCollections.PHOTO_POSTS)
                     .document(postId)
                     .get()
@@ -535,6 +539,7 @@ class PhotoPostRepository(
                 val alreadySaved = transaction.get(postSaveRef).exists()
                 if (alreadySaved) return@runTransaction false
 
+                // double écriture: sous-collection du post et liste perso de l'utilisateur
                 transaction.set(
                     postSaveRef,
                     PostSaveDocument(
@@ -660,6 +665,7 @@ class PhotoPostRepository(
                     ?: return@runTransaction Unit
                 if (post.status == "deleted") return@runTransaction Unit
 
+                // le post disparaît de l'app, mais on garde les données pour l'historique
                 transaction.update(
                     postRef,
                     mapOf(
@@ -708,6 +714,7 @@ class PhotoPostRepository(
             val shouldLinkToTravelPath = isLinkedToTravelPath && visibility.lowercase() == "public"
             val visibleLat = existingPost?.displayLatitude ?: existingPost?.latitude ?: existingPost?.rawLatitude
             val visibleLng = existingPost?.displayLongitude ?: existingPost?.longitude ?: existingPost?.rawLongitude
+            // une publication non publique ne doit pas créer de lieu TravelPath
             val travelPathDestination = if (shouldLinkToTravelPath && existingPost != null) {
                 travelRepository.ensureTravelPathDestinationForPost(
                     city = existingPost.city,
@@ -738,6 +745,7 @@ class PhotoPostRepository(
                 travelPathSource = travelPathDestination?.source
             )
             val updateValues = mutableMapOf<String, Any?>(
+                // champs éditables depuis le formulaire de publication
                 "title" to title,
                 "description" to description,
                 "locationName" to locationName,
@@ -826,6 +834,7 @@ class PhotoPostRepository(
                 ?: error("Publication introuvable")
             require(existingPost.authorId == authorId) { "Vous ne pouvez modifier que vos publications" }
 
+            // les images déjà uploadées restent en URL, les nouvelles restent en uri locale
             val existingImageUrls = imageRefs.filter { it.isRemoteStorageRef() }
             val localImageUris = imageRefs.filterNot { it.isRemoteStorageRef() }.map(Uri::parse)
             val uploadedImageUrls = if (localImageUris.isNotEmpty()) {
@@ -844,6 +853,7 @@ class PhotoPostRepository(
             val voiceNoteUrl = when {
                 voiceNoteRef.isNullOrBlank() -> null
                 voiceNoteRef.isRemoteStorageRef() -> voiceNoteRef
+                // nouvelle note vocale locale, donc upload avant update Firestore
                 else -> uploadVoiceNote(authorId = authorId, postId = postId, uri = Uri.parse(voiceNoteRef))
             }
 
@@ -851,6 +861,7 @@ class PhotoPostRepository(
             val visibleLng = displayLongitude ?: rawLongitude
             val normalizedVisibility = visibility.lowercase()
             val shouldLinkToTravelPath = isLinkedToTravelPath && normalizedVisibility == "public"
+            // pendant la modification, on peut ajouter ou retirer le lien TravelPath
             val travelPathDestination = if (shouldLinkToTravelPath) {
                 travelRepository.ensureTravelPathDestinationForPost(
                     city = city,
@@ -866,6 +877,7 @@ class PhotoPostRepository(
             }
 
             val updatedPost = existingPost.copy(
+                // on reconstruit un document complet pour réutiliser le mapping TravelPath
                 title = title,
                 description = description,
                 imageUrls = imageUrls,
@@ -939,12 +951,14 @@ class PhotoPostRepository(
             db.batch().apply {
                 update(postRef, updateValues)
                 if (attraction != null) {
+                    // option cochée: le lieu utilisateur reste actif côté TravelPath
                     set(
                         db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document(attraction.id),
                         attraction,
                         SetOptions.merge()
                     )
                 } else {
+                    // option décochée ou post non public: on désactive l'ancienne attraction
                     set(
                         db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS).document("photo_$postId"),
                         mapOf(
@@ -969,6 +983,7 @@ class PhotoPostRepository(
         bestTimeSlotsOverride: List<String> = emptyList()
     ): TravelShareAttractionDocument? {
         if (!post.isLinkedToTravelPath || post.visibility != "public" || post.status != "published") return null
+        // on évite de mélanger les posts privés ou supprimés dans les parcours
         val destinationId = post.travelPathDestinationId ?: return null
         val destinationName = post.travelPathDestinationName ?: post.city ?: return null
         val lat = post.displayLatitude ?: post.latitude ?: post.rawLatitude ?: return null
@@ -977,11 +992,13 @@ class PhotoPostRepository(
         val now = Timestamp.now()
         val attractionType = mapPlaceTypeToAttractionType(post.placeType, post.tags)
 
+        // ce document reprend le format attraction, mais avec source travelshare
         return TravelShareAttractionDocument(
             id = "photo_${post.postId}",
             destinationId = destinationId,
             name = name,
             type = attractionType,
+            // les valeurs du formulaire de publication passent avant l'estimation
             cost = costOverride?.coerceAtLeast(0)
                 ?: estimateTravelShareCost(attractionType, post.placeType, post.tags),
             duration = durationMinutesOverride?.takeIf { it > 0 } ?: 45,
@@ -1043,6 +1060,7 @@ class PhotoPostRepository(
 
     suspend fun getLikedPosts(userId: String): Result<List<PhotoPostDocument>> {
         return runCatching {
+            // on lit d'abord les ids dans users/{uid}/likedPosts
             val likedDocs = db.collection(FirestoreCollections.USERS)
                 .document(userId)
                 .collection(FirestoreCollections.LIKED_POSTS)
@@ -1051,6 +1069,7 @@ class PhotoPostRepository(
                 .documents
 
             val postIds = likedDocs.map { it.id }
+            // puis on recharge les vrais posts pour afficher les cartes complètes
             postIds.mapNotNull { postId ->
                 db.collection(FirestoreCollections.PHOTO_POSTS)
                     .document(postId)
@@ -1063,6 +1082,7 @@ class PhotoPostRepository(
 
     suspend fun getSavedPosts(userId: String): Result<List<PhotoPostDocument>> {
         return runCatching {
+            // même logique que les likes, mais depuis savedPosts
             val savedDocs = db.collection(FirestoreCollections.USERS)
                 .document(userId)
                 .collection(FirestoreCollections.SAVED_POSTS)
@@ -1092,6 +1112,7 @@ class PhotoPostRepository(
             val reportId = reportRef.id
             val postRef = db.collection(FirestoreCollections.PHOTO_POSTS).document(postId)
 
+            // le report garde le détail, le post garde seulement le compteur
             val payload = mapOf(
                 "reportId" to reportId,
                 "postId" to postId,
@@ -1117,6 +1138,7 @@ class PhotoPostRepository(
     ): List<String> = coroutineScope {
         uris.mapIndexed { index, uri ->
             async {
+                // upload en parallèle, index stable pour garder l'ordre des photos
                 val ref = storage.reference
                     .child("travelshare/posts/$authorId/$postId/${startIndex + index}.jpg")
                 ref.putFile(uri).awaitResult()

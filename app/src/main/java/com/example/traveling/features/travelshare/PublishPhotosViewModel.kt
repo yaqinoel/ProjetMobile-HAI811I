@@ -72,6 +72,7 @@ class PublishPhotosViewModel(
         viewModelScope.launch {
             _aiAnnotationState.value = AiAnnotationUiState.Loading
             runCatching {
+                // analyse locale simple des images pour proposer quelques tags
                 imageAnnotationService.annotateImages(
                     context = context.applicationContext,
                     imageUris = selectedPhotoUris.map(Uri::parse)
@@ -129,6 +130,7 @@ class PublishPhotosViewModel(
             _uiState.value = PublishUiState.Uploading("Upload des photos...")
 
             val userDoc = runCatching { userRepository.getUser(currentUser.uid) }.getOrNull()
+            // le nom affiché vient d'abord du profil Firestore, puis de Firebase Auth
             val authorName = userDoc?.displayName
                 ?.takeIf { it.isNotBlank() }
                 ?: currentUser.displayName
@@ -170,6 +172,7 @@ class PublishPhotosViewModel(
                 travelPathBestTimeSlots = travelPathBestTimeSlots
             )
 
+            // le repository gère l'upload Storage puis l'écriture Firestore
             photoPostRepository.publishPhotoPost(input)
                 .onSuccess { postId ->
                     _uiState.value = PublishUiState.Success(postId)
@@ -218,6 +221,7 @@ class PublishPhotosViewModel(
 
         viewModelScope.launch {
             _uiState.value = PublishUiState.Uploading("Enregistrement...")
+            // édition complète en réutilisant les mêmes champs que la publication
             photoPostRepository.updatePostFromPublishForm(
                 postId = postId,
                 authorId = currentUser.uid,

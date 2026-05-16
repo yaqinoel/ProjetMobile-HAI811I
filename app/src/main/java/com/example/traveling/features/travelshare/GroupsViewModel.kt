@@ -50,6 +50,7 @@ class GroupsViewModel(
         myGroupsListener?.remove()
         discoverGroupsListener?.remove()
 
+        // deux listes différentes: groupes rejoints et groupes proposés
         myGroupsListener = repository.observeMyGroups(
             userId = uid,
             onChanged = { groups ->
@@ -79,6 +80,7 @@ class GroupsViewModel(
         val currentUser = auth.currentUser ?: return
         viewModelScope.launch {
             val user = userRepository.getUser(currentUser.uid)
+            // le créateur devient aussi membre du groupe côté repository
             val ownerName = user?.displayName
                 ?.takeIf { it.isNotBlank() }
                 ?: currentUser.displayName

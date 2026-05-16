@@ -14,6 +14,7 @@ fun filterGalleryPosts(
     filter: GalleryFilter
 ): List<PhotoPostUi> {
     val query = filter.query.trim()
+    // on applique d'abord les filtres simples, puis le mode spécial si besoin
     val filtered = posts.filter { post ->
         matchesQuery(post, query) &&
             matchesPlaceType(post, filter.placeType) &&
@@ -48,6 +49,7 @@ private fun matchesQuery(post: PhotoPostUi, query: String): Boolean {
 }
 
 private fun searchableText(post: PhotoPostUi): String {
+    // texte unique pour chercher titre, lieu, auteur, tags et groupe
     return buildString {
         append(post.title).append(' ')
         append(post.location).append(' ')
@@ -67,6 +69,7 @@ private fun matchesPlaceType(post: PhotoPostUi, placeType: String): Boolean {
     if (placeType == "all") return true
 
     val expectedTerms = placeTypeAliases(placeType)
+    // les types peuvent venir du formulaire, des tags ou du texte du post
     val postTerms = buildSet {
         add(normalizeFilterTerm(post.placeType))
         post.tags.forEach { add(normalizeFilterTerm(it)) }
@@ -79,6 +82,7 @@ private fun matchesPlaceType(post: PhotoPostUi, placeType: String): Boolean {
 }
 
 private fun placeTypeAliases(placeType: String): Set<String> {
+    // synonymes anglais/français pour éviter les résultats vides
     return when (normalizeFilterTerm(placeType)) {
         "nature" -> setOf("nature", "park", "parc", "garden", "jardin", "beach", "plage", "mountain", "montagne", "forest", "foret", "lac", "lake")
         "museum" -> setOf("museum", "musee", "culture", "cultural", "art", "gallery", "galerie", "exposition")
@@ -91,6 +95,7 @@ private fun placeTypeAliases(placeType: String): Set<String> {
 }
 
 private fun normalizeFilterTerm(value: String): String {
+    // petite normalisation sans dépendance externe
     return value
         .trim()
         .lowercase()
@@ -119,6 +124,7 @@ private fun matchesPeriod(post: PhotoPostUi, filter: GalleryFilter): Boolean {
 
     val createdAt = post.createdAtMillis ?: return false
     if (start != null || end != null) {
+        // plage personnalisée choisie avec les rouleaux de date
         val min = start ?: Long.MIN_VALUE
         val max = end?.let { endOfDayMillis(it) } ?: Long.MAX_VALUE
         return createdAt in min..max
@@ -141,6 +147,7 @@ private fun matchesPeriod(post: PhotoPostUi, filter: GalleryFilter): Boolean {
 }
 
 private fun endOfDayMillis(timeMillis: Long): Long {
+    // la date de fin doit inclure toute la journée sélectionnée
     return Calendar.getInstance().apply {
         timeInMillis = timeMillis
         set(Calendar.HOUR_OF_DAY, 23)
@@ -158,6 +165,7 @@ private fun filterNearby(
     val centerLng = filter.centerLongitude
     if (centerLat == null || centerLng == null) return posts
 
+    // on compare la distance réelle entre le centre choisi et chaque photo
     return posts.filter { post ->
         val lat = post.latitude
         val lng = post.longitude
@@ -174,6 +182,7 @@ private fun filterSimilar(
         ?.let { sourceId -> posts.find { it.id == sourceId } }
 
     if (source != null) {
+        // recherche depuis une photo précise
         return candidates
             .filterNot { it.id == source.id }
             .map { it to similarityScore(source, it) }
@@ -192,6 +201,7 @@ private fun filterSimilar(
     val anchorTerms = queryTokens + listOf(filter.placeType).filter { it != "all" }
     if (anchorTerms.isEmpty()) return candidates
 
+    // recherche similaire plus simple quand on part d'un texte ou d'un filtre
     return candidates
         .map { post -> post to anchorSimilarityScore(post, anchorTerms) }
         .filter { (_, score) -> score > 0 }
@@ -204,6 +214,7 @@ private fun similarityScore(source: PhotoPostUi, candidate: PhotoPostUi): Int {
     val candidateTags = candidate.tags.map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
     val sharedTags = sourceTags.intersect(candidateTags).size
 
+    // tags en commun > type > ville > pays > même auteur
     var score = sharedTags * 3
     if (source.placeType.isNotBlank() && source.placeType.equals(candidate.placeType, ignoreCase = true)) score += 2
     if (source.city.isNotBlank() && source.city.equals(candidate.city, ignoreCase = true)) score += 2

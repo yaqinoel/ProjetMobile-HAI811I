@@ -98,6 +98,7 @@ fun PublishPhotosScreen(
     val aiAnnotationState by publishViewModel.aiAnnotationState.collectAsState()
     val joinedGroups by publishViewModel.joinedGroups.collectAsState()
 
+    // lecture et enregistrement utilisent deux objets Android différents
     fun stopVoicePlayback() {
         mediaPlayer?.runCatchingStopAndRelease()
         mediaPlayer = null
@@ -106,6 +107,7 @@ fun PublishPhotosScreen(
 
     fun stopVoiceRecording() {
         val recorder = mediaRecorder ?: return
+        // stop peut échouer si l'audio est trop court
         val stopped = runCatching { recorder.stop() }.isSuccess
         recorder.release()
         mediaRecorder = null
@@ -119,6 +121,7 @@ fun PublishPhotosScreen(
     fun startVoiceRecording() {
         stopVoicePlayback()
         val outputFile = File(context.cacheDir, "travelshare_voice_${System.currentTimeMillis()}.m4a")
+        // mediaRecorder demande un constructeur différent selon la version Android
         val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
         } else {
@@ -155,6 +158,7 @@ fun PublishPhotosScreen(
     }
 
     fun setCurrentLocationAsDefault() {
+        // valeur par défaut pour éviter un formulaire sans lieu au premier affichage
         val location = context.lastKnownLocationOrNull()
         if (location == null) {
             coroutineScope.launch { snackbarHostState.showSnackbar("Position actuelle indisponible. Sélectionnez un lieu sur la carte.") }
@@ -221,6 +225,7 @@ fun PublishPhotosScreen(
     }
 
     fun validateBeforePreview(): Boolean {
+        // validation côté UI avant d'ouvrir le résumé de publication
         val message = when {
             title.isBlank() -> "Ajoutez un titre avant de publier."
             selectedPhotos.isEmpty() -> "Ajoutez au moins une photo."
@@ -274,6 +279,7 @@ fun PublishPhotosScreen(
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(MAX_SELECTED_PHOTOS)
     ) { uris ->
+        // on complète la sélection existante sans dépasser la limite du projet
         val remainingSlots = MAX_SELECTED_PHOTOS - selectedPhotos.size
         val pickedPhotos = uris.take(remainingSlots).map { it.toString() }
         selectedPhotos = (selectedPhotos + pickedPhotos).take(MAX_SELECTED_PHOTOS)
@@ -301,6 +307,7 @@ fun PublishPhotosScreen(
 
     val effortLabels = mapOf(1 to "Très facile", 2 to "Facile", 3 to "Modéré", 4 to "Élevé", 5 to "Intense")
     val addTag = {
+        // plusieurs tags peuvent être collés avec des virgules
         val newTags = tagInput
             .split(",", "，")
             .map { it.trim().trimStart('#') }
@@ -315,6 +322,7 @@ fun PublishPhotosScreen(
         tagInput = ""
     }
     val mergeTags: (List<String>) -> Int = { tags ->
+        // les tags IA passent par la même déduplication que les tags manuels
         val normalizedTags = tags
             .map { it.trim().trimStart('#') }
             .filter { it.isNotBlank() }
@@ -327,6 +335,7 @@ fun PublishPhotosScreen(
     }
 
     LaunchedEffect(publishState) {
+        // succès et erreurs du repository reviennent ici pour fermer ou prévenir l'utilisateur
         when (val state = publishState) {
             is PublishUiState.Error -> {
                 snackbarHostState.showSnackbar(state.message)
@@ -342,6 +351,7 @@ fun PublishPhotosScreen(
     }
 
     LaunchedEffect(aiAnnotationState) {
+        // l'annotation IA ne publie rien, elle ajoute seulement des tags proposés
         when (val state = aiAnnotationState) {
             is AiAnnotationUiState.Error -> {
                 snackbarHostState.showSnackbar(state.message)
@@ -364,6 +374,7 @@ fun PublishPhotosScreen(
     }
 
     LaunchedEffect(Unit) {
+        // au premier affichage on charge les groupes et un lieu par défaut si possible
         publishViewModel.loadJoinedGroups()
         if (!isEditMode) {
             requestCurrentLocationIfNeeded()
@@ -374,6 +385,7 @@ fun PublishPhotosScreen(
         val postId = editPostId?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         publishViewModel.loadPostForEdit(postId)
             .onSuccess { post ->
+                // en mode édition, on recharge aussi les paramètres TravelPath existants
                 val normalizedVisibility = post.visibility.lowercase().ifBlank { "public" }
                 val travelShareAttraction = publishViewModel.loadTravelShareAttractionForEdit(postId).getOrNull()
                 val hasTravelPathLink = post.isLinkedToTravelPath ||
@@ -409,12 +421,14 @@ fun PublishPhotosScreen(
     }
 
     LaunchedEffect(joinedGroups, pendingGroupId) {
+        // en édition, le groupe peut arriver après le post
         val groupId = pendingGroupId ?: return@LaunchedEffect
         selectedGroup = joinedGroups.firstOrNull { it.groupId == groupId }
     }
 
     LaunchedEffect(visibility) {
         if (visibility != "public") {
+            // seuls les posts publics peuvent devenir des lieux TravelPath
             isLinkedToPath = false
         }
     }
@@ -473,6 +487,7 @@ fun PublishPhotosScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
+            // les photos peuvent être nouvelles ou déjà uploadées en mode édition
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text("Photos *", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
@@ -535,6 +550,7 @@ fun PublishPhotosScreen(
                 }
             }
 
+            // bloc texte: titre obligatoire, description et enrichissements optionnels
             Column(
                 modifier = Modifier
                     .background(CardBg, RoundedCornerShape(12.dp))
@@ -629,6 +645,7 @@ fun PublishPhotosScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Partage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
+                // une publication de groupe ne doit pas alimenter les recommandations publiques TravelPath
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     ShareTargetButton(
                         selected = visibility == "public",
@@ -678,6 +695,7 @@ fun PublishPhotosScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text("Localisation", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
+                // le lieu vient de la carte, avec mode exact ou approximatif
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -722,6 +740,7 @@ fun PublishPhotosScreen(
                     Icon(Icons.Default.Map, "Ouvrir la carte", tint = Stone400)
                 }
 
+                // ce switch transforme le post public en candidat TravelPath
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -769,6 +788,7 @@ fun PublishPhotosScreen(
                 Text("Paramètres d'itinéraire (Optionnel)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Stone800)
 
                 SectionCard {
+                    // mêmes catégories que TravelPath pour faciliter la conversion en attraction
                     Text("Type d'activité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(12.dp))
                     val types = listOf(
@@ -879,6 +899,7 @@ fun PublishPhotosScreen(
                 }
 
                 SectionCard {
+                    // ces champs restent optionnels, sinon le repository garde des valeurs par défaut
                     Text("Horaires et disponibilité", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = StoneLighter)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
@@ -1000,6 +1021,7 @@ fun PublishPhotosScreen(
     }
 
     if (showMapPicker) {
+        // overlay séparé pour garder le formulaire en arrière-plan
         MapLocationPickerOverlay(
             initialLocation = selectedLocation,
             onDismiss = { showMapPicker = false },
@@ -1011,6 +1033,7 @@ fun PublishPhotosScreen(
     }
 
     if (publishPreview) {
+        // dernier contrôle humain avant upload Storage + écriture Firestore
         val previewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = { publishPreview = false },
@@ -1059,6 +1082,7 @@ fun PublishPhotosScreen(
                         val location = selectedLocation ?: return@Button
                         val commonTags = selectedTags.ifEmpty { listOf("Voyage") }
                         val commonPlaceType = selectedCategory ?: "photo"
+                        // ces valeurs alimentent travelShareAttractions si l'option est cochée
                         val commonCost = if (isLinkedToPath) expense.toIntOrNull() else null
                         val commonDuration = if (isLinkedToPath && duration > 0f) duration.toInt() * 60 else null
                         val commonEffort = if (isLinkedToPath && effort > 0f) effort.toInt() else null
@@ -1067,6 +1091,7 @@ fun PublishPhotosScreen(
                         val commonWeatherType = if (isLinkedToPath) weatherType else null
                         val commonBestTimeSlots = if (isLinkedToPath) bestTimeSlots.toList() else emptyList()
                         if (isEditMode && !editPostId.isNullOrBlank()) {
+                            // l'édition réutilise le même formulaire que la création
                             publishViewModel.updateExistingPost(
                                 postId = editPostId,
                                 selectedPhotoUris = selectedPhotos,
@@ -1088,6 +1113,7 @@ fun PublishPhotosScreen(
                                 travelPathBestTimeSlots = commonBestTimeSlots
                             )
                         } else {
+                            // la création upload les médias puis crée le document post
                             publishViewModel.publish(
                                 selectedPhotoUris = selectedPhotos,
                                 voiceNoteUri = voiceNoteUri,

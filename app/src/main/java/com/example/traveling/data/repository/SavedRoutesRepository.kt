@@ -32,6 +32,7 @@ class SavedRoutesRepository {
         val col = collection() ?: return
         val docId = "${type}_${route.id}"
 
+        // même structure pour les routes aimées et enregistrées
         val doc = SavedRouteDocument(
             routeId = route.id,
             type = type,
@@ -67,6 +68,7 @@ class SavedRoutesRepository {
             savedAt = System.currentTimeMillis()
         )
 
+        // l'id contient le type pour éviter le conflit liked/saved
         col.document(docId).set(doc).await()
     }
 
@@ -90,6 +92,7 @@ class SavedRoutesRepository {
                     close(error)
                     return@addSnapshotListener
                 }
+                // lecture en temps réel pour les écrans profil
                 val list = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(SavedRouteDocument::class.java)
                 } ?: emptyList()
@@ -111,6 +114,7 @@ class SavedRoutesRepository {
     }
 
     fun toRouteAndStops(doc: SavedRouteDocument): Pair<TravelRoute, List<RouteStop>> {
+        // reconstruction du modèle utilisé par l'écran détail
         val route = TravelRoute(
             id = doc.routeId, name = doc.routeName,
             subtitle = doc.routeSubtitle,

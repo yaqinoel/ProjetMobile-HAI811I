@@ -281,6 +281,7 @@ fun RegisterScreen(
 
                                             coroutineScope.launch {
                                                 try {
+                                                    // l'avatar est optionnel, mais on l'envoie avant de créer le profil
                                                     val avatarUrl = selectedAvatarUri?.let { uri ->
                                                         userRepository.uploadUserAvatar(uid, uri)
                                                     }

@@ -147,6 +147,7 @@ fun ForgotPasswordScreen(
                                 isLoading = true
                                 errorMessage = null
 
+                                // firebase envoie directement le lien de réinitialisation
                                 FirebaseAuth.getInstance().sendPasswordResetEmail(email)
                                     .addOnCompleteListener { task ->
                                         isLoading = false

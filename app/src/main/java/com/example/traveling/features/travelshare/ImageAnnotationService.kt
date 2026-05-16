@@ -15,10 +15,12 @@ class ImageAnnotationService {
     private val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
 
     suspend fun annotateImages(context: Context, imageUris: List<Uri>): ImageAnnotationResult {
+        // on analyse plusieurs photos pour éviter des tags trop aléatoires
         val candidates = imageUris
             .take(MAX_IMAGES_TO_ANALYZE)
             .flatMap { uri -> annotateOneImage(context, uri) }
 
+        // on garde les tags les plus fréquents et les plus sûrs
         val tags = candidates
             .groupBy { it.tag.lowercase() }
             .map { (_, values) ->

@@ -101,6 +101,7 @@ fun RouteDetailScreen(
 
     LaunchedEffect(stops) {
         if (stops.isNotEmpty()) {
+            // pour chaque arrêt, on cherche les photos TravelShare proches ou liées
             travelViewModel.loadTravelSharePhotosForStops(stops)
         }
     }

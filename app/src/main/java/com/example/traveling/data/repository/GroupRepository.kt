@@ -70,6 +70,7 @@ class GroupRepository(
             )
 
             val batch = db.batch()
+            // création du groupe et ajout du créateur comme premier membre
             batch.set(groupRef, group)
             batch.set(ownerMemberRef, ownerMember)
             batch.set(userJoinedRef, joinedGroup)
@@ -123,6 +124,7 @@ class GroupRepository(
         var allGroups: List<GroupDocument> = emptyList()
 
         fun emit() {
+            // on affiche seulement les groupes que l'utilisateur n'a pas encore rejoints
             onChanged(
                 allGroups
                     .filterNot { joinedIds.contains(it.groupId) }

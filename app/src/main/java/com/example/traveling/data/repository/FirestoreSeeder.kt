@@ -12,6 +12,7 @@ object FirestoreSeeder {
 
     fun seedAll(clearFirst: Boolean = false) {
         if (clearFirst) {
+            // utile seulement en dev pour repartir d'une base propre
             clearCollection("destinations") { seedDestinations() }
             clearCollection("attractions") { seedAttractions() }
         } else {
@@ -85,6 +86,7 @@ object FirestoreSeeder {
 
         val batches = attractions.chunked(400)
         batches.forEachIndexed { idx, chunk ->
+            // firestore limite les batchs, donc on coupe la liste
             val batch = db.batch()
             chunk.forEach { attr ->
                 val ref = db.collection("attractions").document(attr.id)

@@ -34,7 +34,7 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 
 import com.example.traveling.core.utils.openNavigationToPlace
-import com.example.traveling.data.model.TravelPathSeed
+import com.example.traveling.core.model.TravelPathSeed
 import com.example.traveling.features.travelshare.PhotoPostDetailUi
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
@@ -117,6 +117,7 @@ private fun PhotoPostDetailContent(
     val displayTitle = photo.title.ifBlank { photo.location }
     val bodyText = photo.description.takeIf { it.isNotBlank() && it != displayTitle }
 
+    // lecture locale de la note vocale attachée au post
     fun stopVoicePlayback() {
         voicePlayer?.runCatchingStopAndRelease()
         voicePlayer = null
@@ -151,6 +152,7 @@ private fun PhotoPostDetailContent(
         }
     }
 
+    // si l'utilisateur quitte la fiche, on libère le lecteur audio
     DisposableEffect(photo.voiceNoteUrl) {
         onDispose {
             stopVoicePlayback()
@@ -190,6 +192,7 @@ private fun PhotoPostDetailContent(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.clickable(enabled = photo.authorId.isNotBlank()) {
+                                // l'avatar ouvre la page publique de l'auteur
                                 onAuthorClick(photo.authorId)
                             }
                         ) {
@@ -259,6 +262,7 @@ private fun PhotoPostDetailContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (isAnonymous) {
+                    // lecture autorisée en anonyme, mais les commentaires restent connectés
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -308,9 +312,9 @@ private fun PhotoPostDetailContent(
                                         }
                                         innerTextField()
                                     }
-	                                )
-	                            }
-	                        }
+                                    )
+                                }
+                            }
 
                         Surface(
                             onClick = {
@@ -350,6 +354,7 @@ private fun PhotoPostDetailContent(
                 }
 
                 if (photo.imageUrls.size > 1) {
+                    // indicateur simple pour les posts avec plusieurs photos
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -368,6 +373,7 @@ private fun PhotoPostDetailContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // like/save restent optimistes côté ViewModel
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable {
@@ -436,6 +442,7 @@ private fun PhotoPostDetailContent(
 
                 if (!photo.voiceNoteUrl.isNullOrBlank()) {
                     Spacer(Modifier.height(16.dp))
+                    // la note vocale complète le texte sans remplacer la description
                     VoiceNotePlaybackCard(
                         isPlaying = isVoicePlaying,
                         onTogglePlayback = { toggleVoicePlayback() }
@@ -451,6 +458,7 @@ private fun PhotoPostDetailContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        // on montre clairement si la position est exacte ou approximative
                         val precisionLabel = if (photo.locationPrecision == "approx") {
                             "Zone approximative"
                         } else {
@@ -517,12 +525,13 @@ private fun PhotoPostDetailContent(
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Connexion avec TravelPath", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Stone800)
                         Text("Ce lieu peut être ajouté comme étape obligatoire lors de la génération d'un parcours.", fontSize = 12.sp, color = Stone500, lineHeight = 18.sp)
-	                        Row(
-	                            modifier = Modifier.fillMaxWidth(),
-	                            horizontalArrangement = Arrangement.Center
-	                        ) {
-	                            AssistChip(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            AssistChip(
                                 onClick = {
+                                    // on ne génère pas encore le parcours ici, on prépare seulement le seed
                                     onAddToTravelPath(
                                         TravelPathSeed(
                                             sourcePostId = photo.id,
@@ -549,6 +558,7 @@ private fun PhotoPostDetailContent(
 
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
+                    // les commentaires sont affichés en lecture simple, sans likes de commentaire
                     photo.commentsList.forEach { comment ->
                         Row(verticalAlignment = Alignment.Top) {
                             UserAvatar(

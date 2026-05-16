@@ -36,6 +36,7 @@ class OpenMeteoService {
                 val temp = current.getDouble("temperature_2m")
                 val weatherCode = current.getInt("weather_code")
 
+                // code météo open-meteo transformé en texte lisible pour l'utilisateur
                 val (desc, emoji, advice) = interpretWeatherCode(weatherCode, temp)
                 return@withContext WeatherInfo(temp, weatherCode, desc, emoji, advice)
             }
@@ -46,6 +47,7 @@ class OpenMeteoService {
     }
 
     private fun interpretWeatherCode(code: Int, temp: Double): Triple<String, String, String> {
+        // quelques conseils simples, suffisants pour guider le choix du parcours
         return when (code) {
             0 -> Triple("Ciel dégagé", "☀️",
                 if (temp > 28) "Pensez à vous hydrater et à chercher l'ombre"

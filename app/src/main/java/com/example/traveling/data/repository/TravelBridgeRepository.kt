@@ -28,6 +28,7 @@ class TravelBridgeRepository(
             return@callbackFlow
         }
 
+        // lien principal: destinationId créé ou réutilisé pendant la publication
         val listener = db.collection(FirestoreCollections.PHOTO_POSTS)
             .whereEqualTo("visibility", "public")
             .whereEqualTo("status", "published")
@@ -140,6 +141,7 @@ class TravelBridgeRepository(
     suspend fun getTravelShareAttractionsForDestination(destinationId: String): List<TravelShareAttractionDocument> {
         if (destinationId.isBlank()) return emptyList()
 
+        // collection dédiée aux lieux proposés depuis TravelShare
         val attractions = db.collection(FirestoreCollections.TRAVEL_SHARE_ATTRACTIONS)
             .whereEqualTo("destinationId", destinationId)
             .whereEqualTo("status", "active")
@@ -172,6 +174,7 @@ class TravelBridgeRepository(
             .documents
             .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
 
+        // firestore ne filtre pas le rayon, donc on le fait après la lecture
         return posts.filter { post ->
             val visibleLat = post.displayLatitude ?: post.latitude ?: post.rawLatitude
             val visibleLng = post.displayLongitude ?: post.longitude ?: post.rawLongitude
@@ -198,6 +201,7 @@ class TravelBridgeRepository(
             .documents
             .mapNotNull { it.toObject(PhotoPostDocument::class.java) }
 
+        // un arrêt peut correspondre par nom proche ou par distance
         return posts.filter { post ->
             matchesRouteStop(post, stopName, lat, lng, city, radiusKm)
         }.sortedByDescending { it.createdAt?.seconds ?: 0L }

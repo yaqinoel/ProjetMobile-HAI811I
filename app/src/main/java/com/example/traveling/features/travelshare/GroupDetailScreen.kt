@@ -81,6 +81,7 @@ class GroupDetailViewModel(
         currentGroup = null
         currentPosts = null
         _uiState.value = GroupDetailUiState.Loading
+        // on charge le groupe et ses posts séparément pour afficher le bon titre
         groupListener = groupRepository.observeGroup(
             groupId = groupId,
             onChanged = {

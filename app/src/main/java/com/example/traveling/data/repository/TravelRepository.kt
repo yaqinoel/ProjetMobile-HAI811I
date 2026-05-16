@@ -27,6 +27,7 @@ class TravelRepository {
                 val list = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Destination::class.java)
                 }?.sortedWith(
+                    // les villes officielles restent avant les villes créées par TravelShare
                     compareBy<Destination> { if (it.source == "travelshare") 1 else 0 }
                         .thenBy { it.name.lowercase() }
                 ) ?: emptyList()
@@ -102,6 +103,7 @@ class TravelRepository {
         val cityName = city?.trim().orEmpty()
         if (cityName.isBlank() || lat == null || lng == null) return null
 
+        // on réutilise la ville si elle existe déjà
         findDestinationByName(cityName)?.let { existing ->
             incrementTravelSharePhotoCount(existing.id)
             return existing
@@ -171,6 +173,7 @@ class TravelRepository {
     companion object {
         fun normalizeCityName(city: String): String {
             val withoutCountry = city.substringBefore(",")
+            // normalisation simple pour éviter paris / Paris / Paris, France
             val ascii = Normalizer.normalize(withoutCountry.lowercase().trim(), Normalizer.Form.NFD)
                 .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
             val normalized = ascii

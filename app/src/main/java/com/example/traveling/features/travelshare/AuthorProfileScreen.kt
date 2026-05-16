@@ -118,6 +118,7 @@ class AuthorProfileViewModel(
         postsListener?.remove()
         settingsListener?.remove()
 
+        // profil auteur + ses posts + état de suivi sont observés ensemble
         userListener = userRepository.observeUser(
             userId = authorId,
             onChanged = {
@@ -150,6 +151,7 @@ class AuthorProfileViewModel(
         postsVersion += 1
         val nextLiked = !currentlyLiked
         var nextLikeCount = 0
+        // feedback immédiat avant le retour de Firestore
         updatePostLocally(postId) { post ->
             nextLikeCount = (post.likes + if (nextLiked) 1 else -1).coerceAtLeast(0)
             post.copy(isLiked = nextLiked, likes = nextLikeCount)
@@ -177,6 +179,7 @@ class AuthorProfileViewModel(
         val uid = auth.currentUser?.uid ?: return
         postsVersion += 1
         val nextSaved = !currentlySaved
+        // le bouton save reste fluide même si la requête prend du temps
         updatePostLocally(postId) { post ->
             post.copy(isSaved = nextSaved)
         }
@@ -232,6 +235,7 @@ class AuthorProfileViewModel(
         }
 
         viewModelScope.launch {
+            // on recharge les états like/save pour chaque post visible de cet auteur
             posts = documents.map { doc ->
                 val liked = runCatching { postRepository.isPostLikedByUser(uid, doc.postId) }.getOrDefault(false)
                 val saved = runCatching { postRepository.isPostSavedByUser(uid, doc.postId) }.getOrDefault(false)

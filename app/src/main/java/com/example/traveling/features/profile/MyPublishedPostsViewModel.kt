@@ -42,6 +42,7 @@ class MyPublishedPostsViewModel(
         listener?.remove()
         _uiState.value = MyPublishedUiState.Loading
 
+        // listener temps réel pour gérer rapidement suppression et modification
         listener = repository.observeMyPublishedPosts(
             userId = uid,
             onChanged = { documents ->
@@ -58,6 +59,7 @@ class MyPublishedPostsViewModel(
     fun deletePost(postId: String) {
         val uid = auth.currentUser?.uid ?: return
         viewModelScope.launch {
+            // suppression douce: le post reste en base mais n'est plus publié
             repository.softDeletePost(postId, uid)
                 .onSuccess { _events.emit("Publication supprimée") }
                 .onFailure { _events.emit(it.localizedMessage ?: "Échec de suppression") }

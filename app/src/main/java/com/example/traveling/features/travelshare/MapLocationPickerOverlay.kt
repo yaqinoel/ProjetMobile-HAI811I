@@ -96,6 +96,7 @@ fun MapLocationPickerOverlay(
             return@LaunchedEffect
         }
         isSearching = true
+        // petit délai pour ne pas lancer Places à chaque lettre tapée
         delay(350)
         repository.searchPlaces(query)
             .onSuccess {
@@ -110,12 +111,14 @@ fun MapLocationPickerOverlay(
     }
 
     fun selectCandidate(candidate: SelectedLocationCandidate) {
+        // même fonction pour recherche texte, poi Google et reverse geocode
         selectedCandidate = candidate
         selectedLatLng = LatLng(candidate.latitude, candidate.longitude)
         editableName = candidate.name
     }
 
     fun resolveMapClick(latLng: LatLng) {
+        // on affiche vite un nom provisoire, puis on tente de trouver l'adresse
         selectedLatLng = latLng
         searchQuery = ""
         predictions = emptyList()
@@ -160,10 +163,12 @@ fun MapLocationPickerOverlay(
                 )
                 selectCandidate(fallback)
                 coroutineScope.launch {
+                    // zoom proche du poi pour confirmer visuellement le choix
                     cameraPositionState.animate(
                         CameraUpdateFactory.newLatLngZoom(poi.latLng, 16f)
                     )
                     isResolvingPlace = true
+                    // les poi Google donnent un meilleur nom que le simple point cliqué
                     repository.fetchPlaceDetails(poi.placeId)
                         .onSuccess { details ->
                             selectCandidate(details)
@@ -238,6 +243,7 @@ fun MapLocationPickerOverlay(
                                     onClick = {
                                         isResolvingPlace = true
                                         coroutineScope.launch {
+                                            // après autocomplete, il faut récupérer les coordonnées complètes
                                             repository.fetchPlaceDetails(prediction.placeId)
                                                 .onSuccess { candidate ->
                                                     selectCandidate(candidate)

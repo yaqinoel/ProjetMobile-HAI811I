@@ -53,6 +53,7 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
 
                 LaunchedEffect(validStops, mapLoaded) {
                     if (mapLoaded) {
+                        // la caméra englobe les arrêts et les lignes Directions
                         val builder = LatLngBounds.builder()
                         validStops.forEach { builder.include(LatLng(it.lat, it.lng)) }
 
@@ -85,6 +86,7 @@ internal fun RouteMiniMap(stops: List<RouteStop>) {
 
                     validStops.forEach { stop ->
                         if (!stop.polylineToNext.isNullOrEmpty()) {
+                            // plusieurs petits polylines peuvent exister entre deux arrêts
                             stop.polylineToNext.split("||").forEach { polyStr ->
                                 val decodedPath = PolyUtil.decode(polyStr)
                                 Polyline(

@@ -65,6 +65,7 @@ fun ProfileScreen(
     onOpenSavedRoutes: () -> Unit = {},
     onOpenFollowing: () -> Unit = {}
 ) {
+    // le profil anonyme garde seulement les actions autorisées sans compte complet
     if (isAnonymous) {
         AnonymousProfileView(
             onLogin = onNavigateLogin,
@@ -79,6 +80,7 @@ fun ProfileScreen(
         val profileViewModel: ProfileViewModel = viewModel()
         val uiState by profileViewModel.uiState.collectAsState()
 
+        // profil Firestore + compteurs suivis sont chargés dans le ViewModel
         LaunchedEffect(Unit) {
             profileViewModel.observeCurrentUser()
         }
@@ -150,6 +152,7 @@ private fun AnonymousProfileView(
         verticalArrangement = Arrangement.Center
     ) {
 
+        // même en anonyme, likes/favoris existent grâce au compte Firebase anonyme
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -296,6 +299,7 @@ private fun AuthenticatedProfileView(
 ) {
     val scrollState = rememberScrollState()
 
+    // les entrées principales restent ici pour éviter de dupliquer les boutons ailleurs
     val menuItems = listOf(
         ProfileMenuItem("Mes groupes", "Créer, rejoindre et gérer vos groupes", Icons.Default.Group, Color(0xFFB91C1C), action = onOpenGroups),
         ProfileMenuItem("Notifications", "Préférences et alertes", Icons.Default.Notifications, Color(0xFF10B981), action = onOpenNotifications),
@@ -303,6 +307,7 @@ private fun AuthenticatedProfileView(
         ProfileMenuItem("Itinéraires enregistrés", "Routes sauvegardées pour plus tard", Icons.Default.BookmarkBorder, Color(0xFFCA8A04), action = onOpenSavedRoutes)
     )
 
+    // ces stats servent aussi de raccourcis vers les listes de posts
     val stats = listOf(
         ProfileStat("Photos", user.postCount.toString(), Icons.Default.PhotoCamera, action = onOpenMyPhotos),
         ProfileStat("Favoris", user.likedCount.toString(), Icons.Default.Favorite, action = onOpenLikedPosts),
@@ -349,6 +354,7 @@ private fun AuthenticatedProfileView(
 
                     Column {
                         Text(user.displayName.ifBlank { "Voyageur" }, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        // bio et ville sont optionnelles, donc on compose un sous-titre lisible
                         val subtitle = listOfNotNull(
                             user.bio?.takeIf { it.isNotBlank() },
                             user.homeCity?.takeIf { it.isNotBlank() }

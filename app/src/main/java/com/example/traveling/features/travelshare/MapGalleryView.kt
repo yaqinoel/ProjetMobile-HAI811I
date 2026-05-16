@@ -80,6 +80,7 @@ fun MapView(
     )
 
     fun moveToCurrentLocation() {
+        // utilisé au démarrage et par le bouton de recentrage
         val location = context.lastKnownLocationOrNull() ?: return
         coroutineScope.launch {
             cameraPositionState.animate(
@@ -118,6 +119,7 @@ fun MapView(
     }
 
     LaunchedEffect(Unit) {
+        // la carte s'ouvre sur la position de l'utilisateur si l'autorisation existe
         requestOrMoveToCurrentLocation()
     }
 
@@ -136,6 +138,7 @@ fun MapView(
         ) {
 
             photos.forEach { photo ->
+                // les anciens posts sans coordonnées gardent un fallback pour ne pas casser la carte
                 val coord = if (photo.latitude != null && photo.longitude != null) {
                     LatLng(photo.latitude, photo.longitude)
                 } else {

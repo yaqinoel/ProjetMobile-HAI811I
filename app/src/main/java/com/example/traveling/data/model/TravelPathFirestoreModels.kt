@@ -10,6 +10,7 @@ data class Destination(
     val imageUrl: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
+    // official = donnée de base, travelshare = ville ajoutée depuis une photo
     val source: String = "official",
     val normalizedName: String = "",
     val createdFromPostId: String? = null,
@@ -61,6 +62,7 @@ data class TravelShareAttractionDocument(
     val bestTimeSlots: List<String> = listOf("apres-midi"),
     val tags: List<String> = emptyList(),
     val imageUrls: List<String> = emptyList(),
+    // ce document garde les lieux utilisateurs séparés des attractions officielles
     val source: String = "travelshare",
     val sourcePostId: String = "",
     val destinationName: String = "",

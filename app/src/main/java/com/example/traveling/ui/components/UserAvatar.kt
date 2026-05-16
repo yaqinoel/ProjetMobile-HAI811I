@@ -24,6 +24,7 @@ fun UserAvatar(
     modifier: Modifier = Modifier,
     textSize: TextUnit = 14.sp
 ) {
+    // image utilisateur si disponible, sinon initiale colorée
     val normalizedAvatarUrl = avatarUrl?.takeIf { it.isNotBlank() }
     Box(
         modifier = modifier

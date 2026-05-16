@@ -1,6 +1,7 @@
 package com.example.traveling.data.model
 
 object FirestoreCollections {
+    // noms centralisés pour éviter les fautes dans les chemins Firestore
     const val USERS = "users"
     const val PHOTO_POSTS = "photoPosts"
     const val GROUPS = "groups"
@@ -21,6 +22,7 @@ object FirestoreCollections {
     const val NOTIFICATION_SETTINGS = "notificationSettings"
     const val DEFAULT_SETTINGS_DOC = "default"
 
+    // helpers surtout utiles quand on documente ou vérifie les sous-collections
     fun userDoc(userId: String): String = "$USERS/$userId"
     fun photoPostDoc(postId: String): String = "$PHOTO_POSTS/$postId"
     fun groupDoc(groupId: String): String = "$GROUPS/$groupId"

@@ -78,6 +78,7 @@ class FollowingManagementViewModel(
             userId = uid,
             onChanged = { settings ->
                 viewModelScope.launch {
+                    // les suivis stockent des ids, donc on recharge les profils pour l'affichage
                     val users = runCatching { userRepository.getUsers(settings.followedUserIds) }.getOrDefault(emptyList())
                     _uiState.value = FollowingUiState.Success(settings, users)
                 }

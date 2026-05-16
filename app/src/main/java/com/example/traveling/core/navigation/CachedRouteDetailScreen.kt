@@ -30,6 +30,7 @@ fun CachedRouteDetailScreen(
     LaunchedEffect(routeId) {
         travelViewModel.initLocalStorage(context)
 
+        // routes aimées/enregistrées: on recharge le détail depuis le cache local
         val success = travelViewModel.loadCachedRouteAsync(routeId)
         if (success) {
             loaded = true

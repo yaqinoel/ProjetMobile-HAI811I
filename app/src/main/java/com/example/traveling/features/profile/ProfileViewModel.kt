@@ -41,6 +41,7 @@ class ProfileViewModel(
         _uiState.value = ProfileUiState.Loading
         userListener?.remove()
         settingsListener?.remove()
+        // le profil et les suivis arrivent de deux documents différents
         userListener = repository.observeUser(
             userId = uid,
             onChanged = { user ->

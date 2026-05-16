@@ -108,6 +108,7 @@ fun GalleryScreen(
     val galleryViewModel: GalleryViewModel = viewModel()
     val galleryState by galleryViewModel.uiState.collectAsState()
 
+    // la galerie observe seulement les posts visibles selon le mode utilisateur
     LaunchedEffect(Unit) {
         galleryViewModel.observeVisiblePosts()
     }
@@ -140,11 +141,13 @@ fun GalleryScreen(
     var isVoiceSearchActive by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    // résultat Android natif, donc pas besoin de stocker un audio nous-mêmes
     val voiceSearchLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         isVoiceSearchActive = false
         if (result.resultCode == Activity.RESULT_OK) {
+            // la recherche vocale remplit simplement la même barre que la recherche texte
             val recognizedText = result.data
                 ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
@@ -182,11 +185,13 @@ fun GalleryScreen(
     }
 
     LaunchedEffect(remotePosts) {
+        // dès que Firestore renvoie une nouvelle liste, on annule l'ordre aléatoire
         shuffledPhotos = null
     }
 
     LaunchedEffect(initialSimilarPostId) {
         if (!initialSimilarPostId.isNullOrBlank() && initialSimilarPostId != similarToPostId) {
+            // ouverture depuis "photos similaires" dans une fiche détail
             similarToPostId = initialSimilarPostId
             selectedDiscovery = "similar"
             selectedType = "all"
@@ -201,6 +206,7 @@ fun GalleryScreen(
 
     val photos = shuffledPhotos ?: remotePosts.sortedByDescending { it.createdAtMillis ?: 0L }
     val activeSimilarPostId = similarToPostId.takeIf { it.isNotBlank() }
+    // le mode similaire garde la priorité même si le bouton filtre n'est plus ouvert
     val effectiveDiscovery = if (activeSimilarPostId != null) "similar" else selectedDiscovery
     val similarSourcePhoto = remember(photos, activeSimilarPostId) {
         activeSimilarPostId?.let { sourceId -> photos.find { it.id == sourceId } }
@@ -213,6 +219,7 @@ fun GalleryScreen(
         null
     }
     val effectiveQuery = searchQuery
+    // label court affiché dans la carte de filtre
     val dateRangeLabel = remember(dateRangeStartMillis, dateRangeEndMillis) {
         formatDateRangeLabel(dateRangeStartMillis, dateRangeEndMillis)
     }
@@ -233,6 +240,7 @@ fun GalleryScreen(
         nearbyLongitude = null
         nearbyRadiusKm = 10f
     }
+    // un objet filtre unique évite de passer beaucoup d'arguments à l'utilitaire
     val galleryFilter = remember(
         effectiveQuery,
         selectedType,
@@ -258,6 +266,7 @@ fun GalleryScreen(
         )
     }
     val filteredPhotos = remember(photos, galleryFilter) {
+        // tous les filtres restent côté UI pour éviter de multiplier les index Firestore
         filterGalleryPosts(photos, galleryFilter)
     }
 
@@ -325,6 +334,7 @@ fun GalleryScreen(
             }
 
             Crossfade(targetState = viewMode, label = "ViewMode") { mode ->
+                // on garde le même dataset filtré pour list, grid et carte
                 if (galleryState is GalleryUiState.Loading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = RedPrimary)
@@ -725,6 +735,7 @@ private fun GalleryDateRangeDialog(
     var endMonth by remember { mutableStateOf(initialEnd.month) }
     var endDay by remember { mutableStateOf(initialEnd.day) }
 
+    // si on change de mois, le jour choisi doit rester valide
     LaunchedEffect(startYear, startMonth) {
         startDay = startDay.coerceAtMost(daysInMonth(startYear, startMonth))
     }
@@ -838,6 +849,7 @@ private fun WheelNumberPicker(
     val selectedIndex = values.indexOf(selected).coerceAtLeast(0)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
 
+    // le rouleau revient sur la valeur choisie quand le state change
     LaunchedEffect(selectedIndex) {
         listState.animateScrollToItem(selectedIndex)
     }
@@ -883,6 +895,7 @@ private fun NearbyMapPickerOverlay(
     val initialTarget = remember(initialLatitude, initialLongitude) {
         LatLng(initialLatitude ?: 43.6108, initialLongitude ?: 3.8767)
     }
+    // la carte de filtre choisit seulement un centre, pas un vrai lieu de publication
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialTarget, 13f)
     }
@@ -1135,6 +1148,7 @@ fun PhotoListView(
 ) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (showStories && shortcuts.isNotEmpty()) {
+            // ces raccourcis défilent avec le flux, ils ne restent pas collés au header
             item {
                 FollowedShortcutsRow(
                     shortcuts = shortcuts,
@@ -1149,6 +1163,7 @@ fun PhotoListView(
         ) { photo ->
             val displayTitle = photo.title.ifBlank { photo.location }
             val bodyText = photo.description.takeIf { it.isNotBlank() && it != displayTitle }
+            // la carte liste contient les actions rapides, le détail garde les actions complètes
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -1249,6 +1264,7 @@ fun PhotoListView(
 private fun PostTags(tags: List<String>) {
     if (tags.isEmpty()) return
 
+    // on limite l'affichage pour éviter que les tags cassent la carte
     val visibleTags = tags.take(6)
     val hiddenCount = tags.size - visibleTags.size
 

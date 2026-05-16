@@ -19,12 +19,14 @@ fun TravelPathScreen(
 
     LaunchedEffect(resetOnEnterToken) {
         if (resetOnEnterToken > 0 && initialTravelSharePostId.isNullOrBlank()) {
+            // reset seulement quand l'utilisateur ouvre TravelPath sans seed TravelShare
             travelViewModel.resetPlanningState()
         }
     }
 
     LaunchedEffect(initialTravelSharePostId) {
         if (!initialTravelSharePostId.isNullOrBlank()) {
+            // la passerelle lit le post puis préremplit le formulaire
             travelViewModel.applyTravelSharePostSeed(initialTravelSharePostId)
             travelViewModel.setStep("preferences")
             onTravelShareSeedConsumed()

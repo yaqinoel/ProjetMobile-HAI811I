@@ -34,6 +34,7 @@ class SavedPostsViewModel(
 
         _uiState.value = SavedPostsUiState.Loading
         viewModelScope.launch {
+            // les posts enregistrés sont séparés des likes pour garder deux listes claires
             repository.getSavedPosts(uid)
                 .onSuccess { docs ->
                     _uiState.value = SavedPostsUiState.Success(

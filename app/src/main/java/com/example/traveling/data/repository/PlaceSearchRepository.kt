@@ -44,6 +44,7 @@ class PlaceSearchRepository(context: Context) {
         if (trimmedQuery.length < 2) return Result.success(emptyList())
 
         return runCatching {
+            // autocomplétion utilisée dans la carte de publication
             val request = FindAutocompletePredictionsRequest.builder()
                 .setQuery(trimmedQuery)
                 .build()
@@ -79,6 +80,7 @@ class PlaceSearchRepository(context: Context) {
             val latLng = requireNotNull(place.latLng) { "Lieu sans coordonnées" }
             val components = place.addressComponents?.asList().orEmpty()
 
+            // on récupère aussi la ville pour pouvoir lier avec TravelPath
             SelectedLocationCandidate(
                 name = place.name ?: place.address ?: "Lieu sélectionné",
                 address = place.address,
@@ -96,6 +98,7 @@ class PlaceSearchRepository(context: Context) {
 
     suspend fun reverseLookup(latLng: LatLng): Result<List<SelectedLocationCandidate>> {
         return runCatching {
+            // clic sur la carte: on essaie de transformer le point en vrai nom de lieu
             val geocoderCandidates = reverseGeocodeWithAndroid(latLng)
             geocoderCandidates.ifEmpty {
                 listOf(defaultCandidate(latLng))
@@ -120,6 +123,7 @@ class PlaceSearchRepository(context: Context) {
     private suspend fun reverseGeocodeWithAndroid(latLng: LatLng): List<SelectedLocationCandidate> {
         return withContext(Dispatchers.IO) {
             val geocoder = Geocoder(appContext, Locale.getDefault())
+            // fallback Android quand l'utilisateur clique directement sur la carte
             val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 3).orEmpty()
             addresses.mapIndexed { index, address ->
                 val name = listOfNotNull(
@@ -146,6 +150,7 @@ class PlaceSearchRepository(context: Context) {
     private fun createPlacesClient(context: Context): PlacesClient? {
         val apiKey = readMapsApiKey(context).takeIf { it.isNotBlank() } ?: return null
         if (!Places.isInitialized()) {
+            // initialisation unique du SDK Places avec la clé Maps du manifest
             Places.initialize(context, apiKey, Locale.getDefault())
         }
         return Places.createClient(context)

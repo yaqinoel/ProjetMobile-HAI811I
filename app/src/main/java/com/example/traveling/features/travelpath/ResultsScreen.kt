@@ -29,6 +29,7 @@ internal fun ResultsScreen(
 ) {
     val routes by travelViewModel.routes.collectAsState()
 
+    // cet écran lit seulement les routes déjà générées par le ViewModel
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -99,6 +100,7 @@ internal fun ResultsScreen(
             }
 
             routes.forEachIndexed { index, route ->
+                // la deuxième variante est celle que le générateur considère équilibrée
                 RouteCard(
                     route = route,
                     isRecommended = index == 1,
@@ -125,6 +127,7 @@ internal fun RouteCard(
         Column {
 
             Box(modifier = Modifier.height(144.dp).fillMaxWidth()) {
+                // l'image de route vient du premier arrêt représentatif
                 AsyncImage(
                     model = route.imageUrl,
                     contentDescription = route.name,
@@ -223,6 +226,7 @@ internal fun RouteCard(
                 Spacer(Modifier.height(12.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // la carte résume seulement les premiers arrêts pour rester courte
                     route.highlights.take(4).forEachIndexed { i, highlight ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

@@ -34,6 +34,7 @@ class PdfExportService {
                 textSize = 22f; typeface = Typeface.DEFAULT_BOLD
                 color = android.graphics.Color.parseColor("#B91C1C")
             }
+            // styles simples pour garder le pdf lisible sur mobile
             val subtitlePaint = Paint().apply {
                 textSize = 14f; color = android.graphics.Color.parseColor("#78716C")
             }
@@ -61,6 +62,7 @@ class PdfExportService {
 
             stops.forEachIndexed { index, stop ->
 
+                // nouvelle page quand la timeline arrive trop bas
                 if (yPos > pageHeight - 100) {
                     document.finishPage(page)
                     pageNumber++
@@ -101,6 +103,7 @@ class PdfExportService {
                 }
 
                 if (index < stops.size - 1) {
+                    // petite ligne verticale entre deux arrêts du pdf
                     val linePaint = Paint().apply {
                         color = android.graphics.Color.parseColor("#FEE2E2")
                         strokeWidth = 1.5f

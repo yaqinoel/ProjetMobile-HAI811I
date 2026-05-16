@@ -47,6 +47,7 @@ class NotificationsViewModel(
         notificationsListener?.remove()
         settingsListener?.remove()
 
+        // les notifications et les réglages arrivent séparément mais alimentent le même écran
         notificationsListener = repository.observeMyNotifications(
             userId = uid,
             onChanged = { list ->
@@ -98,6 +99,7 @@ class NotificationsViewModel(
 
     fun toggleFollowedTag(tag: String) {
         val current = (uiState.value as? NotificationsUiState.Success)?.settings ?: return
+        // toggle simple pour les tags suivis
         val next = if (current.followedTags.any { it.equals(tag, ignoreCase = true) }) {
             current.copy(followedTags = current.followedTags.filterNot { it.equals(tag, ignoreCase = true) })
         } else {

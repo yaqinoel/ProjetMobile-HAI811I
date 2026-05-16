@@ -71,6 +71,7 @@ class NotificationRepository(
 
             if (docs.isEmpty()) return@runCatching
 
+            // un batch évite de faire une requête par notification
             val batch = db.batch()
             docs.forEach { batch.update(it.reference, "isRead", true) }
             batch.commit().awaitResult()
@@ -155,6 +156,7 @@ class NotificationRepository(
             val batch = db.batch()
 
             if (post.visibility == "group" && !post.groupId.isNullOrBlank()) {
+                // post de groupe: seuls les membres du groupe peuvent être notifiés
                 val members = db.collection(FirestoreCollections.GROUPS)
                     .document(post.groupId)
                     .collection(FirestoreCollections.MEMBERS)
@@ -195,6 +197,7 @@ class NotificationRepository(
                     if (receiverId == post.authorId) return@forEach
 
                     val settings = getNotificationSettings(receiverId) ?: NotificationSettingsDocument()
+                    // on vérifie les suivis de chaque utilisateur avant de créer une alerte
                     val matchAuthor = settings.followedUserIds.contains(post.authorId)
                     val matchedTag = post.tags.firstOrNull { tag ->
                         settings.followedTags.any { it.equals(tag, ignoreCase = true) }
@@ -316,6 +319,7 @@ class NotificationRepository(
         actorUserId: String,
         actorName: String
     ): Result<Unit> {
+        // on ne notifie pas l'auteur pour sa propre action
         if (post.authorId == actorUserId) return Result.success(Unit)
         val settings = getNotificationSettings(post.authorId) ?: NotificationSettingsDocument()
         if (!settings.notifySaves) return Result.success(Unit)

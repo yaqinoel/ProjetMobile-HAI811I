@@ -53,6 +53,7 @@ internal fun PreferencesForm(
     val travelShareTags by travelViewModel.formTravelShareTags.collectAsState()
     val travelShareSuggestions by travelViewModel.travelSharePhotoSuggestions.collectAsState()
 
+    // le formulaire garde un state local, donc on le synchronise avec le ViewModel
     LaunchedEffect(destination) { travelViewModel.formDestination.value = destination }
     LaunchedEffect(selectedActivities) { travelViewModel.formActivities.value = selectedActivities }
     LaunchedEffect(budget) { travelViewModel.formBudget.value = budget }
@@ -74,6 +75,7 @@ internal fun PreferencesForm(
 
     val destinationNotFound by travelViewModel.destinationNotFound.collectAsState()
     val destinationQuery = destination.trim()
+    // on considère la destination valide seulement si elle existe dans la liste chargée
     val selectedDestinationInfo = destinations.firstOrNull {
         it.name.equals(destinationQuery, ignoreCase = true)
     }
@@ -184,6 +186,7 @@ internal fun PreferencesForm(
                 )
                 if (selectedDestinationInfo != null) {
                     Spacer(Modifier.height(8.dp))
+                    // confirmation claire pour éviter que l'utilisateur pense juste avoir tapé du texte
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = Color(0xFFECFDF5),
@@ -228,6 +231,7 @@ internal fun PreferencesForm(
                     Spacer(Modifier.height(8.dp))
                     Text("Correspondances :", fontSize = 11.sp, color = StoneLighter)
                     Spacer(Modifier.height(6.dp))
+                    // l'utilisateur doit choisir une destination existante, pas seulement écrire son nom
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(destinationMatches) { match ->
                             Surface(
@@ -339,6 +343,7 @@ internal fun PreferencesForm(
                 Spacer(Modifier.height(12.dp))
 
                 if (travelSharePlaceName.isNotBlank()) {
+                    // seed venant d'une photo: on l'affiche séparément des lieux tapés à la main
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = Color(0xFFFEF2F2),
@@ -443,6 +448,7 @@ internal fun PreferencesForm(
 
                 if (travelShareSuggestions.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
+                    // photos publiques déjà liées à TravelPath pour enrichir les lieux à visiter
                     Text("Inspirations TravelShare", fontSize = 11.sp, color = StoneLighter)
                     Text("Photos publiques ajoutées à TravelPath", fontSize = 10.sp, color = StoneMuted)
                     Spacer(Modifier.height(6.dp))
@@ -450,6 +456,7 @@ internal fun PreferencesForm(
                         items(travelShareSuggestions, key = { it.postId }) { post ->
                             val place = post.locationName.trim()
                             val isAdded = favoritePlaces.any { it.equals(place, ignoreCase = true) }
+                            // cliquer sur une photo l'ajoute comme candidat TravelPath
                             TravelShareSuggestionCard(
                                 post = post,
                                 isAdded = isAdded,
@@ -463,6 +470,7 @@ internal fun PreferencesForm(
 
                 if (favoritePlaces.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
+                    // tous ces lieux sont envoyés au ViewModel comme préférences fortes
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)

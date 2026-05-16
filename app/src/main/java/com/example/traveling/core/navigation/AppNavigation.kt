@@ -31,6 +31,7 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
+    // on choisit l'écran de départ selon l'état Firebase
     val startDest = when {
         currentUser == null -> "home"
         currentUser.isAnonymous -> "main_anonymous"
@@ -126,6 +127,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("postId") { type = NavType.StringType })
         ) { backStackEntry ->
             val postId = backStackEntry.arguments?.getString("postId") ?: ""
+            // édition: on réutilise le formulaire complet de publication
             PublishPhotosScreen(
                 editPostId = postId,
                 onBack = {
@@ -181,6 +183,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("routeId") { type = NavType.StringType })
         ) { backStackEntry ->
             val routeId = backStackEntry.arguments?.getString("routeId") ?: ""
+            // accès depuis le profil, donc la route peut venir du cache ou de Firestore
             CachedRouteDetailScreen(
                 routeId = routeId,
                 onBack = { navController.popBackStack() },
@@ -196,6 +199,7 @@ fun AppNavigation() {
                 authorId = userId,
                 onBack = { navController.popBackStack() },
                 onOpenPhotoDetail = { photoId ->
+                    // on garde la variante anonyme pour conserver les restrictions de commentaire
                     val detailRoute = if (auth.currentUser?.isAnonymous == true) {
                         "photo_detail_anonymous/$photoId"
                     } else {
@@ -220,6 +224,7 @@ fun AppNavigation() {
                 onAuthorClick = { userId -> navController.navigate("author_profile/$userId") },
                 onFindSimilarPhotos = { postId -> navController.navigate("main_similar/$postId") },
                 onAddToTravelPath = { seed ->
+                    // passerelle directe entre une photo et le formulaire TravelPath
                     navController.navigate("main_from_photo/${seed.sourcePostId}") {
                         popUpTo("main") { inclusive = false }
                     }
@@ -263,6 +268,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("photoId") { type = NavType.StringType })
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
+            // retour galerie avec le filtre "photos similaires" déjà actif
             MainScreen(
                 isAnonymous = false,
                 initialSimilarPostId = photoId,
@@ -320,6 +326,7 @@ fun AppNavigation() {
                 isAnonymous = true,
                 onLogout = { navController.navigate("home") { popUpTo(0) { inclusive = true } } },
                 onNavigateLogin = {
+                    // passer d'anonyme à connecté impose de quitter la session anonyme
                     auth.signOut()
                     navController.navigate("login")
                 },
@@ -377,6 +384,7 @@ fun AppNavigation() {
             arguments = listOf(navArgument("photoId") { type = NavType.StringType })
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getString("photoId") ?: ""
+            // détail anonyme: lecture, like/save possibles, commentaire bloqué
             PhotoPostDetailScreen(
                 photoId = photoId,
                 isAnonymous = true,
@@ -409,6 +417,7 @@ fun AppNavigation() {
                 initialTravelPathPostId = photoId,
                 onLogout = { navController.navigate("home") { popUpTo(0) { inclusive = true } } },
                 onNavigateLogin = {
+                    // on quitte le compte anonyme avant d'ouvrir la connexion
                     auth.signOut()
                     navController.navigate("login")
                 },

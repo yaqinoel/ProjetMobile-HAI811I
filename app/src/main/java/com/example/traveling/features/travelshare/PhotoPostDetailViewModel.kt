@@ -49,6 +49,7 @@ class PhotoPostDetailViewModel(
         stateVersion += 1
         _uiState.value = PhotoPostDetailUiState.Loading
 
+        // deux listeners séparés pour garder le post et les commentaires à jour
         detailListener?.remove()
         commentsListener?.remove()
 
@@ -118,6 +119,7 @@ class PhotoPostDetailViewModel(
         val previousLiked = currentLiked
         val nextLiked = !previousLiked
         currentLiked = nextLiked
+        // mise à jour optimiste pour éviter d'attendre Firestore sur l'icône
         currentPost = currentPost?.copy(
             likeCount = ((currentPost?.likeCount ?: 0) + if (nextLiked) 1 else -1).coerceAtLeast(0)
         )
@@ -146,6 +148,7 @@ class PhotoPostDetailViewModel(
         stateVersion += 1
         val previousSaved = currentSaved
         currentSaved = !previousSaved
+        // même principe que le like, mais sans changer le compteur du post
         publishUiState()
 
         viewModelScope.launch {
@@ -195,6 +198,7 @@ class PhotoPostDetailViewModel(
         val version = stateVersion
 
         viewModelScope.launch {
+            // on ignore le résultat si l'utilisateur a déjà recliqué entre temps
             val liked = runCatching { repository.isPostLikedByUser(user.uid, postId) }.getOrDefault(false)
             val saved = runCatching { repository.isPostSavedByUser(user.uid, postId) }.getOrDefault(false)
             if (version != stateVersion) return@launch

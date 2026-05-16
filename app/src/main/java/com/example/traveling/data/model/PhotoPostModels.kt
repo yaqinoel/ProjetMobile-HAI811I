@@ -37,6 +37,7 @@ data class PhotoPostDocument(
     val saveCount: Int = 0,
     val commentCount: Int = 0,
     val reportCount: Int = 0,
+    // champs de passerelle vers TravelPath quand l'auteur coche l'option
     val isLinkedToTravelPath: Boolean = false,
     val travelPathPlaceId: String? = null,
     val travelPathDestinationId: String? = null,

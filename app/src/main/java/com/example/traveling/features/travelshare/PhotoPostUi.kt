@@ -78,6 +78,7 @@ fun PhotoPostDocument.toPhotoPostUi(
     isLiked: Boolean = false,
     isSaved: Boolean = false
 ): PhotoPostUi {
+    // l'UI utilise les coordonnées affichables, pas forcément les coordonnées exactes
     val visibleLat = displayLatitude ?: latitude ?: rawLatitude
     val visibleLng = displayLongitude ?: longitude ?: rawLongitude
     return PhotoPostUi(
@@ -115,6 +116,7 @@ fun PhotoPostDocument.toPhotoPostDetailUi(
     isLiked: Boolean = false,
     isSaved: Boolean = false
 ): PhotoPostDetailUi {
+    // même mapping que la galerie, avec les champs utiles à la fiche détail
     val visibleLat = displayLatitude ?: latitude ?: rawLatitude
     val visibleLng = displayLongitude ?: longitude ?: rawLongitude
     return PhotoPostDetailUi(

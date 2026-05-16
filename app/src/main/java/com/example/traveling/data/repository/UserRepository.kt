@@ -31,6 +31,7 @@ class UserRepository(
         val existing = userRef.get().awaitResult()
 
         if (existing.exists()) {
+            // si le profil existe déjà, on met seulement à jour les infos utiles
             val updates = mutableMapOf<String, Any>(
                 "lastLoginAt" to FieldValue.serverTimestamp()
             )
@@ -66,6 +67,7 @@ class UserRepository(
         val notifRef = userRef
             .collection(FirestoreCollections.NOTIFICATION_SETTINGS)
             .document(FirestoreCollections.DEFAULT_SETTINGS_DOC)
+        // chaque utilisateur reçoit ses préférences de notification par défaut
         batch.set(notifRef, NotificationSettingsDocument())
 
         batch.commit().awaitResult()

@@ -34,6 +34,7 @@ class LikedPostsViewModel(
 
         _uiState.value = LikedPostsUiState.Loading
         viewModelScope.launch {
+            // les posts aimés sont stockés dans la sous-collection de l'utilisateur
             repository.getLikedPosts(uid)
                 .onSuccess { docs ->
                     _uiState.value = LikedPostsUiState.Success(

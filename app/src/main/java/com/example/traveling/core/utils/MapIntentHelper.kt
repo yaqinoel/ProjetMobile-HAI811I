@@ -13,6 +13,7 @@ fun openNavigationToPlace(
     val safeName = placeName.ifBlank { "Destination" }
     val encodedName = Uri.encode(safeName)
 
+    // on essaie d'abord Google Maps avec les coordonnées exactes si possible
     val googleUri = if (latitude != null && longitude != null) {
         Uri.parse("google.navigation:q=$latitude,$longitude")
     } else {
@@ -29,6 +30,7 @@ fun openNavigationToPlace(
     }
 
     val fallbackUri = if (latitude != null && longitude != null) {
+        // fallback pour les autres applications de carte
         Uri.parse("geo:0,0?q=$latitude,$longitude($encodedName)")
     } else {
         Uri.parse("geo:0,0?q=$encodedName")

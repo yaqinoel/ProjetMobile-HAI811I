@@ -160,6 +160,7 @@ fun LaunchScreen(
                             isAnonymousLoading = true
                             anonymousError = null
                             scope.launch {
+                                // un compte anonyme permet déjà les likes et les favoris
                                 anonymousAuthRepository.signInAnonymouslyIfNeeded()
                                     .onSuccess {
                                         isAnonymousLoading = false

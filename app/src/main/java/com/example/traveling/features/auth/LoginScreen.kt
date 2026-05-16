@@ -184,6 +184,7 @@ fun LoginScreen(
                                         coroutineScope.launch {
                                             try {
                                                 val userDoc = userRepository.getUser(uid)
+                                                // si Auth existe sans document Firestore, on le crée ici
                                                 if (userDoc == null) {
                                                     userRepository.createUserDocumentIfMissing(
                                                         userId = uid,

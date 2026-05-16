@@ -51,6 +51,7 @@ class LocalStorageRepository(context: Context) {
 
     fun storeRouteInfo(route: TravelRoute, destName: String) {
         val effectiveDestName = destName.ifBlank { route.destName }
+        // petit résumé gardé localement pour les listes aimé/enregistré
         val json = JSONObject().apply {
             put("id", route.id)
             put("name", route.name)
@@ -105,6 +106,7 @@ class LocalStorageRepository(context: Context) {
     }
 
     fun cacheRoute(routeKey: String, route: TravelRoute, stops: List<RouteStop>) {
+        // cache complet pour rouvrir une route sans la recalculer
         val json = JSONObject().apply {
             put("route", routeToJson(route))
             put("stops", JSONArray(stops.map { stopToJson(it) }))

@@ -66,6 +66,7 @@ class GalleryViewModel(
         latestPosts = emptyList()
         followedUsers = emptyList()
         joinedGroups = emptyList()
+        // les états optimistes ne doivent pas survivre à un nouvel observer
         optimisticLikeStates.clear()
         optimisticLikeCounts.clear()
         optimisticSaveStates.clear()
@@ -74,6 +75,7 @@ class GalleryViewModel(
         postsVersion += 1
         _uiState.value = GalleryUiState.Loading
 
+        // on écoute les posts visibles selon le mode connecté ou anonyme
         listener = repository.observeVisiblePublishedPosts(
             userId = auth.currentUser?.uid,
             onChanged = { documents ->
@@ -91,6 +93,7 @@ class GalleryViewModel(
             userId = uid,
             onChanged = { settings ->
                 viewModelScope.launch {
+                    // ces auteurs deviennent les raccourcis du haut dans la galerie
                     followedUsers = runCatching { userRepository.getUsers(settings.followedUserIds) }.getOrDefault(emptyList())
                     if (postsLoaded) emitSuccess()
                 }
@@ -100,6 +103,7 @@ class GalleryViewModel(
         groupsListener = groupRepository.observeMyGroups(
             userId = uid,
             onChanged = {
+                // les groupes rejoints sont affichés avec les auteurs suivis
                 joinedGroups = it
                 if (postsLoaded) emitSuccess()
             },
@@ -112,6 +116,7 @@ class GalleryViewModel(
         postsVersion += 1
         val nextLiked = !currentlyLiked
         var nextLikeCount = 0
+        // mise à jour immédiate pour éviter un délai visuel après le clic
         updatePostLocally(postId) { post ->
             nextLikeCount = (post.likes + if (nextLiked) 1 else -1).coerceAtLeast(0)
             post.copy(
@@ -128,6 +133,7 @@ class GalleryViewModel(
             optimisticLikeStates.remove(postId)
             optimisticLikeCounts.remove(postId)
             if (result.isFailure) {
+                // rollback visuel si Firestore refuse l'opération
                 updatePostLocally(postId) { post ->
                     post.copy(
                         isLiked = currentlyLiked,
@@ -152,6 +158,7 @@ class GalleryViewModel(
             }
             optimisticSaveStates.remove(postId)
             if (result.isFailure) {
+                // rollback uniquement du save, sans toucher au like
                 updatePostLocally(postId) { post ->
                     post.copy(isSaved = currentlySaved)
                 }
@@ -177,6 +184,7 @@ class GalleryViewModel(
         val hadVisiblePosts = latestPosts.isNotEmpty()
         reactionsReady = uid == null || documents.isEmpty() || hadVisiblePosts
         val previousPostsById = latestPosts.associateBy { it.id }
+        // on garde l'ancien état local en attendant les likes/saves depuis Firestore
         latestPosts = documents.map { document ->
             val previous = previousPostsById[document.postId]
             val liked = optimisticLikeStates[document.postId] ?: previous?.isLiked ?: false
@@ -192,10 +200,12 @@ class GalleryViewModel(
             return
         }
         if (hadVisiblePosts) {
+            // on affiche vite les posts, puis on corrige les états like/save
             emitSuccess()
         }
 
         viewModelScope.launch {
+            // lecture groupée des ids pour éviter une requête par carte
             val likedIds = runCatching { repository.getLikedPostIds(uid) }.getOrDefault(emptySet())
             val savedIds = runCatching { repository.getSavedPostIds(uid) }.getOrDefault(emptySet())
             val posts = documents.map { doc ->
@@ -223,6 +233,7 @@ class GalleryViewModel(
     }
 
     private fun emitSuccess() {
+        // attendre reactionsReady évite les icônes qui disparaissent au premier chargement
         if (!postsLoaded || !reactionsReady) return
         _uiState.value = GalleryUiState.Success(
             posts = latestPosts,
@@ -231,6 +242,7 @@ class GalleryViewModel(
     }
 
     private fun buildShortcuts(): List<TravelShareShortcutUi> {
+        // raccourcis mixtes: voyageurs suivis puis groupes rejoints
         val userShortcuts = followedUsers.map { user ->
             val name = user.displayName.ifBlank { user.email.substringBefore("@").ifBlank { "Voyageur" } }
             TravelShareShortcutUi(

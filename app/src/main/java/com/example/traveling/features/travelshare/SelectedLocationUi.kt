@@ -17,6 +17,7 @@ data class SelectedLocationUi(
 )
 
 fun blurCoordinate(value: Double, gridSize: Double = 0.01): Double {
+    // précision floue: on arrondit la coordonnée avant de l'afficher
     return round(value / gridSize) * gridSize
 }
 
@@ -31,6 +32,7 @@ fun buildSelectedLocation(
     googlePlaceId: String? = null,
     source: String = "manual"
 ): SelectedLocationUi {
+    // on garde toujours les vraies coordonnées, mais l'affichage peut être approximatif
     val displayLat = if (precision == "approx") blurCoordinate(rawLatitude) else rawLatitude
     val displayLng = if (precision == "approx") blurCoordinate(rawLongitude) else rawLongitude
 

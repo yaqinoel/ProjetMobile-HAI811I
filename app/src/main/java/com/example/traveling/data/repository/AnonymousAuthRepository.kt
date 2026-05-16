@@ -15,6 +15,7 @@ class AnonymousAuthRepository(
         return runCatching {
             val current = auth.currentUser
             if (current != null) {
+                // même un compte anonyme reçoit un document user pour garder likes/favoris
                 userRepository.createUserDocumentIfMissing(
                     userId = current.uid,
                     displayName = if (current.isAnonymous) {
@@ -30,6 +31,7 @@ class AnonymousAuthRepository(
             auth.signInAnonymously().awaitResult()
 
             val anonymousUser = auth.currentUser ?: error("Anonymous login failed")
+            // document minimal, sans email, mais compatible avec le reste de l'app
             userRepository.createUserDocumentIfMissing(
                 userId = anonymousUser.uid,
                 displayName = "Voyageur anonyme",
