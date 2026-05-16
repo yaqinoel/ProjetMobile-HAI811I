@@ -19,7 +19,7 @@ import com.example.traveling.data.repository.SavedRoutesRepository
 import com.example.traveling.data.repository.TravelBridgeRepository
 import com.example.traveling.data.repository.TravelRepository
 import com.example.traveling.data.repository.WeatherInfo
-import com.example.traveling.features.main.TravelPathSeed
+import com.example.traveling.data.model.TravelPathSeed
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

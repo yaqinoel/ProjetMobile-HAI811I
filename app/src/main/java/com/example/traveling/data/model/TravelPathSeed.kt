@@ -1,4 +1,4 @@
-package com.example.traveling.features.main
+package com.example.traveling.data.model
 
 data class TravelPathSeed(
     val sourcePostId: String,

@@ -11,7 +11,7 @@ data class ImageAnnotationResult(
     val tags: List<String>
 )
 
-class ImageAnnotationRepository {
+class ImageAnnotationService {
     private val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
 
     suspend fun annotateImages(context: Context, imageUris: List<Uri>): ImageAnnotationResult {

@@ -11,8 +11,6 @@ import com.example.traveling.data.repository.GroupRepository
 import com.example.traveling.data.repository.PhotoPostRepository
 import com.example.traveling.data.repository.PublishPhotoPostInput
 import com.example.traveling.data.repository.UserRepository
-import com.example.traveling.features.travelshare.ImageAnnotationRepository
-import com.example.traveling.features.travelshare.SelectedLocationUi
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +36,7 @@ class PublishPhotosViewModel(
     private val userRepository: UserRepository = UserRepository(),
     private val photoPostRepository: PhotoPostRepository = PhotoPostRepository(),
     private val groupRepository: GroupRepository = GroupRepository(),
-    private val imageAnnotationRepository: ImageAnnotationRepository = ImageAnnotationRepository()
+    private val imageAnnotationService: ImageAnnotationService = ImageAnnotationService()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PublishUiState>(PublishUiState.Idle)
@@ -74,7 +72,7 @@ class PublishPhotosViewModel(
         viewModelScope.launch {
             _aiAnnotationState.value = AiAnnotationUiState.Loading
             runCatching {
-                imageAnnotationRepository.annotateImages(
+                imageAnnotationService.annotateImages(
                     context = context.applicationContext,
                     imageUris = selectedPhotoUris.map(Uri::parse)
                 )

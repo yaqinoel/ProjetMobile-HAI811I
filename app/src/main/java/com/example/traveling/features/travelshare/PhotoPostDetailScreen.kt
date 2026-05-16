@@ -34,7 +34,7 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 
 import com.example.traveling.core.utils.openNavigationToPlace
-import com.example.traveling.features.main.TravelPathSeed
+import com.example.traveling.data.model.TravelPathSeed
 import com.example.traveling.features.travelshare.PhotoPostDetailUi
 import com.example.traveling.ui.components.UserAvatar
 import com.example.traveling.ui.theme.*
